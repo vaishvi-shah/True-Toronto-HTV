@@ -27,6 +27,8 @@ import { LivePostingsModal } from './components/LivePostingsModal';
 import { SensitivityExplorer } from './components/SensitivityExplorer';
 import { MonteCarloUncertaintyPanel } from './components/MonteCarloUncertaintyPanel';
 import { MlRentGapEstimatorModal } from './components/MlRentGapEstimatorModal';
+import { NeighbourhoodExplorer } from './components/NeighbourhoodExplorer';
+import { AnalysisNeighbourhoodMap } from './components/AnalysisNeighbourhoodMap';
 import { calculateNeighbourhoodCosts } from './services/calculator';
 import { runMonteCarloSimulation } from './services/monteCarloSimulation';
 import { CalculatedCost, UserPreferences } from './types';
@@ -54,6 +56,7 @@ export default function App() {
   });
   const [analyzedPreferences, setAnalyzedPreferences] = useState<UserPreferences | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [activePage, setActivePage] = useState<'analysis' | 'explore'>('analysis');
 
   // View state: grid | table | chart | sensitivity | uncertainty
   const [viewMode, setViewMode] = useState<'grid' | 'table' | 'chart' | 'sensitivity' | 'uncertainty'>('grid');
@@ -142,7 +145,7 @@ export default function App() {
       const routeResponse = await fetch('/api/routes/driving', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workplaceId: snapshot.workplaceId, destination: snapshot.customWorkplace ? { latitude: snapshot.customWorkplace.latitude, longitude: snapshot.customWorkplace.longitude } : undefined }),
+        body: JSON.stringify({ workplaceId: snapshot.workplaceId }),
       });
       if (routeResponse.ok) {
         const routeData = await routeResponse.json();
@@ -216,7 +219,7 @@ export default function App() {
         return prev.filter((item) => item !== id);
       }
       if (prev.length >= 3) {
-        return [...prev.slice(1), id]; // keep max 3
+        return prev; // Keep the side-by-side comparison readable.
       }
       return [...prev, id];
     });
@@ -272,8 +275,16 @@ export default function App() {
         onResetPreferences={handleResetPreferences}
       />
 
+      <nav className="border-b border-stone-200 bg-white px-4 py-2.5 sm:px-6" aria-label="Main pages">
+        <div className="mx-auto flex max-w-7xl items-center gap-2">
+          <button type="button" onClick={() => setActivePage('analysis')} className={`rounded-lg px-3.5 py-2 text-xs font-semibold transition-colors ${activePage === 'analysis' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'}`}>Analysis</button>
+          <button type="button" onClick={() => setActivePage('explore')} className={`rounded-lg px-3.5 py-2 text-xs font-semibold transition-colors ${activePage === 'explore' ? 'bg-emerald-700 text-white' : 'text-stone-600 hover:bg-stone-100'}`}>Explore neighbourhood map</button>
+          {activePage === 'explore' && analyzedPreferences && <span className="ml-auto text-[11px] text-stone-500">Using your latest analyzed inputs</span>}
+        </div>
+      </nav>
+
       {/* User Circumstances & Financial Configurator */}
-      <UserInputBar
+      {activePage === 'analysis' && <UserInputBar
         preferences={preferences}
         onChange={handlePreferenceChange}
         onAnalyze={handleAnalyze}
@@ -281,10 +292,28 @@ export default function App() {
         hasAnalyzed={!!analyzedPreferences}
         hasUnanalyzedChanges={JSON.stringify(preferences) !== JSON.stringify(analyzedPreferences)}
         onOpenMethodology={() => setIsMethodologyOpen(true)}
-      />
+      />}
 
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full">
+        {activePage === 'explore' ? (
+          analyzedPreferences ? (
+            <NeighbourhoodExplorer
+              results={calculatedResults}
+              preferences={analyzedPreferences}
+              comparedIds={comparedIds}
+              onToggleCompare={handleToggleCompare}
+            />
+          ) : (
+            <section className="mx-auto my-16 max-w-xl rounded-3xl border border-emerald-200 bg-white p-8 text-center shadow-sm">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700"><Compass className="h-6 w-6" /></div>
+              <h1 className="text-xl font-bold text-stone-900">Start with your cost and commute details</h1>
+              <p className="mt-2 text-sm leading-6 text-stone-600">Analyze your options first. Then the map will show the estimated rent, transportation, utilities, and commute costs for every neighbourhood.</p>
+              <button type="button" onClick={() => setActivePage('analysis')} className="mt-5 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800">Go to analysis</button>
+            </section>
+          )
+        ) : (
+        <>
         {/* Key Finding Banner (True cost vs sticker rent insight with break-even & Monte Carlo) */}
         {!analyzedPreferences ? (
           <section className="mb-6 rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-8 text-center shadow-sm">
@@ -307,6 +336,11 @@ export default function App() {
           onOpenWhatIf={() => setIsWhatIfOpen(true)}
           onOpenSensitivity={() => setViewMode('sensitivity')}
           onOpenMonteCarlo={() => setViewMode('uncertainty')}
+        />
+
+        <AnalysisNeighbourhoodMap
+          results={calculatedResults}
+          preferences={analyzedPreferences}
         />
 
         {/* View Controls & Filter Options */}
@@ -534,16 +568,18 @@ export default function App() {
         </section>
         </>
         )}
+        </>
+        )}
       </main>
 
       {/* Floating Bottom Comparison Drawer (when neighbourhoods are selected) */}
-      <ComparisonDrawer
+      {activePage === 'analysis' && <ComparisonDrawer
         comparedCosts={comparedCosts}
         preferences={preferences}
         onRemove={handleToggleCompare}
         onClear={() => setComparedIds([])}
         onOpenPostingsModal={handleOpenPostingsModal}
-      />
+      />}
 
       {/* AI What-If Scenario Modal */}
       <AiWhatIfExplorer

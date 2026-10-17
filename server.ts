@@ -24,6 +24,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
+const nearbyAmenityCache = new Map<string, { cachedAt: number; payload: unknown }>();
 
 app.use(express.json());
 
@@ -329,52 +330,13 @@ Respond with JSON:
 app.post('/api/chat', handleWhatIfChat);
 app.post('/api/gemini/what-if', handleWhatIfChat);
 
-/** Search OpenStreetMap-backed places through OpenRouteService (keeps the API key server-side). */
-app.post('/api/locations/search', async (req: Request, res: Response) => {
-  const query = typeof req.body?.query === 'string' ? req.body.query.trim().slice(0, 160) : '';
-  if (query.length < 2) return res.status(400).json({ error: 'Enter at least two characters to search.' });
-  const orsApiKey = process.env.ORS_API_KEY;
-  if (!orsApiKey) return res.status(503).json({ error: 'Place search is not configured. You can still select a location by clicking the map.' });
-
-  try {
-    const url = new URL('https://api.openrouteservice.org/geocode/search');
-    url.searchParams.set('text', query);
-    url.searchParams.set('size', '8');
-    url.searchParams.set('boundary.rect.min_lon', '-85.5');
-    url.searchParams.set('boundary.rect.min_lat', '40.2');
-    url.searchParams.set('boundary.rect.max_lon', '-73.5');
-    url.searchParams.set('boundary.rect.max_lat', '47.2');
-    const response = await fetch(url, { headers: { Authorization: orsApiKey } });
-    if (!response.ok) {
-      console.warn(`OpenRouteService geocoding failed: HTTP ${response.status}`);
-      return res.status(502).json({ error: 'Place search is temporarily unavailable. You can still click the map to select a point.' });
-    }
-    const payload = await response.json() as { features?: Array<{ geometry?: { coordinates?: [number, number] }; properties?: { label?: string } }> };
-    const results = (payload.features || []).flatMap((feature) => {
-      const coordinates = feature.geometry?.coordinates;
-      const label = feature.properties?.label;
-      if (!coordinates || !label || !Number.isFinite(coordinates[0]) || !Number.isFinite(coordinates[1])) return [];
-      return [{ name: label, latitude: coordinates[1], longitude: coordinates[0] }];
-    });
-    return res.json({ results, source: 'OpenStreetMap via OpenRouteService' });
-  } catch (error) {
-    console.warn('OpenRouteService geocoding failed:', error instanceof Error ? error.message : 'unknown error');
-    return res.status(502).json({ error: 'Place search is temporarily unavailable. You can still click the map to select a point.' });
-  }
-});
-
 /**
  * Route: POST /api/routes/driving
  * OpenRouteService road distances and durations from neighborhood centers to a workplace.
  */
 app.post('/api/routes/driving', async (req: Request, res: Response) => {
   const workplaceId = req.body?.workplaceId;
-  const rawDestination = req.body?.destination;
-  const customCoordinates = rawDestination && Number.isFinite(rawDestination.latitude) && Number.isFinite(rawDestination.longitude)
-    && rawDestination.latitude >= 40 && rawDestination.latitude <= 48 && rawDestination.longitude >= -85 && rawDestination.longitude <= -75
-    ? [rawDestination.longitude, rawDestination.latitude] as [number, number]
-    : undefined;
-  const destination = customCoordinates || WORKPLACE_ROUTING_COORDINATES[workplaceId];
+  const destination = WORKPLACE_ROUTING_COORDINATES[workplaceId];
   if (!destination) return res.status(400).json({ error: 'Unknown workplace' });
 
   const orsApiKey = process.env.ORS_API_KEY;
@@ -430,6 +392,88 @@ app.post('/api/routes/driving', async (req: Request, res: Response) => {
   } catch (error) {
     console.warn('OpenRouteService matrix request failed:', error instanceof Error ? error.message : 'unknown error');
     return res.status(502).json({ error: 'Driving routes are temporarily unavailable' });
+  }
+});
+
+/**
+ * Nearby grocery, transit, and recreation POIs from OpenStreetMap.
+ * Cache one Toronto-area snapshot for all representative neighbourhood centers to avoid
+ * repeating public Overpass queries on every map interaction.
+ */
+app.get('/api/neighbourhood-amenities', async (_req: Request, res: Response) => {
+  const cached = nearbyAmenityCache.get('toronto-neighbourhoods');
+  if (cached && Date.now() - cached.cachedAt < 12 * 60 * 60 * 1000) {
+    return res.json({ ...cached.payload as object, cached: true });
+  }
+
+  const areaCoordinates = APP_NEIGHBOURHOODS.map((area) => AREA_ROUTING_COORDINATES[area.id]).filter(Boolean);
+  if (areaCoordinates.length !== APP_NEIGHBOURHOODS.length) return res.status(500).json({ error: 'A neighbourhood location is missing.' });
+  const south = Math.min(...areaCoordinates.map((point) => point[1])) - 0.03;
+  const west = Math.min(...areaCoordinates.map((point) => point[0])) - 0.04;
+  const north = Math.max(...areaCoordinates.map((point) => point[1])) + 0.03;
+  const east = Math.max(...areaCoordinates.map((point) => point[0])) + 0.04;
+  const inBounds = (filter: string) => `nwr(${south},${west},${north},${east})[${filter}];`;
+  const query = `[out:json][timeout:25];(${inBounds('"shop"~"^(supermarket|grocery|greengrocer)$"')}${inBounds('"shop"="convenience"')}${inBounds('"amenity"~"^(pharmacy|cafe)$"')}${inBounds('"public_transport"~"^(platform|station)$"')}${inBounds('"highway"="bus_stop"')}${inBounds('"railway"="subway_entrance"')}${inBounds('"leisure"~"^(park|playground|sports_centre|fitness_centre)$"')}${inBounds('"amenity"~"^(library|community_centre|fitness_centre|cinema|theatre)$"')});out center tags;`;
+
+  try {
+    const response = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'User-Agent': 'TrueCostOfHome/1.0 (Toronto neighbourhood exploration)' },
+      body: new URLSearchParams({ data: query }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!response.ok) {
+      console.warn(`OpenStreetMap Overpass query failed: HTTP ${response.status}`);
+      return res.status(502).json({ error: 'Nearby place data is temporarily unavailable.' });
+    }
+
+    const data = await response.json() as {
+      osm3s?: { timestamp_osm_base?: string };
+      elements?: Array<{ type: string; id: number; lat?: number; lon?: number; center?: { lat: number; lon: number }; tags?: Record<string, string> }>;
+    };
+    const elements = data.elements || [];
+    const distanceKm = (element: NonNullable<typeof data.elements>[number], latitude: number, longitude: number) => {
+      const point = element.center || (element.lat !== undefined && element.lon !== undefined ? { lat: element.lat, lon: element.lon } : null);
+      if (!point) return null;
+      const radians = (degrees: number) => degrees * Math.PI / 180;
+      const latDelta = radians(point.lat - latitude);
+      const lonDelta = radians(point.lon - longitude);
+      const a = Math.sin(latDelta / 2) ** 2 + Math.cos(radians(latitude)) * Math.cos(radians(point.lat)) * Math.sin(lonDelta / 2) ** 2;
+      return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+    const summarize = (items: Array<{ element: NonNullable<typeof data.elements>[number]; distance: number }>) => ({
+      countWithin1_5Km: items.length,
+      nearest: items[0] ? { name: items[0].element.tags?.name || 'Unnamed place', distanceKm: Number(items[0].distance.toFixed(2)) } : null,
+    });
+    const byNeighbourhood = Object.fromEntries(APP_NEIGHBOURHOODS.map((area) => {
+      const [longitude, latitude] = AREA_ROUTING_COORDINATES[area.id];
+      const nearbyElements = (predicate: (tags: Record<string, string>) => boolean) => elements
+        .filter((element) => predicate(element.tags || {}))
+        .map((element) => ({ element, distance: distanceKm(element, latitude, longitude) }))
+        .filter((item): item is { element: NonNullable<typeof data.elements>[number]; distance: number } => item.distance !== null && item.distance <= 1.5)
+        .sort((a, b) => a.distance - b.distance);
+      const groceries = nearbyElements((tags) => ['supermarket', 'grocery', 'greengrocer'].includes(tags.shop || ''));
+      const essentials = nearbyElements((tags) => tags.shop === 'convenience' || ['pharmacy', 'cafe'].includes(tags.amenity || ''));
+      const transit = nearbyElements((tags) => tags.public_transport === 'platform' || tags.public_transport === 'station' || tags.highway === 'bus_stop' || tags.railway === 'subway_entrance');
+      const recreation = nearbyElements((tags) => ['park', 'playground', 'sports_centre', 'fitness_centre'].includes(tags.leisure || '') || ['library', 'community_centre', 'fitness_centre', 'cinema', 'theatre'].includes(tags.amenity || ''));
+      return [area.id, {
+        groceries: summarize(groceries),
+        everydayEssentials: summarize(essentials),
+        transitAccess: summarize(transit),
+        recreation: summarize(recreation),
+      }];
+    }));
+    const payload = {
+      source: 'OpenStreetMap contributors via Overpass API',
+      dataAsOf: data.osm3s?.timestamp_osm_base || null,
+      areaReference: 'Approximate neighbourhood representative point; straight-line radius up to 1.5 km. OpenStreetMap coverage may be incomplete.',
+      byNeighbourhood,
+    };
+    nearbyAmenityCache.set('toronto-neighbourhoods', { cachedAt: Date.now(), payload });
+    return res.json(payload);
+  } catch (error) {
+    console.warn('OpenStreetMap Overpass query failed:', error instanceof Error ? error.message : 'unknown error');
+    return res.status(502).json({ error: 'Nearby place data is temporarily unavailable.' });
   }
 });
 

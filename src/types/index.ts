@@ -102,7 +102,6 @@ export interface NeighbourhoodData {
 
 export interface UserPreferences {
   workplaceId: string;
-  customWorkplace?: { name: string; address: string; latitude: number; longitude: number } | null;
   currentNeighbourhoodId?: string;
   currentMonthlyRent?: number | null;
   currentUtilitiesMonthly?: number | null;
