@@ -2,6 +2,33 @@ export type BedroomType = 'bachelor' | '1bed' | '2bed' | '3bed';
 
 export type CommuteMode = 'transit' | 'car' | 'hybrid' | 'walk_bike';
 
+export type RentMode = 'user_entered' | 'cmhc_benchmark' | 'no_rent';
+
+export type ListingPlatform = 'housesigma' | 'zillow' | 'realtor' | 'rentals_ca';
+
+export interface RentalPosting {
+  id: string;
+  neighbourhoodId: string;
+  title: string;
+  address: string;
+  unit?: string;
+  postalCode?: string;
+  monthlyRent: number;
+  bedrooms: BedroomType;
+  bathrooms: number;
+  sqft?: number;
+  platform: ListingPlatform;
+  platformListingId?: string; // e.g. MLS# or HouseSigma ID
+  url: string; // Direct link to HouseSigma, Realtor.ca, Zillow, or Rentals.ca
+  imageUrl: string;
+  features: string[]; // e.g. ['In-Unit Laundry', 'Balcony', 'Hydro Included', 'Parking Spot', 'Pet Friendly']
+  rentControlStatus: 'protected_pre_2018' | 'exempt_post_2018' | 'verified_rent_stabilized';
+  daysOnMarket: number;
+  listedDate: string;
+  propertyType: 'Condo Apartment' | 'Purpose-Built Rental' | 'Basement Suite' | 'Townhouse / Multi-Plex';
+  walkToSubwayMins?: number;
+}
+
 export interface WorkplaceLocation {
   id: string;
   name: string;
@@ -70,15 +97,20 @@ export interface NeighbourhoodData {
 
 export interface UserPreferences {
   workplaceId: string;
-  annualIncome: number;
+  annualIncome: number | null; // User-defined or null if unspecified
   householdMembers: number;
   bedrooms: BedroomType;
   commuteMode: CommuteMode;
   hybridRemoteDaysPerWeek: number; // 0 to 5
-  timeValuationRate: number; // standard 0.5 (50% of wage)
-  rentInputMode?: 'market_median' | 'custom_fixed';
-  customFixedRent?: number; // Custom user rent applied across comparisons
+  timeValuationRate: number; // e.g. 0.5 (50% of wage)
+  timeValuationType?: 'percent_of_wage' | 'custom_rate' | 'zero';
+  customHourlyTimeValuation?: number; // e.g. $25/hr
+  rentMode: RentMode; // user_entered, cmhc_benchmark, or no_rent
+  customFixedRent?: number | null; // User's monthly rent/housing budget if provided
   customNeighbourhoodRents?: Record<string, number>; // Individual neighbourhood overrides
+  customUtilitiesMonthly?: number | null; // Optional user-defined utility budget
+  // Compatibility fields
+  rentInputMode?: 'market_median' | 'custom_fixed';
 }
 
 export interface CommuteBreakdown {
@@ -94,15 +126,19 @@ export interface CommuteBreakdown {
 
 export interface CalculatedCost {
   neighbourhood: NeighbourhoodData;
-  stickerRent: number;
-  originalMarketRent: number;
+  stickerRent: number; // effective rent used in direct calculation (0 if no rent/unspecified)
+  originalMarketRent: number; // CMHC median reference
   isCustomRent: boolean;
+  rentStatus: 'user_entered' | 'cmhc_benchmark' | 'no_rent' | 'unspecified';
+  rentLabel: string;
+  effectiveRent: number | null;
   utilitiesCost: number;
+  isCustomUtilities: boolean;
   commuteBreakdown: CommuteBreakdown;
-  trueMonthlyCost: number; // Rent + Commute + Utilities
+  trueMonthlyCost: number; // Rent (if applicable) + Commute + Utilities
   monthlyCommuteHours: number;
-  hourlyWage: number;
-  timeCostMonthly: number; // Commute hours * wage * timeValuationRate
+  hourlyWage: number | null; // null if income unspecified
+  timeCostMonthly: number; // Commute hours * wage * timeValuationRate (0 if disabled)
   totalImpactMonthly: number; // trueMonthlyCost + timeCostMonthly
   carbonFootprintKg: {
     commute: number;
@@ -112,9 +148,10 @@ export interface CalculatedCost {
   rentRank: number;
   trueCostRank: number;
   rankShift: number; // positive = better rank under true cost, negative = worse
-  incomeSharePercent: number; // (trueMonthlyCost / grossMonthlyIncome) * 100
-  isRentBurdened: boolean; // > 30%
-  isSeverelyBurdened: boolean; // > 50%
+  incomeSharePercent: number | null; // null if income unspecified
+  isRentBurdened: boolean | null; // > 30%
+  isSeverelyBurdened: boolean | null; // > 50%
+  missingInformation: string[]; // Explains clearly what data is not provided
 }
 
 export interface PersonaPreset {

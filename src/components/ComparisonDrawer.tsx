@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Check, Clock, Droplets, Flame, Scale, TrendingDown, Leaf } from 'lucide-react';
+import { X, Check, Clock, Droplets, Flame, Scale, TrendingDown, Leaf, Building2 } from 'lucide-react';
 import { CalculatedCost, UserPreferences } from '../types';
 
 interface ComparisonDrawerProps {
@@ -7,6 +7,7 @@ interface ComparisonDrawerProps {
   preferences: UserPreferences;
   onRemove: (id: string) => void;
   onClear: () => void;
+  onOpenPostingsModal?: (id: string) => void;
 }
 
 export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
@@ -14,6 +15,7 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
   preferences,
   onRemove,
   onClear,
+  onOpenPostingsModal,
 }) => {
   if (comparedCosts.length === 0) return null;
 
@@ -26,10 +28,10 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
           <div className="flex items-center gap-2">
             <Scale className="w-5 h-5 text-emerald-600" />
             <h3 className="text-base font-bold text-stone-900">
-              Head-to-Head Comparison ({comparedCosts.length} selected)
+              Side-by-Side Comparison ({comparedCosts.length} selected)
             </h3>
             <span className="text-xs text-stone-500 hidden sm:inline">
-              Comparing out-of-pocket, travel hours, and civic indicators
+              Comparing out-of-pocket costs, commute travel time, and civic risk indicators
             </span>
           </div>
 
@@ -43,6 +45,7 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
             <button
               onClick={onClear}
               className="p-1 rounded-md text-stone-400 hover:text-stone-700 bg-stone-100 cursor-pointer"
+              title="Close drawer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -59,7 +62,7 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
                 key={item.neighbourhood.id}
                 className={`p-4 rounded-xl border relative transition-all ${
                   isWinner
-                    ? 'border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/20'
+                    ? 'border-emerald-600 bg-emerald-50/30 ring-2 ring-emerald-500/20'
                     : 'border-stone-200 bg-white'
                 }`}
               >
@@ -102,8 +105,12 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
                   </div>
 
                   <div className="flex justify-between items-center text-stone-500 text-[11px]">
-                    <span>Sticker Rent:</span>
-                    <span className="font-mono text-stone-700">${item.stickerRent}</span>
+                    <span>Housing / Rent:</span>
+                    <span className="font-mono text-stone-800 font-semibold">
+                      {item.effectiveRent !== null
+                        ? `$${item.effectiveRent.toLocaleString()}`
+                        : 'Unspecified'}
+                    </span>
                   </div>
 
                   <div className="flex justify-between items-center text-stone-500 text-[11px]">
@@ -120,7 +127,7 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
 
                   <div className="flex justify-between items-center text-stone-500 text-[11px] border-t border-dashed border-stone-200 pt-1.5">
                     <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-amber-600" />
+                      <Clock className="w-3 h-3 text-emerald-600" />
                       Commute Time:
                     </span>
                     <span className="font-mono text-stone-800 font-medium">
@@ -128,10 +135,12 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center text-amber-900 text-[11px] bg-amber-50 p-1.5 rounded-sm">
-                    <span>Time Cost (Separately Valued):</span>
-                    <span className="font-mono font-bold">${item.timeCostMonthly}/mo</span>
-                  </div>
+                  {item.timeCostMonthly > 0 && (
+                    <div className="flex justify-between items-center text-stone-700 text-[11px] bg-stone-50 p-1.5 rounded-md">
+                      <span>Time Value (Separately Valued):</span>
+                      <span className="font-mono font-bold">+${item.timeCostMonthly}/mo</span>
+                    </div>
+                  )}
 
                   <div className="flex justify-between items-center text-stone-600 text-[11px]">
                     <span className="flex items-center gap-1">
@@ -163,6 +172,17 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
                       {item.neighbourhood.displacementFlag.label}
                     </span>
                   </div>
+
+                  {onOpenPostingsModal && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenPostingsModal(item.neighbourhood.id)}
+                      className="mt-2.5 w-full py-1.5 px-2 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Building2 className="w-3.5 h-3.5 text-amber-700" />
+                      <span>Attached Postings (HouseSigma/Zillow)</span>
+                    </button>
+                  )}
                 </div>
               </div>
             );

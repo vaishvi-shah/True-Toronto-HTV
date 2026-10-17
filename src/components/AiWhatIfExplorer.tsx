@@ -96,9 +96,11 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
     } else if (q.includes('remote') || q.includes('hybrid') || q.includes('home')) {
       patch = { hybridRemoteDaysPerWeek: 2 };
     } else if (q.includes('raise') || q.includes('earn') || q.includes('more money') || q.includes('salary')) {
-      patch = { annualIncome: currentPreferences.annualIncome + 15000 };
+      patch = { annualIncome: (currentPreferences.annualIncome || 50000) + 15000 };
     } else if (q.includes('roommate') || q.includes('downsize') || q.includes('smaller')) {
       patch = { bedrooms: '1bed' };
+    } else if (q.includes('rent') && (q.includes('cheap') || q.includes('lower') || q.includes('budget'))) {
+      patch = { rentMode: 'user_entered', customFixedRent: 1600 };
     } else if (q.includes('bike') || q.includes('cycle') || q.includes('walk')) {
       patch = { commuteMode: 'walk_bike' };
     } else {

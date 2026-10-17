@@ -11,6 +11,10 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Minus,
+  Edit2,
+  RotateCcw,
+  Building2,
+  ExternalLink,
 } from 'lucide-react';
 import { CalculatedCost, UserPreferences } from '../types';
 
@@ -19,6 +23,9 @@ interface NeighbourhoodTableProps {
   preferences: UserPreferences;
   comparedIds: string[];
   onToggleCompare: (id: string) => void;
+  onUpdateNeighbourhoodRent?: (id: string, rent: number | null) => void;
+  onOpenPostingsModal?: (id: string) => void;
+  getMonteCarloRange?: (id: string) => [number, number] | undefined;
 }
 
 type SortField =
@@ -35,7 +42,12 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
   preferences,
   comparedIds,
   onToggleCompare,
+  onUpdateNeighbourhoodRent,
+  onOpenPostingsModal,
+  getMonteCarloRange,
 }) => {
+  const [editingRentId, setEditingRentId] = useState<string | null>(null);
+  const [editRentValue, setEditRentValue] = useState<number>(0);
   const [sortField, setSortField] = useState<SortField>('trueCost');
   const [sortAsc, setSortAsc] = useState<boolean>(true);
 
@@ -57,8 +69,8 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
         valB = b.trueMonthlyCost;
         break;
       case 'stickerRent':
-        valA = a.stickerRent;
-        valB = b.stickerRent;
+        valA = a.effectiveRent ?? 0;
+        valB = b.effectiveRent ?? 0;
         break;
       case 'commuteCost':
         valA = a.commuteBreakdown.totalMonthlyCommuteCost;
@@ -77,8 +89,8 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
         valB = b.carbonFootprintKg.total;
         break;
       case 'incomeShare':
-        valA = a.incomeSharePercent;
-        valB = b.incomeSharePercent;
+        valA = a.incomeSharePercent ?? 0;
+        valB = b.incomeSharePercent ?? 0;
         break;
     }
     return sortAsc ? valA - valB : valB - valA;
@@ -90,175 +102,281 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
         <table className="w-full text-left border-collapse text-xs">
           <thead>
             <tr className="bg-stone-100/80 border-b border-stone-200 text-stone-600 font-semibold uppercase tracking-wider text-[11px]">
-              <th className="py-3 px-3 sm:px-4 text-center w-12">Rank</th>
-              <th className="py-3 px-3 sm:px-4">Neighbourhood</th>
+              <th className="py-3.5 px-3 sm:px-4 text-center w-14">Rank</th>
+              <th className="py-3.5 px-3 sm:px-4">Neighbourhood</th>
               <th
-                className="py-3 px-3 cursor-pointer hover:bg-stone-200 transition-colors"
+                className="py-3.5 px-3 cursor-pointer hover:bg-stone-200 transition-colors"
                 onClick={() => handleSort('trueCost')}
               >
-                <div className="flex items-center gap-1 font-bold text-stone-900">
+                <div className="flex items-center gap-1 text-stone-900 font-bold">
                   <span>True Monthly Cost</span>
-                  <ArrowUpDown className="w-3 h-3" />
+                  <ArrowUpDown className="w-3.5 h-3.5 text-stone-400" />
                 </div>
               </th>
               <th
-                className="py-3 px-3 cursor-pointer hover:bg-stone-200 transition-colors"
+                className="py-3.5 px-3 cursor-pointer hover:bg-stone-200 transition-colors"
                 onClick={() => handleSort('stickerRent')}
               >
                 <div className="flex items-center gap-1">
-                  <span>Sticker Rent</span>
-                  <ArrowUpDown className="w-3 h-3" />
+                  <span>Housing / Rent</span>
+                  <ArrowUpDown className="w-3.5 h-3.5 text-stone-400" />
                 </div>
               </th>
               <th
-                className="py-3 px-3 cursor-pointer hover:bg-stone-200 transition-colors"
+                className="py-3.5 px-3 cursor-pointer hover:bg-stone-200 transition-colors"
                 onClick={() => handleSort('commuteCost')}
               >
                 <div className="flex items-center gap-1">
                   <span>Commute Cost</span>
-                  <ArrowUpDown className="w-3 h-3" />
+                  <ArrowUpDown className="w-3.5 h-3.5 text-stone-400" />
                 </div>
               </th>
               <th
-                className="py-3 px-3 cursor-pointer hover:bg-stone-200 transition-colors"
+                className="py-3.5 px-3 cursor-pointer hover:bg-stone-200 transition-colors"
                 onClick={() => handleSort('commuteHours')}
               >
                 <div className="flex items-center gap-1">
-                  <span>Commute Time</span>
-                  <ArrowUpDown className="w-3 h-3" />
+                  <span>Travel Hours</span>
+                  <ArrowUpDown className="w-3.5 h-3.5 text-stone-400" />
                 </div>
               </th>
+              <th className="py-3.5 px-3">Utilities</th>
               <th
-                className="py-3 px-3 cursor-pointer hover:bg-stone-200 transition-colors bg-amber-50/50 text-amber-900"
+                className="py-3.5 px-3 cursor-pointer hover:bg-stone-200 transition-colors"
                 onClick={() => handleSort('timeCost')}
-                title="Separately valued; does not inflate out-of-pocket rent"
-              >
-                <div className="flex items-center gap-1 font-semibold">
-                  <span>Time Cost (Sep)</span>
-                  <ArrowUpDown className="w-3 h-3" />
-                </div>
-              </th>
-              <th
-                className="py-3 px-3 cursor-pointer hover:bg-stone-200 transition-colors"
-                onClick={() => handleSort('carbon')}
               >
                 <div className="flex items-center gap-1">
-                  <span>Carbon (kg)</span>
-                  <ArrowUpDown className="w-3 h-3" />
+                  <span>Time Value</span>
+                  <ArrowUpDown className="w-3.5 h-3.5 text-stone-400" />
                 </div>
               </th>
-              <th className="py-3 px-3">Climate Exposure</th>
-              <th className="py-3 px-3">Displacement Status</th>
-              <th className="py-3 px-3 text-center">Compare</th>
+              <th
+                className="py-3.5 px-3 cursor-pointer hover:bg-stone-200 transition-colors"
+                onClick={() => handleSort('incomeShare')}
+              >
+                <div className="flex items-center gap-1">
+                  <span>Income Share</span>
+                  <ArrowUpDown className="w-3.5 h-3.5 text-stone-400" />
+                </div>
+              </th>
+              <th className="py-3.5 px-3">Climate Exposure</th>
+              <th className="py-3.5 px-3 text-center">Compare</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-stone-100">
             {sortedResults.map((cost) => {
               const n = cost.neighbourhood;
-              const isComp = comparedIds.includes(n.id);
+              const isCompared = comparedIds.includes(n.id);
 
               return (
                 <tr
                   key={n.id}
                   className={`hover:bg-stone-50/80 transition-colors ${
-                    isComp ? 'bg-emerald-50/40' : ''
+                    isCompared ? 'bg-emerald-50/40' : ''
                   }`}
                 >
+                  {/* Rank */}
                   <td className="py-3.5 px-3 sm:px-4 text-center font-mono font-bold text-stone-700">
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-stone-100 text-stone-800 text-xs">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-stone-100 text-stone-800 text-xs">
                       #{cost.trueCostRank}
                     </span>
                   </td>
+
+                  {/* Neighbourhood */}
                   <td className="py-3.5 px-3 sm:px-4">
-                    <div className="font-bold text-stone-900 text-xs sm:text-sm">
-                      {n.name}
-                    </div>
-                    <div className="text-[11px] text-stone-500">
-                      {n.borough} • {cost.rankShift > 0 ? (
-                        <span className="text-emerald-700 font-medium">
-                          +{cost.rankShift} vs rent rank
-                        </span>
-                      ) : cost.rankShift < 0 ? (
-                        <span className="text-rose-700 font-medium">
-                          {cost.rankShift} vs rent rank
-                        </span>
-                      ) : (
-                        <span>Same as rent rank</span>
-                      )}
-                    </div>
+                    <div className="font-bold text-stone-900">{n.name}</div>
+                    <div className="text-[11px] text-stone-500">{n.borough}</div>
                   </td>
+
+                  {/* True Cost */}
                   <td className="py-3.5 px-3 font-mono">
                     <div className="text-sm font-bold text-stone-900">
-                      ${cost.trueMonthlyCost.toLocaleString()}
+                      ${cost.trueMonthlyCost.toLocaleString()}/mo
                     </div>
-                    <div className="text-[10px] text-stone-400">
-                      {cost.incomeSharePercent}% of income
-                    </div>
+                    {getMonteCarloRange && getMonteCarloRange(n.id) && (
+                      <div className="text-[10px] text-indigo-700 font-medium">
+                        CI: ${getMonteCarloRange(n.id)![0].toLocaleString()}–${getMonteCarloRange(n.id)![1].toLocaleString()}
+                      </div>
+                    )}
                   </td>
-                  <td className="py-3.5 px-3 font-mono text-stone-700 font-medium">
-                    ${cost.stickerRent.toLocaleString()}
+
+                  {/* Rent (Editable) */}
+                  <td className="py-3.5 px-3 font-mono">
+                    {editingRentId === n.id ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min="0"
+                          max="15000"
+                          step="25"
+                          value={editRentValue}
+                          onChange={(e) => setEditRentValue(Number(e.target.value))}
+                          className="w-20 bg-white border border-emerald-400 rounded-md px-1.5 py-0.5 text-xs font-mono font-bold text-stone-900"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onUpdateNeighbourhoodRent) {
+                              onUpdateNeighbourhoodRent(n.id, editRentValue > 0 ? editRentValue : null);
+                            }
+                            setEditingRentId(null);
+                          }}
+                          className="text-[10px] bg-emerald-700 text-white px-2 py-0.5 rounded-md font-semibold cursor-pointer"
+                        >
+                          OK
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingRentId(null)}
+                          className="text-[10px] bg-stone-200 text-stone-700 px-1.5 py-0.5 rounded-md cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`font-semibold ${
+                              cost.isCustomRent ? 'text-emerald-800 font-bold' : 'text-stone-700'
+                            }`}
+                          >
+                            {cost.effectiveRent !== null
+                              ? `$${cost.effectiveRent.toLocaleString()}`
+                              : 'Unspecified'}
+                          </span>
+                          {onUpdateNeighbourhoodRent && cost.rentStatus !== 'no_rent' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingRentId(n.id);
+                                setEditRentValue(cost.effectiveRent ?? cost.originalMarketRent);
+                              }}
+                              className="text-[10px] text-stone-400 hover:text-emerald-700 cursor-pointer underline"
+                              title="Click to input your own rent"
+                            >
+                              edit
+                            </button>
+                          )}
+                        </div>
+                        {cost.isCustomRent && (
+                          <div className="text-[10px] text-emerald-700 flex items-center gap-1">
+                            <span>User rent</span>
+                            <button
+                              type="button"
+                              onClick={() => onUpdateNeighbourhoodRent && onUpdateNeighbourhoodRent(n.id, null)}
+                              className="text-stone-400 underline hover:text-stone-600"
+                              title="Reset to survey median"
+                            >
+                              reset
+                            </button>
+                          </div>
+                        )}
+                        {onOpenPostingsModal && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenPostingsModal(n.id)}
+                            className="mt-1 text-[10px] text-amber-900 hover:text-amber-950 font-medium flex items-center gap-1 cursor-pointer bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded-md border border-amber-200 transition-colors"
+                            title="View attached live postings from HouseSigma, Realtor.ca, and Zillow"
+                          >
+                            <Building2 className="w-2.5 h-2.5 text-amber-700" />
+                            <span>Attached Postings</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
+
+                  {/* Commute Cost */}
                   <td className="py-3.5 px-3 font-mono text-stone-700">
                     ${cost.commuteBreakdown.totalMonthlyCommuteCost}
                   </td>
-                  <td className="py-3.5 px-3 text-stone-700">
-                    <div className="font-mono">{cost.monthlyCommuteHours} hrs/mo</div>
-                    <div className="text-[10px] text-stone-500">
-                      {preferences.commuteMode === 'car'
-                        ? `${n.commutes[preferences.workplaceId]?.carMinutes}m / trip`
-                        : `${n.commutes[preferences.workplaceId]?.transitMinutes}m / trip`}
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-3 bg-amber-50/30 font-mono text-amber-900 font-medium">
-                    ${cost.timeCostMonthly}
-                  </td>
+
+                  {/* Commute Hours */}
                   <td className="py-3.5 px-3 font-mono text-stone-700">
-                    {cost.carbonFootprintKg.total} kg
+                    {cost.monthlyCommuteHours} hrs
                   </td>
+
+                  {/* Utilities */}
+                  <td className="py-3.5 px-3 font-mono text-stone-700">
+                    ${cost.utilitiesCost}
+                  </td>
+
+                  {/* Time Cost */}
+                  <td className="py-3.5 px-3 font-mono text-stone-600">
+                    {cost.timeCostMonthly > 0 ? `+$${cost.timeCostMonthly}` : '—'}
+                  </td>
+
+                  {/* Income Share */}
                   <td className="py-3.5 px-3">
-                    <div className="flex flex-col gap-1">
-                      <span className="inline-flex items-center gap-1 text-[11px] text-stone-700">
-                        <Droplets className="w-3 h-3 text-sky-600 shrink-0" />
-                        <span className="truncate max-w-[110px]" title={n.floodRisk.details}>
-                          {n.floodRisk.level.replace(' exposure', '')}
-                        </span>
+                    {cost.incomeSharePercent !== null ? (
+                      <span
+                        className={`font-mono font-semibold px-2 py-0.5 rounded-md text-[11px] ${
+                          cost.isSeverelyBurdened
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                            : cost.isRentBurdened
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        }`}
+                      >
+                        {cost.incomeSharePercent}%
                       </span>
-                      <span className="inline-flex items-center gap-1 text-[11px] text-stone-700">
-                        <Flame className="w-3 h-3 text-amber-600 shrink-0" />
-                        <span className="truncate max-w-[110px]" title={n.heatRisk.details}>
-                          {n.heatRisk.level.replace(' exposure', '')}
-                          {n.heatRisk.canopyCoverPercent !== null
-                            ? ` (${n.heatRisk.canopyCoverPercent}%)`
-                            : ' (no data)'}
-                        </span>
+                    ) : (
+                      <span className="text-stone-400 text-[11px] italic">—</span>
+                    )}
+                  </td>
+
+                  {/* Climate Risks */}
+                  <td className="py-3.5 px-3">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`w-2.5 h-2.5 rounded-full ${
+                          n.floodRisk.level === 'Higher exposure'
+                            ? 'bg-amber-500'
+                            : n.floodRisk.level === 'Moderate exposure'
+                            ? 'bg-blue-400'
+                            : 'bg-emerald-400'
+                        }`}
+                        title={`Flood: ${n.floodRisk.level}`}
+                      />
+                      <span
+                        className={`w-2.5 h-2.5 rounded-full ${
+                          n.heatRisk.level === 'Higher exposure'
+                            ? 'bg-rose-500'
+                            : n.heatRisk.level === 'Moderate exposure'
+                            ? 'bg-amber-400'
+                            : 'bg-emerald-400'
+                        }`}
+                        title={`Heat: ${n.heatRisk.level}`}
+                      />
+                      <span
+                        className={`text-[10px] font-mono px-1 py-0.5 rounded-sm ${
+                          n.displacementFlag.level === 'red'
+                            ? 'bg-rose-100 text-rose-800'
+                            : n.displacementFlag.level === 'yellow'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}
+                        title={n.displacementFlag.details}
+                      >
+                        +{n.displacementFlag.turnoverGapPercent}% gap
                       </span>
                     </div>
                   </td>
-                  <td className="py-3.5 px-3">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                        n.displacementFlag.level === 'green'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : n.displacementFlag.level === 'yellow'
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-rose-100 text-rose-800'
-                      }`}
-                      title={n.displacementFlag.details}
-                    >
-                      {n.displacementFlag.label}
-                    </span>
-                  </td>
+
+                  {/* Compare Action */}
                   <td className="py-3.5 px-3 text-center">
                     <button
                       onClick={() => onToggleCompare(n.id)}
-                      className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-                        isComp
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                      className={`p-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
+                        isCompared
+                          ? 'bg-emerald-700 text-white'
+                          : 'bg-stone-100 hover:bg-stone-200 text-stone-600'
                       }`}
-                      title={isComp ? 'Remove from comparison' : 'Add to comparison'}
+                      title={isCompared ? 'Remove from compare' : 'Add to compare'}
                     >
-                      {isComp ? (
+                      {isCompared ? (
                         <Check className="w-3.5 h-3.5" />
                       ) : (
                         <Plus className="w-3.5 h-3.5" />

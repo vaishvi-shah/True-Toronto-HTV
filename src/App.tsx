@@ -2,51 +2,53 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   LayoutGrid,
   Table as TableIcon,
-  SlidersHorizontal,
-  ArrowUpDown,
+  BarChart3,
   Filter,
-  Sparkles,
-  Scale,
-  RotateCw,
-  Info,
+  ArrowUpDown,
   ShieldCheck,
+  Info,
   Compass,
+  Building2,
+  Zap,
+  Dices,
+  BrainCircuit,
 } from 'lucide-react';
 import { Header } from './components/Header';
 import { UserInputBar } from './components/UserInputBar';
 import { KeyFindingBanner } from './components/KeyFindingBanner';
 import { NeighbourhoodCard } from './components/NeighbourhoodCard';
 import { NeighbourhoodTable } from './components/NeighbourhoodTable';
+import { CostBarChart } from './components/CostBarChart';
 import { ComparisonDrawer } from './components/ComparisonDrawer';
 import { AiWhatIfExplorer } from './components/AiWhatIfExplorer';
 import { HowWeCalculatedModal } from './components/HowWeCalculatedModal';
 import { TenantResourcesModal } from './components/TenantResourcesModal';
-import { PERSONA_PRESETS } from './data/neighbourhoods';
+import { LivePostingsModal } from './components/LivePostingsModal';
+import { SensitivityExplorer } from './components/SensitivityExplorer';
+import { MonteCarloUncertaintyPanel } from './components/MonteCarloUncertaintyPanel';
+import { MlRentGapEstimatorModal } from './components/MlRentGapEstimatorModal';
 import { calculateNeighbourhoodCosts } from './services/calculator';
-import {
-  CalculatedCost,
-  PersonaPreset,
-  UserPreferences,
-} from './types';
+import { runMonteCarloSimulation } from './services/monteCarloSimulation';
+import { CalculatedCost, UserPreferences } from './types';
 
 export default function App() {
-  // Default preferences (defaults to Hospital Support Worker scenario)
+  // User-defined preferences (no predefined personas, rent unspecified by default)
   const [preferences, setPreferences] = useState<UserPreferences>({
     workplaceId: 'downtown-hospital',
-    annualIncome: 40000,
+    annualIncome: 55000,
     householdMembers: 1,
     bedrooms: '1bed',
     commuteMode: 'transit',
     hybridRemoteDaysPerWeek: 0,
     timeValuationRate: 0.5,
+    timeValuationType: 'percent_of_wage',
+    rentMode: 'user_entered',
+    customFixedRent: null, // Left unspecified until user defines it!
+    customNeighbourhoodRents: {},
   });
 
-  const [activePersonaId, setActivePersonaId] = useState<string | null>(
-    'hospital-worker'
-  );
-
-  // View state
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  // View state: grid | table | chart | sensitivity | uncertainty
+  const [viewMode, setViewMode] = useState<'grid' | 'table' | 'chart' | 'sensitivity' | 'uncertainty'>('grid');
   const [selectedBorough, setSelectedBorough] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'trueCost' | 'rent' | 'commuteTime' | 'carbon'>('trueCost');
 
@@ -57,6 +59,10 @@ export default function App() {
   const [isMethodologyOpen, setIsMethodologyOpen] = useState(false);
   const [isTenantResourcesOpen, setIsTenantResourcesOpen] = useState(false);
   const [isWhatIfOpen, setIsWhatIfOpen] = useState(false);
+  const [isLivePostingsOpen, setIsLivePostingsOpen] = useState(false);
+  const [postingsModalNeighbourhoodId, setPostingsModalNeighbourhoodId] = useState<string | null>(null);
+  const [isMlEstimatorOpen, setIsMlEstimatorOpen] = useState(false);
+  const [mlEstimatorNeighbourhoodId, setMlEstimatorNeighbourhoodId] = useState<string | null>(null);
 
   // AI Explanation State
   const [aiExplanation, setAiExplanation] = useState<{
@@ -66,15 +72,22 @@ export default function App() {
     cheapestTrueNeighbourhood?: string;
     monthlyDifference?: number;
     timeDifferenceHours?: number;
+    breakEvenNarrative?: string;
+    monteCarloInsight?: string;
     tenantRightsNotice?: string;
     isAiGenerated?: boolean;
   } | null>(null);
 
   const [isLoadingAi, setIsLoadingAi] = useState(false);
 
-  // Calculate costs deterministically (instant and consistent)
+  // Calculate costs deterministically (instant and transparent)
   const calculatedResults = useMemo(() => {
     return calculateNeighbourhoodCosts(preferences);
+  }, [preferences]);
+
+  // Fast Monte Carlo simulation for 80% CI bands across cards and panels
+  const monteCarloSimulation = useMemo(() => {
+    return runMonteCarloSimulation(preferences, 1500);
   }, [preferences]);
 
   // Fetch AI explanation whenever preferences change
@@ -91,8 +104,7 @@ export default function App() {
       const data = await res.json();
       setAiExplanation(data);
     } catch (err) {
-      console.warn('Using client-side fallback summary:', err);
-      // Fallback is handled gracefully by server or KeyFindingBanner
+      console.warn('Using client-side deterministic summary:', err);
     } finally {
       setIsLoadingAi(false);
     }
@@ -101,7 +113,7 @@ export default function App() {
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchAiExplanation();
-    }, 300);
+    }, 350);
     return () => clearTimeout(timer);
   }, [
     preferences.workplaceId,
@@ -109,26 +121,55 @@ export default function App() {
     preferences.bedrooms,
     preferences.commuteMode,
     preferences.hybridRemoteDaysPerWeek,
+    preferences.rentMode,
+    preferences.customFixedRent,
+    preferences.customNeighbourhoodRents,
+    preferences.timeValuationRate,
+    preferences.timeValuationType,
   ]);
-
-  // Persona handler
-  const handleSelectPersona = (persona: PersonaPreset) => {
-    setActivePersonaId(persona.id);
-    setPreferences((prev) => ({
-      ...prev,
-      workplaceId: persona.workplaceId,
-      annualIncome: persona.income,
-      householdMembers: persona.householdMembers,
-      bedrooms: persona.bedrooms,
-      commuteMode: persona.commuteMode,
-      hybridRemoteDaysPerWeek: persona.hybridDays,
-    }));
-  };
 
   // Preference update handler
   const handlePreferenceChange = (updated: Partial<UserPreferences>) => {
-    setActivePersonaId(null); // Clear persona highlight if user customizes
     setPreferences((prev) => ({ ...prev, ...updated }));
+  };
+
+  // Reset preferences to clean baseline
+  const handleResetPreferences = () => {
+    setPreferences({
+      workplaceId: 'downtown-hospital',
+      annualIncome: null,
+      householdMembers: 1,
+      bedrooms: '1bed',
+      commuteMode: 'transit',
+      hybridRemoteDaysPerWeek: 0,
+      timeValuationRate: 0.5,
+      timeValuationType: 'percent_of_wage',
+      rentMode: 'user_entered',
+      customFixedRent: null,
+      customNeighbourhoodRents: {},
+    });
+    setComparedIds([]);
+  };
+
+  // Handle individual neighbourhood custom rent override
+  const handleUpdateNeighbourhoodRent = (id: string, rent: number | null) => {
+    setPreferences((prev) => {
+      const updated = { ...(prev.customNeighbourhoodRents || {}) };
+      if (rent === null || rent <= 0) {
+        delete updated[id];
+      } else {
+        updated[id] = rent;
+      }
+      return {
+        ...prev,
+        customNeighbourhoodRents: updated,
+      };
+    });
+  };
+
+  const handleOpenPostingsModal = (neighbourhoodId?: string) => {
+    setPostingsModalNeighbourhoodId(neighbourhoodId || null);
+    setIsLivePostingsOpen(true);
   };
 
   // Comparison toggles
@@ -153,7 +194,7 @@ export default function App() {
     }
 
     if (sortBy === 'rent') {
-      list.sort((a, b) => a.stickerRent - b.stickerRent);
+      list.sort((a, b) => (a.effectiveRent ?? 0) - (b.effectiveRent ?? 0));
     } else if (sortBy === 'commuteTime') {
       list.sort((a, b) => a.monthlyCommuteHours - b.monthlyCommuteHours);
     } else if (sortBy === 'carbon') {
@@ -172,18 +213,22 @@ export default function App() {
   }, [calculatedResults, comparedIds]);
 
   return (
-    <div className="min-h-screen bg-stone-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-stone-50 flex flex-col font-sans text-stone-900">
       {/* Top Header */}
       <Header
         preferences={preferences}
-        onSelectPersona={handleSelectPersona}
-        activePersonaId={activePersonaId}
         onOpenMethodology={() => setIsMethodologyOpen(true)}
         onOpenTenantResources={() => setIsTenantResourcesOpen(true)}
         onOpenWhatIf={() => setIsWhatIfOpen(true)}
+        onOpenLivePostings={() => handleOpenPostingsModal()}
+        onOpenMlEstimator={() => {
+          setMlEstimatorNeighbourhoodId(null);
+          setIsMlEstimatorOpen(true);
+        }}
+        onResetPreferences={handleResetPreferences}
       />
 
-      {/* 3 User Inputs Bar */}
+      {/* User Circumstances & Financial Configurator */}
       <UserInputBar
         preferences={preferences}
         onChange={handlePreferenceChange}
@@ -192,35 +237,7 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full">
-        {/* Persona Story Alert if active */}
-        {activePersonaId && (
-          <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-            <div className="flex items-start gap-2.5">
-              <span className="text-xl">
-                {PERSONA_PRESETS.find((p) => p.id === activePersonaId)?.avatar}
-              </span>
-              <div>
-                <strong className="font-bold text-emerald-900 block sm:inline mr-1">
-                  Persona View: {PERSONA_PRESETS.find((p) => p.id === activePersonaId)?.title}
-                </strong>
-                <span>
-                  {PERSONA_PRESETS.find((p) => p.id === activePersonaId)?.story}
-                </span>
-                <p className="mt-1 font-medium text-emerald-800">
-                  💡 <em>Key Insight:</em> {PERSONA_PRESETS.find((p) => p.id === activePersonaId)?.insight}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setActivePersonaId(null)}
-              className="text-emerald-800 hover:text-emerald-950 text-xs font-semibold underline shrink-0 cursor-pointer"
-            >
-              Reset to custom
-            </button>
-          </div>
-        )}
-
-        {/* Key Finding Banner (Sticker rent vs True cost reveal + Gemini explanation) */}
+        {/* Key Finding Banner (True cost vs sticker rent insight with break-even & Monte Carlo) */}
         <KeyFindingBanner
           results={calculatedResults}
           preferences={preferences}
@@ -228,14 +245,17 @@ export default function App() {
           isLoadingAi={isLoadingAi}
           onRefreshAi={fetchAiExplanation}
           onOpenWhatIf={() => setIsWhatIfOpen(true)}
+          onOpenSensitivity={() => setViewMode('sensitivity')}
+          onOpenMonteCarlo={() => setViewMode('uncertainty')}
         />
 
-        {/* View Controls & Sort Options */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-stone-200">
-          <div className="flex flex-wrap items-center gap-2">
+        {/* View Controls & Filter Options */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-stone-200">
+          {/* Borough Filters */}
+          <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-xs font-bold uppercase tracking-wider text-stone-500 mr-1 flex items-center gap-1">
               <Filter className="w-3.5 h-3.5" />
-              Borough:
+              Area:
             </span>
             {[
               { id: 'all', label: 'All 10 Areas' },
@@ -249,10 +269,10 @@ export default function App() {
               <button
                 key={b.id}
                 onClick={() => setSelectedBorough(b.id)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                className={`px-3 py-1 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
                   selectedBorough === b.id
-                    ? 'bg-stone-900 text-white'
-                    : 'bg-white hover:bg-stone-200 text-stone-700 border border-stone-200'
+                    ? 'bg-stone-900 text-white font-semibold shadow-xs'
+                    : 'bg-white hover:bg-stone-100 text-stone-700 border border-stone-200'
                 }`}
               >
                 {b.label}
@@ -260,6 +280,7 @@ export default function App() {
             ))}
           </div>
 
+          {/* Sort & View Mode Controls */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 text-xs text-stone-600">
               <ArrowUpDown className="w-3.5 h-3.5 text-stone-400" />
@@ -268,45 +289,98 @@ export default function App() {
                 id="sort-select"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-white border border-stone-300 rounded-lg px-2 py-1 text-xs font-medium text-stone-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                className="bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-xs font-medium text-stone-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 shadow-2xs cursor-pointer"
               >
-                <option value="trueCost">True Monthly Cost (Cheapest)</option>
-                <option value="rent">Sticker Rent Only</option>
-                <option value="commuteTime">Commute Travel Time</option>
+                <option value="trueCost">True Monthly Cost (Lowest)</option>
+                <option value="rent">Housing / Rent (Lowest)</option>
+                <option value="commuteTime">Travel Time (Shortest)</option>
                 <option value="carbon">Lowest Carbon Footprint</option>
               </select>
             </div>
 
-            {/* View Mode Toggle: Grid vs Table */}
-            <div className="flex items-center bg-stone-200/80 p-0.5 rounded-lg border border-stone-300">
+            {/* View Mode Switcher: Cards vs Table vs Stacked Chart vs Sensitivity vs Uncertainty */}
+            <div className="flex items-center bg-stone-200/80 p-0.5 rounded-xl border border-stone-300 shadow-2xs">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
                   viewMode === 'grid'
-                    ? 'bg-white text-stone-900 shadow-xs'
+                    ? 'bg-white text-stone-900 shadow-xs font-semibold'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
                 title="Card View"
               >
                 <LayoutGrid className="w-4 h-4" />
+                <span className="hidden xl:inline text-[11px]">Cards</span>
               </button>
               <button
                 onClick={() => setViewMode('table')}
-                className={`p-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
                   viewMode === 'table'
-                    ? 'bg-white text-stone-900 shadow-xs'
+                    ? 'bg-white text-stone-900 shadow-xs font-semibold'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
-                title="Table Comparison Matrix"
+                title="Comparison Table Matrix"
               >
                 <TableIcon className="w-4 h-4" />
+                <span className="hidden xl:inline text-[11px]">Matrix</span>
+              </button>
+              <button
+                onClick={() => setViewMode('chart')}
+                className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+                  viewMode === 'chart'
+                    ? 'bg-white text-stone-900 shadow-xs font-semibold'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+                title="Stacked Cost Chart"
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span className="hidden xl:inline text-[11px]">Chart</span>
+              </button>
+              <button
+                onClick={() => setViewMode('sensitivity')}
+                className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+                  viewMode === 'sensitivity'
+                    ? 'bg-amber-500 text-white shadow-xs font-bold'
+                    : 'text-amber-800 hover:text-amber-950'
+                }`}
+                title="Sensitivity & Break-Even Analysis (Parameter Sweeps)"
+              >
+                <Zap className="w-4 h-4" />
+                <span className="text-[11px]">Break-Even</span>
+              </button>
+              <button
+                onClick={() => setViewMode('uncertainty')}
+                className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+                  viewMode === 'uncertainty'
+                    ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                    : 'text-indigo-800 hover:text-indigo-950'
+                }`}
+                title="Monte Carlo Uncertainty Bands (2,000 Simulations)"
+              >
+                <Dices className="w-4 h-4" />
+                <span className="text-[11px]">Monte Carlo</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* Results Container */}
-        {viewMode === 'grid' ? (
+        {viewMode === 'sensitivity' ? (
+          <div className="mb-16">
+            <SensitivityExplorer
+              preferences={preferences}
+              results={calculatedResults}
+              onApplyPreference={handlePreferenceChange}
+            />
+          </div>
+        ) : viewMode === 'uncertainty' ? (
+          <div className="mb-16">
+            <MonteCarloUncertaintyPanel
+              preferences={preferences}
+              results={calculatedResults}
+            />
+          </div>
+        ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
             {filteredResults.map((cost) => (
               <NeighbourhoodCard
@@ -316,47 +390,72 @@ export default function App() {
                 isCompared={comparedIds.includes(cost.neighbourhood.id)}
                 onToggleCompare={handleToggleCompare}
                 onSelectForDetails={() => {}}
+                onUpdateNeighbourhoodRent={handleUpdateNeighbourhoodRent}
+                onOpenPostingsModal={handleOpenPostingsModal}
+                onOpenMlEstimator={(id) => {
+                  setMlEstimatorNeighbourhoodId(id);
+                  setIsMlEstimatorOpen(true);
+                }}
+                monteCarloRange={
+                  monteCarloSimulation.neighbourhoodStats[cost.neighbourhood.id]?.confidenceInterval80
+                }
               />
             ))}
           </div>
-        ) : (
+        ) : viewMode === 'table' ? (
           <div className="mb-16">
             <NeighbourhoodTable
               results={filteredResults}
               preferences={preferences}
               comparedIds={comparedIds}
               onToggleCompare={handleToggleCompare}
+              onUpdateNeighbourhoodRent={handleUpdateNeighbourhoodRent}
+              onOpenPostingsModal={handleOpenPostingsModal}
+              getMonteCarloRange={(id) =>
+                monteCarloSimulation.neighbourhoodStats[id]?.confidenceInterval80
+              }
             />
+          </div>
+        ) : (
+          <div className="mb-16">
+            <CostBarChart results={filteredResults} maxDisplay={10} />
           </div>
         )}
 
-        {/* Educational Callout: Anti-AI-Slop & Civic Fairness Pledge */}
+        {/* Civic Integrity Pledge Section */}
         <section className="bg-white rounded-2xl border border-stone-200 p-6 shadow-xs mb-12">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+          <div className="flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
               <h4 className="text-sm font-bold text-stone-900 mb-1">
-                Built for Civic Honesty &amp; Fairness
+                Civic Transparency &amp; Non-Assumptive Methodology
               </h4>
               <p className="text-xs text-stone-600 leading-relaxed max-w-4xl">
-                This app is intentionally built for renters on tight budgets. All calculations use fixed, publicly cited data formulas from the City of Toronto and CMHC. Google Gemini is utilized solely as a natural language explainer—it never calculates math, invents rental pricing, or predicts tenant eviction. When public sensor records are missing, we explicitly label &ldquo;no data&rdquo; rather than fabricate metrics.
+                TrueRent Toronto is built for renters, commuters, and families. We do not categorize you into predefined personas or silently assume what rent you pay. Calculations adapt dynamically to your inputs. Data sources are 100% public (CMHC, City of Toronto, TRCA, TTC). Real rental postings from HouseSigma (MLS®), Realtor.ca, and Zillow are attached directly so you can test real asking rents against your commute budget.
               </p>
-              <div className="mt-3 flex flex-wrap gap-4 text-xs font-medium text-emerald-800">
+              <div className="mt-3.5 flex flex-wrap gap-4 text-xs font-semibold text-emerald-800">
+                <button
+                  onClick={() => handleOpenPostingsModal()}
+                  className="hover:underline flex items-center gap-1.5 cursor-pointer text-amber-800"
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  Browse all attached HouseSigma, Realtor.ca &amp; Zillow postings
+                </button>
                 <button
                   onClick={() => setIsMethodologyOpen(true)}
-                  className="hover:underline flex items-center gap-1 cursor-pointer"
+                  className="hover:underline flex items-center gap-1.5 cursor-pointer"
                 >
                   <Info className="w-3.5 h-3.5" />
-                  Read full methodology and calculations
+                  Read full calculation formulas and data sources
                 </button>
                 <button
                   onClick={() => setIsTenantResourcesOpen(true)}
-                  className="hover:underline flex items-center gap-1 cursor-pointer"
+                  className="hover:underline flex items-center gap-1.5 cursor-pointer"
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  View Tenant Advocacy &amp; FMTA Hotlines
+                  Access Tenant Rights Hotline &amp; FMTA Advocacy
                 </button>
               </div>
             </div>
@@ -364,12 +463,13 @@ export default function App() {
         </section>
       </main>
 
-      {/* Floating Bottom Comparison Drawer (if user selected cards) */}
+      {/* Floating Bottom Comparison Drawer (when neighbourhoods are selected) */}
       <ComparisonDrawer
         comparedCosts={comparedCosts}
         preferences={preferences}
         onRemove={handleToggleCompare}
         onClear={() => setComparedIds([])}
+        onOpenPostingsModal={handleOpenPostingsModal}
       />
 
       {/* AI What-If Scenario Modal */}
@@ -382,28 +482,46 @@ export default function App() {
         }}
       />
 
-      {/* How We Calculated This Modal */}
+      {/* Live Postings Modal */}
+      <LivePostingsModal
+        isOpen={isLivePostingsOpen}
+        onClose={() => setIsLivePostingsOpen(false)}
+        preferences={preferences}
+        selectedNeighbourhoodId={postingsModalNeighbourhoodId}
+        onApplyNeighbourhoodRent={handleUpdateNeighbourhoodRent}
+      />
+
+      {/* Methodology & Data Sources Modal */}
       <HowWeCalculatedModal
         isOpen={isMethodologyOpen}
         onClose={() => setIsMethodologyOpen(false)}
       />
 
-      {/* Tenant Resources & Legal Rights Modal */}
+      {/* Tenant Resources Modal */}
       <TenantResourcesModal
         isOpen={isTenantResourcesOpen}
         onClose={() => setIsTenantResourcesOpen(false)}
+      />
+
+      {/* ML Rent Gap Estimator Modal */}
+      <MlRentGapEstimatorModal
+        isOpen={isMlEstimatorOpen}
+        onClose={() => setIsMlEstimatorOpen(false)}
+        onApplyNeighbourhoodRent={handleUpdateNeighbourhoodRent}
+        defaultNeighbourhoodId={mlEstimatorNeighbourhoodId || undefined}
+        defaultBedrooms={preferences.bedrooms}
       />
 
       {/* Footer */}
       <footer className="bg-stone-900 text-stone-400 text-xs py-8 px-4 sm:px-6 border-t border-stone-800 mt-auto">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Compass className="w-4 h-4 text-emerald-500" />
+            <Compass className="w-4 h-4 text-emerald-400" />
             <span className="font-bold text-stone-200">TrueRent Toronto</span>
-            <span>&bull; Hackathon Civic Housing Edition</span>
+            <span>&bull; Public Housing &amp; Commute Intelligence</span>
           </div>
           <div className="text-stone-400 text-center md:text-right">
-            <span>CMHC Rental Market Survey &bull; City of Toronto Open Data &bull; TRCA Floodplain Maps &bull; TTC Schedules</span>
+            <span>CMHC Rental Market Survey &bull; HouseSigma &amp; Realtor.ca Listings &bull; City of Toronto Open Data &bull; TTC GTFS</span>
           </div>
         </div>
       </footer>

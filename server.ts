@@ -4,8 +4,16 @@ import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { calculateNeighbourhoodCosts } from './src/services/calculator';
-import { UserPreferences } from './src/types';
+import { COMMUTES } from './data/commutes';
+import { NEIGHBOURHOODS } from './data/neighbourhoods';
+import { WORKPLACES } from './data/workplaces';
+import { computeAllTrueCosts, computeTrueCost } from './lib/engine/computeTrueCost';
+import { buildExplainPrompt, SYSTEM_DIRECTIVE } from './lib/llm/prompts';
+import { Breakdown, Profile } from './lib/types';
+import { ATTACHED_POSTINGS, buildPlatformSearchUrls } from './src/data/listings';
+import { analyzeSensitivity } from './src/services/sensitivityAnalysis';
+import { runMonteCarloSimulation } from './src/services/monteCarloSimulation';
+import { estimateRentWithInterval, getModelCoefficients } from './src/services/rentRegressionModel';
 
 dotenv.config();
 
@@ -29,173 +37,233 @@ const ai = new GoogleGenAI({
 });
 
 /**
- * Generate fallback explanation without AI if key is absent or quota exceeded
+ * Generate fallback explanation without AI if API key is absent or quota exceeded
  */
-function generateDeterministicExplanation(preferences: UserPreferences) {
-  const results = calculateNeighbourhoodCosts(preferences);
-  const cheapestRent = [...results].sort((a, b) => a.stickerRent - b.stickerRent)[0];
-  const cheapestTrue = results[0]; // Already sorted by true cost
+function generateDeterministicFallback(
+  profile: Profile & { rentMode?: string },
+  breakdowns: Breakdown[],
+  sensitivityNarrative?: string,
+  monteCarloInsight?: string
+) {
+  const isRentFree = profile.rentMode === 'no_rent' || profile.customRent === 0;
+  const isRentUnspecified = profile.rentMode === 'user_entered' && (profile.customRent === null || profile.customRent === undefined);
 
-  const hasRankDiscrepancy = cheapestRent.neighbourhood.id !== cheapestTrue.neighbourhood.id;
-  const rentDifference = cheapestTrue.stickerRent - cheapestRent.stickerRent;
-  const commuteDifference =
-    cheapestRent.commuteBreakdown.totalMonthlyCommuteCost -
-    cheapestTrue.commuteBreakdown.totalMonthlyCommuteCost;
+  const cheapestRent = [...breakdowns].sort(
+    (a, b) => a.rent.effectivePaid - b.rent.effectivePaid
+  )[0];
+  const cheapestTrue = breakdowns[0];
+
+  const hasRankDiscrepancy = cheapestRent.neighbourhoodId !== cheapestTrue.neighbourhoodId;
+  const rentDifference = cheapestTrue.rent.effectivePaid - cheapestRent.rent.effectivePaid;
   const netSavings = cheapestRent.trueMonthlyCost - cheapestTrue.trueMonthlyCost;
 
   let headline = '';
   let body = '';
 
-  if (hasRankDiscrepancy) {
-    headline = `${cheapestTrue.neighbourhood.name} is $${netSavings}/mo cheaper overall than ${cheapestRent.neighbourhood.name}, despite having higher sticker rent.`;
-    body = `While ${cheapestRent.neighbourhood.name} appears cheapest with a sticker rent of $${cheapestRent.stickerRent}/mo, its commute costs ($${cheapestRent.commuteBreakdown.totalMonthlyCommuteCost}/mo) and ${cheapestRent.commuteBreakdown.monthlyCommuteHours} hrs of travel make its true monthly cost $${cheapestRent.trueMonthlyCost}/mo. In comparison, ${cheapestTrue.neighbourhood.name} has a sticker rent of $${cheapestTrue.stickerRent}/mo ($${Math.abs(rentDifference)} higher), but lower transit/driving expenses ($${cheapestTrue.commuteBreakdown.totalMonthlyCommuteCost}/mo) bring its true total down to $${cheapestTrue.trueMonthlyCost}/mo.`;
+  if (isRentFree) {
+    headline = `${cheapestTrue.neighbourhoodName} offers the lowest overall expenses with rent excluded ($${cheapestTrue.trueMonthlyCost}/mo).`;
+    body = `With housing expenses excluded, your total overhead consists of transportation ($${cheapestTrue.transport.totalMonthlyCost}/mo) and utilities ($${cheapestTrue.utilities.totalMonthlyCost}/mo), with ${cheapestTrue.transport.monthlyHours} monthly hours spent commuting.`;
+  } else if (isRentUnspecified) {
+    headline = `${cheapestTrue.neighbourhoodName} has the lowest transport + utility overhead at $${cheapestTrue.trueMonthlyCost}/mo (rent unspecified).`;
+    body = `Because rent was not specified, costs include travel ($${cheapestTrue.transport.totalMonthlyCost}/mo) and home utilities ($${cheapestTrue.utilities.totalMonthlyCost}/mo). You can enter your specific rent or select CMHC survey medians in the parameters to include housing expenses.`;
+  } else if (hasRankDiscrepancy) {
+    headline = `${cheapestTrue.neighbourhoodName} is $${netSavings}/mo cheaper overall than ${cheapestRent.neighbourhoodName}, despite having higher asking rent.`;
+    body = `While ${cheapestRent.neighbourhoodName} has the lowest advertised rent ($${cheapestRent.rent.effectivePaid}/mo), its commute costs ($${cheapestRent.transport.totalMonthlyCost}/mo) and ${cheapestRent.transport.monthlyHours} hours of travel push its true monthly cost to $${cheapestRent.trueMonthlyCost}/mo. In comparison, living closer in ${cheapestTrue.neighbourhoodName} costs $${rentDifference} more in rent ($${cheapestTrue.rent.effectivePaid}/mo), but lower travel expenses ($${cheapestTrue.transport.totalMonthlyCost}/mo) bring your total out-of-pocket cost down to $${cheapestTrue.trueMonthlyCost}/mo.`;
   } else {
-    headline = `${cheapestTrue.neighbourhood.name} offers both the lowest sticker rent ($${cheapestTrue.stickerRent}) and lowest true monthly cost ($${cheapestTrue.trueMonthlyCost}).`;
-    body = `Because your workplace is located conveniently close to ${cheapestTrue.neighbourhood.name}, commute penalties do not overwhelm the rent advantage. However, be sure to weigh climate risks (${cheapestTrue.neighbourhood.floodRisk.level}, ${cheapestTrue.neighbourhood.heatRisk.level}) and tenant displacement vulnerability (${cheapestTrue.neighbourhood.displacementFlag.label}).`;
+    headline = `${cheapestTrue.neighbourhoodName} offers both the lowest housing cost ($${cheapestTrue.rent.effectivePaid}) and lowest true monthly cost ($${cheapestTrue.trueMonthlyCost}).`;
+    body = `Because your workplace is located conveniently close to ${cheapestTrue.neighbourhoodName}, commute penalties do not overwhelm the housing advantage. However, be sure to weigh climate risks (${cheapestTrue.climateRisk.flood.label}, ${cheapestTrue.climateRisk.heat.label}) and tenant displacement vulnerability (${cheapestTrue.displacement.label}).`;
   }
 
   return {
     headline,
     body,
-    cheapestRentNeighbourhood: cheapestRent.neighbourhood.name,
-    cheapestTrueNeighbourhood: cheapestTrue.neighbourhood.name,
+    cheapestRentNeighbourhood: cheapestRent.neighbourhoodName,
+    cheapestTrueNeighbourhood: cheapestTrue.neighbourhoodName,
     monthlyDifference: Math.abs(netSavings),
     timeDifferenceHours: Math.abs(
-      Number(
-        (
-          cheapestRent.commuteBreakdown.monthlyCommuteHours -
-          cheapestTrue.commuteBreakdown.monthlyCommuteHours
-        ).toFixed(1)
-      )
+      Number((cheapestRent.transport.monthlyHours - cheapestTrue.transport.monthlyHours).toFixed(1))
     ),
+    breakEvenNarrative: sensitivityNarrative || '',
+    monteCarloInsight: monteCarloInsight || '',
     tenantRightsNotice:
-      'Tenant reminder: Market rents shown represent new vacancies (turnover rates from CMHC). Existing Ontario tenants under rent control are protected by the provincial annual guideline cap (2.5% in 2024/2025). For legal advice, consult the Federation of Metro Tenants\' Associations (FMTA) or the Landlord and Tenant Board (LTB).',
+      'Tenant reminder: Market rents shown represent new vacancies (turnover rates from CMHC). Existing Ontario tenants under rent control are protected by the provincial annual guideline cap (2.5% in 2024/2025). Units first occupied after Nov 15, 2018 have no statutory rent cap upon renewal. For legal advice, consult the Federation of Metro Tenants\' Associations (FMTA) or the Landlord and Tenant Board (LTB).',
     isAiGenerated: false,
   };
 }
 
-/**
- * Route: POST /api/gemini/explain
- * Explains calculation results in plain language without calculating new math.
- */
-app.post('/api/gemini/explain', async (req: Request, res: Response) => {
-  const { preferences } = req.body;
+function normalizeProfile(raw: any): Profile & { rentMode?: string } {
+  const onSiteDaysPerWeek =
+    raw.hybridRemoteDaysPerWeek !== undefined
+      ? Math.max(0, 5 - raw.hybridRemoteDaysPerWeek)
+      : 5;
+  const commuteDaysPerMonth =
+    raw.commuteDaysPerMonth ?? Math.round(onSiteDaysPerWeek * 4.3);
 
-  if (!preferences) {
-    return res.status(400).json({ error: 'Missing preferences parameter' });
+  let customRent: number | null = null;
+  if (raw.rentMode === 'no_rent') {
+    customRent = 0;
+  } else if (raw.customFixedRent !== undefined && raw.customFixedRent !== null && raw.customFixedRent > 0) {
+    customRent = raw.customFixedRent;
+  } else if (raw.customRent !== undefined && raw.customRent !== null) {
+    customRent = raw.customRent;
   }
 
-  const results = calculateNeighbourhoodCosts(preferences);
-  const deterministicFallback = generateDeterministicExplanation(preferences);
+  return {
+    workplaceId: raw.workplaceId || 'hospital-row',
+    annualIncome: raw.annualIncome || 55000,
+    incomeBasis: raw.incomeBasis || 'pretax',
+    householdSize: raw.householdMembers || raw.householdSize || 1,
+    bedrooms: raw.bedrooms || '1bed',
+    commuteDaysPerMonth: commuteDaysPerMonth || 20,
+    wageFactor: raw.timeValuationRate ?? raw.wageFactor ?? 0.5,
+    hasCar: raw.commuteMode === 'car' || raw.commuteMode === 'hybrid' || !!raw.hasCar,
+    commuteMode: raw.commuteMode || 'transit',
+    customRent,
+    customNeighbourhoodRents: raw.customNeighbourhoodRents || {},
+    rentMode: raw.rentMode,
+  };
+}
+
+/**
+ * Route: POST /api/compare
+ * Pure calculation route: Profile + optional neighbourhood IDs -> Breakdown[]
+ */
+app.post('/api/compare', (req: Request, res: Response) => {
+  const raw = req.body.profile || req.body.preferences;
+  if (!raw) {
+    return res.status(400).json({ error: 'Missing profile parameter' });
+  }
+  const profile: Profile = normalizeProfile(raw);
+  const ids: string[] | undefined = req.body.neighbourhoodIds;
+
+  let selectedNeighbourhoods = NEIGHBOURHOODS;
+  if (Array.isArray(ids) && ids.length > 0) {
+    selectedNeighbourhoods = NEIGHBOURHOODS.filter((n) => ids.includes(n.id));
+  }
+
+  const results = computeAllTrueCosts(profile, selectedNeighbourhoods, COMMUTES, WORKPLACES);
+  return res.json({ breakdowns: results });
+});
+
+/**
+ * Route: POST /api/explain & POST /api/gemini/explain
+ * Explains calculation results in plain language without calculating new math.
+ * Enriched with deterministic break-even flip points and Monte Carlo confidence.
+ */
+const handleExplain = async (req: Request, res: Response) => {
+  const raw = req.body.profile || req.body.preferences;
+
+  if (!raw) {
+    return res.status(400).json({ error: 'Missing profile/preferences' });
+  }
+
+  const profile: Profile = normalizeProfile(raw);
+  const breakdowns = computeAllTrueCosts(profile, NEIGHBOURHOODS, COMMUTES, WORKPLACES);
+
+  // Compute deterministic sensitivity & Monte Carlo simulation
+  let sensitivityResult;
+  let monteCarloResult;
+  try {
+    sensitivityResult = analyzeSensitivity(raw);
+    monteCarloResult = runMonteCarloSimulation(raw, 1000);
+  } catch (err) {
+    console.warn('Sensitivity/Monte Carlo computation error:', err);
+  }
+
+  const sensitivityNarrative = sensitivityResult?.primaryBreakEvenNarrative || '';
+  const monteCarloInsight = monteCarloResult?.primaryInsight || '';
+  const fallback = generateDeterministicFallback(profile, breakdowns, sensitivityNarrative, monteCarloInsight);
 
   if (!apiKey) {
-    return res.json(deterministicFallback);
+    return res.json({
+      ...fallback,
+      sensitivity: sensitivityResult,
+      monteCarlo: monteCarloResult,
+    });
   }
 
   try {
-    const summaryData = results.slice(0, 5).map((r) => ({
-      name: r.neighbourhood.name,
-      borough: r.neighbourhood.borough,
-      stickerRent: r.stickerRent,
-      commuteCost: r.commuteBreakdown.totalMonthlyCommuteCost,
-      commuteHoursPerMonth: r.monthlyCommuteHours,
-      trueMonthlyCost: r.trueMonthlyCost,
-      timeCostSeparatelyValued: r.timeCostMonthly,
-      carbonKgPerMonth: r.carbonFootprintKg.total,
-      floodExposure: r.neighbourhood.floodRisk.level,
-      heatExposure: r.neighbourhood.heatRisk.level,
-      displacementFlag: r.neighbourhood.displacementFlag.label,
-      rentRank: r.rentRank,
-      trueCostRank: r.trueCostRank,
-      rankShift: r.rankShift,
-    }));
+    const prompt = buildExplainPrompt(profile, breakdowns, sensitivityNarrative, monteCarloInsight);
 
-    const prompt = `You are the plain-language civic explainer for "TrueRent Toronto", an open civic tool helping Toronto renters understand the true cost of housing (Rent + Transit/Car + Utilities + Commute Time).
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Gemini API timeout')), 6000)
+    );
 
-CRITICAL CONSTRAINTS:
-1. NEVER do new maths or invent numbers. Use only the exact figures provided below.
-2. The user's income is $${preferences.annualIncome.toLocaleString()}/year ($${(
-      preferences.annualIncome / 1950
-    ).toFixed(2)}/hr).
-3. Mode of travel: ${preferences.commuteMode}. Hybrid remote days: ${preferences.hybridRemoteDaysPerWeek}/week. Bedroom size: ${preferences.bedrooms}.
-4. Provide an objective, honest explanation comparing the sticker-cheapest neighbourhood against the true-cost-cheapest neighbourhood.
-5. Highlight how commute hours and costs alter the affordability ranking.
-6. Mention climate exposure (flood/heat) and displacement risk neutrally (describe exposure, never call an area "bad" or "dangerous").
-7. DO NOT provide legal or financial advice.
-
-DATASET (Pre-calculated by deterministic calculator):
-${JSON.stringify(summaryData, null, 2)}
-
-Respond with JSON matching this structure:
-{
-  "headline": "A concise 1-sentence finding about rent vs true monthly cost",
-  "body": "2 short paragraphs explaining the trade-offs, commute math, and climate/displacement factors in plain, empathetic Canadian English.",
-  "cheapestRentNeighbourhood": "Name of neighbourhood with lowest sticker rent",
-  "cheapestTrueNeighbourhood": "Name of neighbourhood with lowest true cost",
-  "monthlyDifference": 120,
-  "timeDifferenceHours": 24.5,
-  "tenantRightsNotice": "Standard disclaimer directing renters to FMTA or LTB"
-}`;
-
-    const response = await ai.models.generateContent({
+    const geminiPromise = ai.models.generateContent({
       model: 'gemini-3.8-flash',
       contents: prompt,
       config: {
+        systemInstruction: SYSTEM_DIRECTIVE,
         responseMimeType: 'application/json',
       },
     });
 
-    const text = response.text || '';
-    const parsed = JSON.parse(text);
-    return res.json({ ...parsed, isAiGenerated: true });
+    const response = await Promise.race([geminiPromise, timeoutPromise]);
+    const parsed = JSON.parse(response.text || '{}');
+    return res.json({
+      ...parsed,
+      breakEvenNarrative: parsed.breakEvenNarrative || sensitivityNarrative,
+      monteCarloInsight: parsed.monteCarloInsight || monteCarloInsight,
+      sensitivity: sensitivityResult,
+      monteCarlo: monteCarloResult,
+      isAiGenerated: true,
+    });
   } catch (error) {
-    console.warn('Gemini API call failed, falling back to deterministic explanation:', error);
-    return res.json(deterministicFallback);
+    console.warn('Gemini explain error or timeout, falling back:', error);
+    return res.json({
+      ...fallback,
+      sensitivity: sensitivityResult,
+      monteCarlo: monteCarloResult,
+    });
   }
-});
+};
+
+app.post('/api/explain', handleExplain);
+app.post('/api/gemini/explain', handleExplain);
 
 /**
- * Route: POST /api/gemini/what-if
- * Reruns the deterministic calculator with scenario changes, then explains the exact difference.
+ * Route: POST /api/chat & POST /api/gemini/what-if
+ * What-if exploration: executes deterministic engine, then LLM explains tradeoffs
  */
-app.post('/api/gemini/what-if', async (req: Request, res: Response) => {
-  const { originalPreferences, scenarioPatch, question } = req.body;
+const handleWhatIfChat = async (req: Request, res: Response) => {
+  const originalProfile: Profile = req.body.originalProfile || req.body.originalPreferences;
+  const scenarioPatch: Partial<Profile> = req.body.scenarioPatch || {};
+  const question: string = req.body.question || req.body.message || 'What if I change my commute or rent?';
 
-  if (!originalPreferences || !scenarioPatch) {
-    return res.status(400).json({ error: 'Missing originalPreferences or scenarioPatch' });
+  if (!originalProfile) {
+    return res.status(400).json({ error: 'Missing originalProfile' });
   }
 
-  const newPreferences: UserPreferences = {
-    ...originalPreferences,
+  const newProfile: Profile = {
+    ...originalProfile,
     ...scenarioPatch,
   };
 
-  const oldResults = calculateNeighbourhoodCosts(originalPreferences);
-  const newResults = calculateNeighbourhoodCosts(newPreferences);
+  const oldBreakdowns = computeAllTrueCosts(originalProfile, NEIGHBOURHOODS, COMMUTES, WORKPLACES);
+  const newBreakdowns = computeAllTrueCosts(newProfile, NEIGHBOURHOODS, COMMUTES, WORKPLACES);
 
-  const oldCheapest = oldResults[0];
-  const newCheapest = newResults[0];
+  const oldCheapest = oldBreakdowns[0];
+  const newCheapest = newBreakdowns[0];
 
   const costDifference = newCheapest.trueMonthlyCost - oldCheapest.trueMonthlyCost;
   const hoursDifference = Number(
-    (newCheapest.monthlyCommuteHours - oldCheapest.monthlyCommuteHours).toFixed(1)
+    (newCheapest.transport.monthlyHours - oldCheapest.transport.monthlyHours).toFixed(1)
   );
-  const carbonDifference =
-    newCheapest.carbonFootprintKg.total - oldCheapest.carbonFootprintKg.total;
+  const carbonDifference = newCheapest.carbon.totalMonthlyKg - oldCheapest.carbon.totalMonthlyKg;
 
   const fallbackAnswer = {
-    scenarioTitle: question || 'Scenario Comparison',
+    scenarioTitle: question,
     costDifference,
     hoursDifference,
     carbonDifference,
-    oldCheapestName: oldCheapest.neighbourhood.name,
-    newCheapestName: newCheapest.neighbourhood.name,
+    oldCheapestName: oldCheapest.neighbourhoodName,
+    newCheapestName: newCheapest.neighbourhoodName,
     summary:
       costDifference < 0
-        ? `This scenario saves $${Math.abs(costDifference)} per month in true costs and shifts your best option to ${newCheapest.neighbourhood.name}. Monthly commute time changes by ${hoursDifference > 0 ? '+' : ''}${hoursDifference} hours.`
-        : `This scenario increases monthly true costs by $${costDifference} per month. Monthly commute time changes by ${hoursDifference > 0 ? '+' : ''}${hoursDifference} hours.`,
+        ? `This scenario saves $${Math.abs(costDifference)}/month in out-of-pocket true costs and shifts your best option to ${newCheapest.neighbourhoodName}. Monthly commute travel changes by ${hoursDifference > 0 ? '+' : ''}${hoursDifference} hours.`
+        : `This scenario increases true costs by $${costDifference}/month. Monthly commute travel changes by ${hoursDifference > 0 ? '+' : ''}${hoursDifference} hours.`,
     isAiGenerated: false,
-    newResults: newResults.slice(0, 5),
+    newBreakdowns: newBreakdowns.slice(0, 5),
   };
 
   if (!apiKey) {
@@ -203,56 +271,156 @@ app.post('/api/gemini/what-if', async (req: Request, res: Response) => {
   }
 
   try {
-    const prompt = `You are TrueRent Toronto's scenario explainer.
-The user asked a "what if" question: "${question || 'What if I change my housing/commute parameters?'}"
+    const prompt = `The user asked a "what if" question: "${question}"
 
-The calculator has already rerun all the deterministic math for both the baseline and the modified scenario.
-
+The deterministic calculator has already rerun all the math.
 BASELINE:
-- Mode: ${originalPreferences.commuteMode}, Hybrid Days: ${originalPreferences.hybridRemoteDaysPerWeek}, Income: $${originalPreferences.annualIncome}
-- Best True Cost Option: ${oldCheapest.neighbourhood.name} ($${oldCheapest.trueMonthlyCost}/mo true cost, ${oldCheapest.monthlyCommuteHours} hrs commute/mo, ${oldCheapest.carbonFootprintKg.total} kg CO2e/mo)
+- Mode: ${originalProfile.commuteMode}, Income: $${originalProfile.annualIncome}, Commute Days: ${originalProfile.commuteDaysPerMonth}
+- Best True Cost Option: ${oldCheapest.neighbourhoodName} ($${oldCheapest.trueMonthlyCost}/mo true cost, ${oldCheapest.transport.monthlyHours}h commute/mo, ${oldCheapest.carbon.totalMonthlyKg} kg CO2e/mo)
 
 NEW SCENARIO:
-- Mode: ${newPreferences.commuteMode}, Hybrid Days: ${newPreferences.hybridRemoteDaysPerWeek}, Income: $${newPreferences.annualIncome}
-- Best True Cost Option: ${newCheapest.neighbourhood.name} ($${newCheapest.trueMonthlyCost}/mo true cost, ${newCheapest.monthlyCommuteHours} hrs commute/mo, ${newCheapest.carbonFootprintKg.total} kg CO2e/mo)
+- Mode: ${newProfile.commuteMode}, Income: $${newProfile.annualIncome}, Commute Days: ${newProfile.commuteDaysPerMonth}
+- Best True Cost Option: ${newCheapest.neighbourhoodName} ($${newCheapest.trueMonthlyCost}/mo true cost, ${newCheapest.transport.monthlyHours}h commute/mo, ${newCheapest.carbon.totalMonthlyKg} kg CO2e/mo)
 
 DIFFERENCES:
 - True monthly cost delta: $${costDifference} (negative is savings, positive is more expensive)
-- Commute time delta: ${hoursDifference} hrs/month
+- Travel time delta: ${hoursDifference} hrs/month
 - Carbon emissions delta: ${carbonDifference} kg CO2e/month
 
-Respond with a JSON object:
+Respond with JSON:
 {
-  "scenarioTitle": "${question || 'What-If Analysis'}",
+  "scenarioTitle": "${question}",
   "costDifference": ${costDifference},
   "hoursDifference": ${hoursDifference},
   "carbonDifference": ${carbonDifference},
-  "oldCheapestName": "${oldCheapest.neighbourhood.name}",
-  "newCheapestName": "${newCheapest.neighbourhood.name}",
-  "summary": "2-3 short, friendly, precise sentences explaining the financial and quality-of-life impact using only the numbers above. Do not invent numbers."
+  "oldCheapestName": "${oldCheapest.neighbourhoodName}",
+  "newCheapestName": "${newCheapest.neighbourhoodName}",
+  "summary": "2-3 short, friendly, precise sentences explaining the financial and quality-of-life impact using only the numbers above. Never invent numbers."
 }`;
 
-    const response = await ai.models.generateContent({
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Gemini API timeout')), 6000)
+    );
+
+    const geminiPromise = ai.models.generateContent({
       model: 'gemini-3.8-flash',
       contents: prompt,
       config: {
+        systemInstruction: SYSTEM_DIRECTIVE,
         responseMimeType: 'application/json',
       },
     });
 
+    const response = await Promise.race([geminiPromise, timeoutPromise]);
     const parsed = JSON.parse(response.text || '{}');
     return res.json({
       ...parsed,
       isAiGenerated: true,
-      newResults: newResults.slice(0, 5),
+      newBreakdowns: newBreakdowns.slice(0, 5),
     });
   } catch (error) {
     console.warn('Gemini what-if error, falling back:', error);
     return res.json(fallbackAnswer);
   }
+};
+
+app.post('/api/chat', handleWhatIfChat);
+app.post('/api/gemini/what-if', handleWhatIfChat);
+
+/**
+ * Route: GET /api/listings
+ * Returns attached postings from HouseSigma, Realtor.ca, Zillow, and Rentals.ca
+ */
+app.get('/api/listings', (req: Request, res: Response) => {
+  const { neighbourhoodId, bedrooms, platform, maxPrice } = req.query;
+
+  let results = [...ATTACHED_POSTINGS];
+
+  if (neighbourhoodId && typeof neighbourhoodId === 'string' && neighbourhoodId !== 'all') {
+    results = results.filter((p) => p.neighbourhoodId === neighbourhoodId);
+  }
+
+  if (bedrooms && typeof bedrooms === 'string' && bedrooms !== 'all') {
+    results = results.filter((p) => p.bedrooms === bedrooms);
+  }
+
+  if (platform && typeof platform === 'string' && platform !== 'all') {
+    results = results.filter((p) => p.platform === platform);
+  }
+
+  if (maxPrice && !isNaN(Number(maxPrice))) {
+    results = results.filter((p) => p.monthlyRent <= Number(maxPrice));
+  }
+
+  return res.json({
+    count: results.length,
+    listings: results,
+  });
 });
 
-// Production vs Development static mounting
+/**
+ * Route: GET /api/listings/search-urls
+ * Generate direct search URLs for HouseSigma, Realtor.ca, Zillow, and Rentals.ca
+ */
+app.get('/api/listings/search-urls', (req: Request, res: Response) => {
+  const neighbourhood = (req.query.neighbourhood as string) || 'Toronto';
+  const bedrooms = req.query.bedrooms as any;
+  const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : undefined;
+
+  const urls = buildPlatformSearchUrls(neighbourhood, bedrooms, maxPrice);
+  return res.json({ urls });
+});
+
+/**
+ * Route: POST /api/sensitivity
+ * Parameter sweep & break-even crossover analysis
+ */
+app.post('/api/sensitivity', (req: Request, res: Response) => {
+  const preferences = req.body.preferences || req.body.profile;
+  if (!preferences) {
+    return res.status(400).json({ error: 'Missing preferences/profile' });
+  }
+  const result = analyzeSensitivity(preferences);
+  return res.json(result);
+});
+
+/**
+ * Route: POST /api/monte-carlo
+ * 2,000 run Monte Carlo simulation with uncertainty bands & pairwise probabilities
+ */
+app.post('/api/monte-carlo', (req: Request, res: Response) => {
+  const preferences = req.body.preferences || req.body.profile;
+  const iterations = req.body.iterations ? Number(req.body.iterations) : 2000;
+  if (!preferences) {
+    return res.status(400).json({ error: 'Missing preferences/profile' });
+  }
+  const result = runMonteCarloSimulation(preferences, iterations);
+  return res.json(result);
+});
+
+/**
+ * Route: POST /api/ml/estimate-rent
+ * Multivariable linear regression rent gap estimation with 95% prediction interval
+ */
+app.post('/api/ml/estimate-rent', (req: Request, res: Response) => {
+  const { neighbourhoodId, bedrooms } = req.body;
+  if (!neighbourhoodId || bedrooms === undefined) {
+    return res.status(400).json({ error: 'Missing neighbourhoodId or bedrooms' });
+  }
+  const result = estimateRentWithInterval(neighbourhoodId, bedrooms);
+  return res.json(result);
+});
+
+/**
+ * Route: GET /api/ml/model
+ * Returns transparent ML regression weights and training provenance
+ */
+app.get('/api/ml/model', (_req: Request, res: Response) => {
+  const coefficients = getModelCoefficients();
+  return res.json({ model: coefficients });
+});
+
+// Dev vs Prod Vite mounting
 async function startServer() {
   const isProduction = process.env.NODE_ENV === 'production';
 
@@ -270,7 +438,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`TrueRent Toronto server running at http://localhost:${PORT}`);
+    console.log(`True Cost of Home (Toronto) server running at http://localhost:${PORT}`);
   });
 }
 
