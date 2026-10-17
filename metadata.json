@@ -1,0 +1,6 @@
+{
+  "name": "TrueRent Toronto",
+  "description": "Honest monthly housing cost calculator comparing rent, transit, commute time, climate risk, and displacement pressure across 10 Toronto neighbourhoods.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
