@@ -17,6 +17,7 @@ import { CalculatedCost, UserPreferences } from '../types';
 
 interface KeyFindingBannerProps {
   results: CalculatedCost[];
+  currentLivingCost?: CalculatedCost | null;
   preferences: UserPreferences;
   aiExplanation: {
     headline: string;
@@ -39,6 +40,7 @@ interface KeyFindingBannerProps {
 
 export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
   results,
+  currentLivingCost,
   preferences,
   aiExplanation,
   isLoadingAi,
@@ -212,7 +214,7 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
         </div>
 
         {/* Right Side: Quick Highlight Card */}
-        <div className="lg:w-72 shrink-0 bg-stone-900/90 rounded-xl p-4 border border-stone-800 flex flex-col justify-between">
+        <div className="lg:w-[25rem] shrink-0 bg-stone-900/90 rounded-xl p-4 border border-stone-800 flex flex-col justify-between">
           <div>
             <div className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-2">
               #1 Ranked Neighbourhood
@@ -252,6 +254,24 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
                 </span>
               </div>
             </div>
+            {currentLivingCost && (
+              <div className="mt-3 border-t border-stone-700 pt-2.5">
+                <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-stone-400">Monthly cost comparison</div>
+                <div className="mb-1 grid grid-cols-[1fr_auto_auto] gap-x-3 text-[10px] font-semibold text-stone-400">
+                  <span></span><span className="text-right">Recommended</span><span className="text-right">Current</span>
+                </div>
+                <div className="space-y-1 text-[11px] text-stone-300">
+                  <div className="grid grid-cols-[1fr_auto_auto] gap-x-3"><span>Rent</span><span>{cheapestTrueItem.effectiveRent === null ? '—' : `$${cheapestTrueItem.effectiveRent.toLocaleString()}`}</span><span>${(currentLivingCost.effectiveRent ?? 0).toLocaleString()}</span></div>
+                  <div className="grid grid-cols-[1fr_auto_auto] gap-x-3"><span>Utilities{preferences.currentUtilitiesMonthly == null ? '*' : ''}</span><span>${cheapestTrueItem.utilitiesCost.toLocaleString()}</span><span>${currentLivingCost.utilitiesCost.toLocaleString()}</span></div>
+                  <div className="grid grid-cols-[1fr_auto_auto] gap-x-3"><span>Transport</span><span>${cheapestTrueItem.commuteBreakdown.totalMonthlyCommuteCost.toLocaleString()}</span><span>${currentLivingCost.commuteBreakdown.totalMonthlyCommuteCost.toLocaleString()}</span></div>
+                  <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 border-t border-stone-700 pt-1 font-bold"><span>Total / month</span><span className="text-emerald-300">${cheapestTrueItem.trueMonthlyCost.toLocaleString()}</span><span>${currentLivingCost.trueMonthlyCost.toLocaleString()}</span></div>
+                  {cheapestTrueItem.effectiveRent !== null && <div className={`text-[10px] font-semibold ${currentLivingCost.trueMonthlyCost >= cheapestTrueItem.trueMonthlyCost ? 'text-emerald-300' : 'text-amber-300'}`}>{currentLivingCost.trueMonthlyCost >= cheapestTrueItem.trueMonthlyCost ? `Recommended area is $${(currentLivingCost.trueMonthlyCost - cheapestTrueItem.trueMonthlyCost).toLocaleString()}/mo lower` : `Recommended area is $${(cheapestTrueItem.trueMonthlyCost - currentLivingCost.trueMonthlyCost).toLocaleString()}/mo higher`}</div>}
+                  <div className="pt-0.5 text-[10px] text-stone-400">Commute time: {cheapestTrueItem.monthlyCommuteHours} hrs vs {currentLivingCost.monthlyCommuteHours} hrs/mo</div>
+                  <div className="text-[10px] text-stone-500">Current: {currentLivingCost.neighbourhood.name} · office commute estimated from area data</div>
+                  {preferences.currentUtilitiesMonthly == null && <div className="text-[10px] text-stone-500">*Current utilities use the area/unit-size estimate.</div>}
+                </div>
+              </div>
+            )}
           </div>
 
           <button

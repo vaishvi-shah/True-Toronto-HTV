@@ -9,6 +9,7 @@ import {
   Leaf,
   Check,
   ChevronDown,
+  ChevronUp,
   Edit2,
   Save,
   RotateCcw,
@@ -17,7 +18,7 @@ import {
   BrainCircuit,
   Dices,
 } from 'lucide-react';
-import { TORONTO_RENT_BENCHMARK_PERIOD, TORONTO_RENT_BENCHMARK_SOURCE } from '../data/rentBenchmarks';
+import { DEMO_LISTINGS } from '../data/demoListings';
 import { CalculatedCost, UserPreferences } from '../types';
 import { RiskBadge } from './RiskBadge';
 
@@ -45,9 +46,11 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditingRent, setIsEditingRent] = useState(false);
+  const [visibleDemoCount, setVisibleDemoCount] = useState(6);
   const [tempRentInput, setTempRentInput] = useState<number>(b.effectiveRent ?? b.originalMarketRent);
 
   const n = b.neighbourhood;
+  const neighbourhoodDemoListings = DEMO_LISTINGS.filter((listing) => listing.neighbourhoodId === n.id);
 
   const handleSaveCustomRent = () => {
     if (onUpdateNeighbourhoodRent) {
@@ -83,13 +86,21 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
       </span>
     );
 
-  const commuteDetail = n.commutes[preferences.workplaceId] || {
-    transitMinutes: 45,
-    transitTransfers: 1,
-    transitRouteDescription: 'Standard TTC route',
-    carMinutes: 35,
-    carDistanceKm: 18,
+  const commuteDetail = {
+    ...(n.commutes[preferences.workplaceId] || {
+      transitMinutes: 45,
+      transitTransfers: 1,
+      transitRouteDescription: 'Standard TTC route',
+      carMinutes: 35,
+      carDistanceKm: 18,
+    }),
+    ...(preferences.routeEstimates?.[n.id] || {}),
   };
+  const oneWayCommuteMinutes = preferences.commuteMode === 'car'
+    ? commuteDetail.carMinutes
+    : preferences.commuteMode === 'hybrid'
+    ? Math.round((commuteDetail.transitMinutes + commuteDetail.carMinutes) / 2)
+    : commuteDetail.transitMinutes;
 
   const isRentUnspecified = b.rentStatus === 'unspecified';
   const isRentFree = b.rentStatus === 'no_rent';
@@ -276,14 +287,14 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
                               type="button"
                               onClick={handleResetRent}
                               className="text-[10px] text-stone-400 hover:text-stone-700 underline flex items-center gap-0.5 cursor-pointer ml-1"
-                              title="Reset to survey median"
+                              title="Reset to this area's CMHC rent reference"
                             >
                               <RotateCcw className="w-2.5 h-2.5" />
-                              Toronto CMA asking rent: ${b.originalMarketRent}
+                              Area reference rent: ${b.originalMarketRent}
                             </button>
                           </>
                         ) : (
-                          <span>Toronto CMA avg. asking rent ({TORONTO_RENT_BENCHMARK_PERIOD})</span>
+                          <span>{n.provenance.rentSource} · {n.provenance.rentDate}</span>
                         )}
                       </div>
                     </div>
@@ -353,15 +364,36 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
         </div>
       </div>
 
-      <div className="border-t border-b border-stone-200 bg-amber-50/30 p-3.5 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold text-stone-900">Demo rent examples</p>
-          <p className="mt-0.5 text-[10px] text-stone-500">Illustrations based on city-wide asking-rent averages; not available units.</p>
+      <div className="border-t border-b border-stone-200 bg-amber-50/30 p-3.5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold text-stone-900">Demo rent examples</p>
+            <p className="mt-0.5 text-[10px] text-stone-500">Illustrative prices based on this area's historical rent reference; not available units.</p>
+          </div>
+          {onOpenPostingsModal && (
+            <button type="button" onClick={() => onOpenPostingsModal(n.id)} className="shrink-0 rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100">
+              Browse all
+            </button>
+          )}
         </div>
-        {onOpenPostingsModal && (
-          <button type="button" onClick={() => onOpenPostingsModal(n.id)} className="shrink-0 rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100">
-            View examples
-          </button>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {neighbourhoodDemoListings.slice(0, visibleDemoCount).map((listing) => (
+            <div key={listing.id} className="rounded-xl border border-amber-100 bg-white p-2.5 shadow-xs">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[9px] font-bold uppercase tracking-wide text-amber-800">Demo</span>
+                <span className="text-[9px] text-stone-500">{listing.bedrooms === 'bachelor' ? 'Studio' : listing.bedrooms.replace('bed', ' bed')}</span>
+              </div>
+              <div className="mt-1 font-mono text-sm font-extrabold text-emerald-800">${listing.monthlyRent.toLocaleString()}<span className="ml-0.5 text-[9px] font-medium text-stone-500">/mo</span></div>
+            </div>
+          ))}
+        </div>
+        {neighbourhoodDemoListings.length > 6 && visibleDemoCount < neighbourhoodDemoListings.length && (
+          <div className="mt-2 flex justify-center gap-2">
+            {visibleDemoCount < 9 && (
+              <button type="button" onClick={() => setVisibleDemoCount(9)} className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-amber-900 hover:bg-amber-100">View 3 more</button>
+            )}
+            <button type="button" onClick={() => setVisibleDemoCount(neighbourhoodDemoListings.length)} className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-amber-900 hover:bg-amber-100">View all</button>
+          </div>
         )}
       </div>
 
@@ -377,7 +409,7 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
           </span>
         </div>
         <p className="text-[11px] text-stone-500 mt-1 leading-relaxed">
-          {b.monthlyCommuteHours} hrs/mo travel time ({commuteDetail.transitMinutes || commuteDetail.carMinutes} min one-way).
+          {b.monthlyCommuteHours} hrs/mo travel time ({oneWayCommuteMinutes} min one-way).
           {b.timeCostMonthly > 0
             ? ` Quantified separately as economic time value.`
             : ` (Monetization disabled or rate unspecified).`}
@@ -401,6 +433,13 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
               : `${commuteDetail.transitMinutes} mins (${commuteDetail.transitTransfers} transfer)`}
           </span>
         </div>
+        <p className="text-[10px] text-stone-500">
+          {preferences.commuteMode === 'car'
+            ? preferences.routeEstimates?.[n.id]
+              ? 'OpenRouteService road estimate from area centre; no live traffic. Trips over 2 hours are rejected.'
+              : 'Area road-distance estimate; ORS unavailable, so saved route data is used.'
+            : 'TTC / regional scheduled travel-time estimate; not a live trip planner. Estimates are limited to 2 hours.'}
+        </p>
 
         {/* Carbon Footprint */}
         <div className="flex items-center justify-between text-xs text-stone-600 pt-1 border-t border-stone-100">
@@ -465,7 +504,7 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
         {isExpanded && (
           <div className="p-4 bg-stone-50 text-[11px] text-stone-600 space-y-2 border-t border-stone-200">
             <div>
-              <strong className="text-stone-800">Rent benchmark:</strong> Statistics Canada Toronto CMA apartment asking rent, {TORONTO_RENT_BENCHMARK_PERIOD}. This city-wide average is applied uniformly; it is not a neighbourhood estimate or a live listing. <a href={TORONTO_RENT_BENCHMARK_SOURCE} target="_blank" rel="noreferrer" className="underline">Source table</a>.
+              <strong className="text-stone-800">Area rent reference:</strong> historical CMHC zone estimate ({n.provenance.rentDate}), varies by neighbourhood and unit size; it is not a current listing or guaranteed market rent. Verify locally before making a housing decision.
             </div>
             <div>
               <strong className="text-stone-800">Transit:</strong> {n.provenance.transitSource} &bull; Route: {commuteDetail.transitRouteDescription}.

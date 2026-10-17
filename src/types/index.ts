@@ -4,6 +4,11 @@ export type CommuteMode = 'transit' | 'car' | 'hybrid' | 'walk_bike';
 
 export type RentMode = 'user_entered' | 'cmhc_benchmark' | 'no_rent';
 
+export interface DrivingRouteEstimate {
+  carDistanceKm: number;
+  carMinutes: number;
+}
+
 export type ListingPlatform = 'housesigma' | 'zillow' | 'realtor' | 'rentals_ca';
 
 export interface RentalPosting {
@@ -97,6 +102,12 @@ export interface NeighbourhoodData {
 
 export interface UserPreferences {
   workplaceId: string;
+  currentNeighbourhoodId?: string;
+  currentMonthlyRent?: number | null;
+  currentUtilitiesMonthly?: number | null;
+  currentCommuteMode?: CommuteMode;
+  currentBedrooms?: BedroomType;
+  routeEstimates?: Record<string, DrivingRouteEstimate>;
   annualIncome: number | null; // User-defined or null if unspecified
   householdMembers: number;
   bedrooms: BedroomType;

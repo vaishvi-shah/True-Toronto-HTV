@@ -10,7 +10,8 @@ import {
   UserPreferences,
   WorkplaceLocation,
 } from '../types';
-import { TORONTO_ASKING_RENT_BENCHMARKS } from '../data/rentBenchmarks';
+
+const MAX_REASONABLE_COMMUTE_MINUTES = 120;
 
 export function calculateNeighbourhoodCosts(
   preferences: UserPreferences
@@ -42,7 +43,7 @@ export function calculateNeighbourhoodCosts(
     onSiteWorkdays * CALCULATION_ASSUMPTIONS.commuteTripsPerDay;
 
   const rawResults = NEIGHBOURHOODS.map((neighbourhood: NeighbourhoodData) => {
-    const originalMarketRent = TORONTO_ASKING_RENT_BENCHMARKS[preferences.bedrooms];
+    const originalMarketRent = neighbourhood.rents[preferences.bedrooms];
 
     const missingInformation: string[] = [];
 
@@ -92,7 +93,7 @@ export function calculateNeighbourhoodCosts(
       effectiveRent = originalMarketRent;
       stickerRent = originalMarketRent;
       rentStatus = 'cmhc_benchmark';
-      rentLabel = 'CMHC Median Benchmark';
+      rentLabel = 'Area-Specific CMHC Benchmark';
     }
 
     // Utilities determination
@@ -112,12 +113,26 @@ export function calculateNeighbourhoodCosts(
     }
 
     // Commute Calculation
-    const commuteInfo = neighbourhood.commutes[workplace.id] || {
+    const baseCommuteInfo = neighbourhood.commutes[workplace.id] || {
       transitMinutes: 40,
       transitTransfers: 1,
       transitRouteDescription: 'Standard TTC transit route',
       carMinutes: 30,
       carDistanceKm: 15,
+    };
+    const routeEstimate = preferences.routeEstimates?.[neighbourhood.id];
+    const commuteInfo = {
+      ...baseCommuteInfo,
+      carMinutes: routeEstimate && Number.isFinite(routeEstimate.carMinutes) && routeEstimate.carMinutes > 0 && routeEstimate.carMinutes <= MAX_REASONABLE_COMMUTE_MINUTES
+        ? routeEstimate.carMinutes
+        : baseCommuteInfo.carMinutes,
+      carDistanceKm: routeEstimate && Number.isFinite(routeEstimate.carDistanceKm) && routeEstimate.carDistanceKm > 0 && routeEstimate.carDistanceKm <= 100
+        ? routeEstimate.carDistanceKm
+        : baseCommuteInfo.carDistanceKm,
+      // TTC schedule times are validated too; fall back to the application's safe default on bad data.
+      transitMinutes: Number.isFinite(baseCommuteInfo.transitMinutes) && baseCommuteInfo.transitMinutes > 0 && baseCommuteInfo.transitMinutes <= MAX_REASONABLE_COMMUTE_MINUTES
+        ? baseCommuteInfo.transitMinutes
+        : 40,
     };
 
     let commuteBreakdown: CommuteBreakdown;

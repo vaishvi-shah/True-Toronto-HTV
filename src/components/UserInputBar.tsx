@@ -17,13 +17,14 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { WORKPLACES, CALCULATION_ASSUMPTIONS } from '../data/neighbourhoods';
+import { WORKPLACES, NEIGHBOURHOODS, CALCULATION_ASSUMPTIONS } from '../data/neighbourhoods';
 import { BedroomType, CommuteMode, RentMode, UserPreferences } from '../types';
 
 interface UserInputBarProps {
   preferences: UserPreferences;
   onChange: (updated: Partial<UserPreferences>) => void;
   onAnalyze: () => void;
+  isAnalyzing: boolean;
   hasAnalyzed: boolean;
   hasUnanalyzedChanges: boolean;
   onOpenMethodology: () => void;
@@ -33,6 +34,7 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
   preferences,
   onChange,
   onAnalyze,
+  isAnalyzing,
   hasAnalyzed,
   hasUnanalyzedChanges,
   onOpenMethodology,
@@ -279,9 +281,9 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
                       className="mt-0.5 accent-emerald-600 cursor-pointer"
                     />
                     <div>
-                      <span className="block font-semibold">Reference CMHC 2024 Medians</span>
+                      <span className="block font-semibold">Use area-specific CMHC rent reference</span>
                       <span className="text-[11px] text-stone-500 block">
-                        Official rental survey median benchmark for your unit type
+                        Varies by neighbourhood and unit size; source is dated October 2024
                       </span>
                     </div>
                   </label>
@@ -612,6 +614,54 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
           </div>
         </div>
 
+        <div className="mt-5 rounded-2xl border border-sky-200 bg-sky-50/60 p-4 sm:p-5">
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-stone-800">4. Compare with your current home</h3>
+              <p className="mt-1 text-[11px] text-stone-600">Enter your current rent and area. We estimate commute and utilities with the same assumptions used for recommended areas.</p>
+            </div>
+            <span className="rounded-md border border-sky-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-sky-900">Optional comparison</span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold text-stone-700">Current neighbourhood</label>
+              <select value={preferences.currentNeighbourhoodId || ''} onChange={(e) => onChange({ currentNeighbourhoodId: e.target.value })} className="w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-xs text-stone-900">
+                <option value="">Choose your current area</option>
+                {NEIGHBOURHOODS.map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold text-stone-700">Current monthly rent ($)</label>
+              <input type="number" min="0" step="50" value={preferences.currentMonthlyRent ?? ''} onChange={(e) => onChange({ currentMonthlyRent: e.target.value === '' ? null : Math.max(0, Number(e.target.value)) })} placeholder="e.g. 1,850" className="w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-xs text-stone-900" />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold text-stone-700">Utilities ($/month, optional)</label>
+              <input type="number" min="0" step="10" value={preferences.currentUtilitiesMonthly ?? ''} onChange={(e) => onChange({ currentUtilitiesMonthly: e.target.value === '' ? null : Math.max(0, Number(e.target.value)) })} placeholder="Use area estimate" className="w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-xs text-stone-900" />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold text-stone-700">Current home size</label>
+              <select value={preferences.currentBedrooms || '1bed'} onChange={(e) => onChange({ currentBedrooms: e.target.value as BedroomType })} className="w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-xs text-stone-900">
+                <option value="bachelor">Studio</option><option value="1bed">1 bedroom</option><option value="2bed">2 bedrooms</option><option value="3bed">3+ bedrooms</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold text-stone-700">How you travel to work</label>
+              <select value={preferences.currentCommuteMode || preferences.commuteMode} onChange={(e) => onChange({ currentCommuteMode: e.target.value as CommuteMode })} className="w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-xs text-stone-900">
+                <option value="transit">Transit</option><option value="car">Car</option><option value="hybrid">Mixed transit / car</option><option value="walk_bike">Walk / bike</option>
+              </select>
+            </div>
+          </div>
+          {preferences.currentNeighbourhoodId && (() => {
+            const area = NEIGHBOURHOODS.find((item) => item.id === preferences.currentNeighbourhoodId);
+            const commute = area?.commutes[preferences.workplaceId];
+            if (!commute) return null;
+            const mode = preferences.currentCommuteMode || preferences.commuteMode;
+            const minutes = mode === 'car' ? commute.carMinutes : commute.transitMinutes;
+            const distance = commute.carDistanceKm;
+            return <p className="mt-2 text-[10px] text-stone-500">Estimated one-way office trip from {area?.name}: {minutes} min · about {distance} km by road. Based on the selected workplace and current work-from-home schedule.</p>;
+          })()}
+        </div>
+
         {/* Active Configuration Summary Pill */}
         <div className="mt-4 pt-3 border-t border-stone-200/80 flex flex-wrap items-center justify-between gap-3 text-xs text-stone-600">
           <div className="flex flex-wrap items-center gap-2">
@@ -623,7 +673,7 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
               Mode: {preferences.commuteMode.toUpperCase()} ({onSiteDays}d/wk)
             </span>
             <span className="px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
-              Housing: {currentRentMode === 'user_entered' ? (preferences.customFixedRent ? `Your Rent: $${preferences.customFixedRent}/mo` : 'Rent Unspecified') : currentRentMode === 'no_rent' ? 'No Rent (Rent-Free)' : 'CMHC Median Benchmark'}
+              Housing: {currentRentMode === 'user_entered' ? (preferences.customFixedRent ? `Your Rent: $${preferences.customFixedRent}/mo` : 'Rent Unspecified') : currentRentMode === 'no_rent' ? 'No Rent (Rent-Free)' : 'Area CMHC reference'}
             </span>
             <span className="px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
               Income: {hasIncome ? `$${annualIncomeValue.toLocaleString()}/yr` : 'Not specified'}
@@ -637,8 +687,8 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
         </div>
         <div className="mt-5 flex flex-col items-center gap-2 border-t border-stone-100 pt-5 sm:flex-row sm:justify-between">
           <p className="text-xs text-stone-500">{hasAnalyzed && !hasUnanalyzedChanges ? 'Your results are up to date.' : hasAnalyzed ? 'Your changes are ready to analyze.' : 'Your information stays private and is used to personalize this comparison.'}</p>
-          <button type="button" onClick={onAnalyze} className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-6 py-3 text-sm font-bold text-white shadow-md shadow-emerald-900/10 transition hover:-translate-y-0.5 hover:bg-emerald-800 hover:shadow-lg sm:w-auto">
-            <span>{hasAnalyzed ? 'Analyze my updates' : 'Analyze my options'}</span>
+          <button type="button" onClick={onAnalyze} disabled={isAnalyzing} className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-6 py-3 text-sm font-bold text-white shadow-md shadow-emerald-900/10 transition hover:-translate-y-0.5 hover:bg-emerald-800 hover:shadow-lg disabled:cursor-wait disabled:opacity-70 sm:w-auto">
+            <span>{isAnalyzing ? 'Calculating routes…' : hasAnalyzed ? 'Analyze my updates' : 'Analyze my options'}</span>
             <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">→</span>
           </button>
         </div>

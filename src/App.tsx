@@ -30,11 +30,17 @@ import { MlRentGapEstimatorModal } from './components/MlRentGapEstimatorModal';
 import { calculateNeighbourhoodCosts } from './services/calculator';
 import { runMonteCarloSimulation } from './services/monteCarloSimulation';
 import { CalculatedCost, UserPreferences } from './types';
+import { NEIGHBOURHOODS } from './data/neighbourhoods';
 
 export default function App() {
   // User-defined preferences (no predefined personas, rent unspecified by default)
   const [preferences, setPreferences] = useState<UserPreferences>({
     workplaceId: 'downtown-hospital',
+    currentNeighbourhoodId: '',
+    currentMonthlyRent: null,
+    currentUtilitiesMonthly: null,
+    currentCommuteMode: 'transit',
+    currentBedrooms: '1bed',
     annualIncome: 55000,
     householdMembers: 1,
     bedrooms: '1bed',
@@ -42,16 +48,17 @@ export default function App() {
     hybridRemoteDaysPerWeek: 0,
     timeValuationRate: 0.5,
     timeValuationType: 'percent_of_wage',
-    rentMode: 'user_entered',
+    rentMode: 'cmhc_benchmark',
     customFixedRent: null, // Left unspecified until user defines it!
     customNeighbourhoodRents: {},
   });
   const [analyzedPreferences, setAnalyzedPreferences] = useState<UserPreferences | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // View state: grid | table | chart | sensitivity | uncertainty
   const [viewMode, setViewMode] = useState<'grid' | 'table' | 'chart' | 'sensitivity' | 'uncertainty'>('grid');
   const [selectedBorough, setSelectedBorough] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'trueCost' | 'rent' | 'commuteTime' | 'carbon'>('trueCost');
+  const [sortBy, setSortBy] = useState<'trueCost' | 'rent' | 'transport' | 'utilities' | 'commuteTime' | 'carbon'>('trueCost');
 
   // Comparison State
   const [comparedIds, setComparedIds] = useState<string[]>([]);
@@ -86,6 +93,23 @@ export default function App() {
     return analyzedPreferences ? calculateNeighbourhoodCosts(analyzedPreferences) : [];
   }, [analyzedPreferences]);
 
+  const currentLivingCost = useMemo(() => {
+    if (!analyzedPreferences?.currentNeighbourhoodId || analyzedPreferences.currentMonthlyRent == null || analyzedPreferences.currentMonthlyRent < 0) return null;
+    const currentProfile: UserPreferences = {
+      ...analyzedPreferences,
+      bedrooms: analyzedPreferences.currentBedrooms || analyzedPreferences.bedrooms,
+      commuteMode: analyzedPreferences.currentCommuteMode || analyzedPreferences.commuteMode,
+      rentMode: 'cmhc_benchmark',
+      customFixedRent: null,
+      customNeighbourhoodRents: {
+        ...(analyzedPreferences.customNeighbourhoodRents || {}),
+        [analyzedPreferences.currentNeighbourhoodId]: analyzedPreferences.currentMonthlyRent,
+      },
+      customUtilitiesMonthly: analyzedPreferences.currentUtilitiesMonthly ?? null,
+    };
+    return calculateNeighbourhoodCosts(currentProfile).find((item) => item.neighbourhood.id === analyzedPreferences.currentNeighbourhoodId) || null;
+  }, [analyzedPreferences]);
+
   // Fast Monte Carlo simulation for 80% CI bands across cards and panels
   const monteCarloSimulation = useMemo(() => {
     return analyzedPreferences ? runMonteCarloSimulation(analyzedPreferences, 1500) : null;
@@ -111,11 +135,28 @@ export default function App() {
     }
   };
 
-  const handleAnalyze = () => {
-    const snapshot = { ...preferences, customNeighbourhoodRents: { ...preferences.customNeighbourhoodRents } };
+  const handleAnalyze = async () => {
+    setIsAnalyzing(true);
+    let snapshot: UserPreferences = { ...preferences, customNeighbourhoodRents: { ...preferences.customNeighbourhoodRents }, routeEstimates: undefined };
+    try {
+      const routeResponse = await fetch('/api/routes/driving', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workplaceId: snapshot.workplaceId }),
+      });
+      if (routeResponse.ok) {
+        const routeData = await routeResponse.json();
+        snapshot = { ...snapshot, routeEstimates: routeData.estimates };
+      }
+    } catch (error) {
+      console.warn('Using published commute estimates because live road routing is unavailable.');
+    }
+    const recommendedArea = calculateNeighbourhoodCosts(snapshot)[0]?.neighbourhood;
+    setSelectedBorough(recommendedArea ? `area:${recommendedArea.id}` : 'all');
     setAnalyzedPreferences(snapshot);
     setAiExplanation(null);
     void fetchAiExplanation(snapshot);
+    setIsAnalyzing(false);
   };
 
   // Preference update handler
@@ -127,6 +168,11 @@ export default function App() {
   const handleResetPreferences = () => {
     setPreferences({
       workplaceId: 'downtown-hospital',
+      currentNeighbourhoodId: '',
+      currentMonthlyRent: null,
+      currentUtilitiesMonthly: null,
+      currentCommuteMode: 'transit',
+      currentBedrooms: '1bed',
       annualIncome: null,
       householdMembers: 1,
       bedrooms: '1bed',
@@ -134,7 +180,7 @@ export default function App() {
       hybridRemoteDaysPerWeek: 0,
       timeValuationRate: 0.5,
       timeValuationType: 'percent_of_wage',
-      rentMode: 'user_entered',
+      rentMode: 'cmhc_benchmark',
       customFixedRent: null,
       customNeighbourhoodRents: {},
     });
@@ -180,12 +226,19 @@ export default function App() {
   const filteredResults = useMemo(() => {
     let list = [...calculatedResults];
 
-    if (selectedBorough !== 'all') {
+    if (selectedBorough.startsWith('area:')) {
+      const areaId = selectedBorough.slice('area:'.length);
+      list = list.filter((item) => item.neighbourhood.id === areaId);
+    } else if (selectedBorough !== 'all') {
       list = list.filter((item) => item.neighbourhood.borough === selectedBorough);
     }
 
     if (sortBy === 'rent') {
       list.sort((a, b) => (a.effectiveRent ?? 0) - (b.effectiveRent ?? 0));
+    } else if (sortBy === 'transport') {
+      list.sort((a, b) => a.commuteBreakdown.totalMonthlyCommuteCost - b.commuteBreakdown.totalMonthlyCommuteCost);
+    } else if (sortBy === 'utilities') {
+      list.sort((a, b) => a.utilitiesCost - b.utilitiesCost);
     } else if (sortBy === 'commuteTime') {
       list.sort((a, b) => a.monthlyCommuteHours - b.monthlyCommuteHours);
     } else if (sortBy === 'carbon') {
@@ -224,6 +277,7 @@ export default function App() {
         preferences={preferences}
         onChange={handlePreferenceChange}
         onAnalyze={handleAnalyze}
+        isAnalyzing={isAnalyzing}
         hasAnalyzed={!!analyzedPreferences}
         hasUnanalyzedChanges={JSON.stringify(preferences) !== JSON.stringify(analyzedPreferences)}
         onOpenMethodology={() => setIsMethodologyOpen(true)}
@@ -246,6 +300,7 @@ export default function App() {
         <KeyFindingBanner
           results={calculatedResults}
           preferences={analyzedPreferences}
+          currentLivingCost={currentLivingCost}
           aiExplanation={aiExplanation}
           isLoadingAi={isLoadingAi}
           onRefreshAi={() => fetchAiExplanation(analyzedPreferences)}
@@ -283,6 +338,15 @@ export default function App() {
                 {b.label}
               </button>
             ))}
+            {calculatedResults[0] && (
+              <button
+                onClick={() => setSelectedBorough(`area:${calculatedResults[0].neighbourhood.id}`)}
+                className={`px-3 py-1 rounded-xl text-xs font-medium transition-colors cursor-pointer ${selectedBorough === `area:${calculatedResults[0].neighbourhood.id}` ? 'bg-emerald-800 text-white font-semibold shadow-xs' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200'}`}
+                title="Show only the recommended neighbourhood"
+              >
+                Recommended: {calculatedResults[0].neighbourhood.name}
+              </button>
+            )}
           </div>
 
           {/* Sort & View Mode Controls */}
@@ -298,6 +362,8 @@ export default function App() {
               >
                 <option value="trueCost">True Monthly Cost (Lowest)</option>
                 <option value="rent">Housing / Rent (Lowest)</option>
+                <option value="transport">Transportation (Lowest)</option>
+                <option value="utilities">Utilities (Lowest)</option>
                 <option value="commuteTime">Travel Time (Shortest)</option>
                 <option value="carbon">Lowest Carbon Footprint</option>
               </select>

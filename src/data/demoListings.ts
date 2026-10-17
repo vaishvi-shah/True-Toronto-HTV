@@ -1,5 +1,4 @@
 import { NEIGHBOURHOODS } from './neighbourhoods';
-import { TORONTO_ASKING_RENT_BENCHMARKS } from './rentBenchmarks';
 import { BedroomType } from '../types';
 
 export interface DemoListing {
@@ -18,6 +17,12 @@ const EXAMPLES: Array<{ bedrooms: BedroomType; factor: number }> = [
   { bedrooms: '2bed', factor: 0.91 },
   { bedrooms: '2bed', factor: 1.07 },
   { bedrooms: '3bed', factor: 0.96 },
+  { bedrooms: 'bachelor', factor: 1.03 },
+  { bedrooms: '1bed', factor: 0.94 },
+  { bedrooms: '1bed', factor: 1.12 },
+  { bedrooms: '2bed', factor: 0.98 },
+  { bedrooms: '2bed', factor: 1.14 },
+  { bedrooms: '3bed', factor: 1.05 },
 ];
 
 /**
@@ -27,7 +32,7 @@ const EXAMPLES: Array<{ bedrooms: BedroomType; factor: number }> = [
  */
 export const DEMO_LISTINGS: DemoListing[] = NEIGHBOURHOODS.flatMap((neighbourhood) =>
   EXAMPLES.map(({ bedrooms, factor }, index) => {
-    const benchmarkRent = TORONTO_ASKING_RENT_BENCHMARKS[bedrooms];
+    const benchmarkRent = neighbourhood.rents[bedrooms];
     const monthlyRent = Math.round((benchmarkRent * factor) / 25) * 25;
 
     return {

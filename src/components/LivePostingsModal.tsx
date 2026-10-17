@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { buildPlatformSearchUrls } from '../data/listings';
 import { DEMO_LISTINGS, DemoListing } from '../data/demoListings';
-import { TORONTO_RENT_BENCHMARK_PERIOD, TORONTO_RENT_BENCHMARK_SOURCE } from '../data/rentBenchmarks';
 import { NEIGHBOURHOODS } from '../data/neighbourhoods';
 import { BedroomType, UserPreferences } from '../types';
 
@@ -111,7 +110,7 @@ export const LivePostingsModal: React.FC<LivePostingsModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-stone-500 mt-1">
-                Six sample rents per area, calibrated to Statistics Canada’s Toronto CMA asking-rent averages ({TORONTO_RENT_BENCHMARK_PERIOD}). These are not actual available units. <a className="font-semibold text-emerald-800 underline" href={TORONTO_RENT_BENCHMARK_SOURCE} target="_blank" rel="noreferrer">View source data</a>
+                Twelve illustrative rents per area, calibrated to each area's historical CMHC zone rent reference (October 2024); six appear first. They are not actual available units. See the area's Public Data Citations for its source details.
               </p>
             </div>
           </div>
@@ -283,7 +282,7 @@ export const LivePostingsModal: React.FC<LivePostingsModalProps> = ({
                       <p className="text-sm font-bold text-stone-900">{posting.title}</p>
                       <p className="mt-1 text-xs text-stone-500">Illustrative rent for {targetNeighbourhood?.name || 'Toronto'}</p>
                       <p className="mt-4 font-mono text-2xl font-extrabold tracking-tight text-emerald-800">${posting.monthlyRent.toLocaleString()}<span className="ml-1 text-xs font-medium text-stone-500">/mo</span></p>
-                      <p className="mt-2 text-[11px] leading-4 text-stone-500">Generated around the Toronto CMA average of ${posting.benchmarkRent.toLocaleString()}/mo for this unit size. Not a real listing or availability claim.</p>
+                      <p className="mt-2 text-[11px] leading-4 text-stone-500">Generated around this area's historical reference of ${posting.benchmarkRent.toLocaleString()}/mo for this unit size. Not a real listing or availability claim.</p>
                       <button type="button" onClick={() => onApplyNeighbourhoodRent(posting.neighbourhoodId, posting.monthlyRent)} className="mt-4 w-full rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-100">Try this demo rent</button>
                     </div>
                   </article>
@@ -294,8 +293,8 @@ export const LivePostingsModal: React.FC<LivePostingsModalProps> = ({
           {filteredListings.length > visibleCount && (
             <div className="mt-7 flex flex-col items-center gap-2">
               <p className="text-xs text-stone-500">Showing {visibleCount} of {filteredListings.length} demo examples</p>
-              <button type="button" onClick={() => setVisibleCount((count) => count + 6)} className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-800 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50">
-                View more examples <span aria-hidden="true">↓</span>
+              <button type="button" onClick={() => setVisibleCount((count) => count < 9 ? Math.min(count + 3, filteredListings.length) : filteredListings.length)} className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-5 py-2.5 text-sm font-semibold text-emerald-800 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50">
+                {visibleCount < 9 ? 'View 3 more' : 'View all'} <span aria-hidden="true">↓</span>
               </button>
             </div>
           )}
@@ -306,7 +305,7 @@ export const LivePostingsModal: React.FC<LivePostingsModalProps> = ({
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <span>
-              Demo rents are generated around published averages derived from real rental-platform listings; no individual unit is represented.
+              Demo rents are generated around historical area benchmarks; no individual unit is represented, and the estimates are not current listings.
             </span>
           </div>
 

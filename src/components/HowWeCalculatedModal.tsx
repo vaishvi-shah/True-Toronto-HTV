@@ -79,6 +79,12 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
                     <td className="py-1.5 font-mono text-stone-400">Oct 2024</td>
                   </tr>
                   <tr>
+                    <td className="py-1.5 pr-2 font-medium text-emerald-300">Area Rent References</td>
+                    <td className="py-1.5 pr-2">Neighbourhood-specific CMHC zone rent figures by bedroom size</td>
+                    <td className="py-1.5 pr-2">CMHC Rental Market Report (source noted on each area card)</td>
+                    <td className="py-1.5 font-mono text-stone-400">Oct 2024</td>
+                  </tr>
+                  <tr>
                     <td className="py-1.5 pr-2 font-medium text-emerald-300">Public Transit Fares</td>
                     <td className="py-1.5 pr-2">Official Fare Schedule ($156/mo pass, $3.30 single)</td>
                     <td className="py-1.5 pr-2">Toronto Transit Commission (TTC)</td>
@@ -92,9 +98,15 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
                   </tr>
                   <tr>
                     <td className="py-1.5 pr-2 font-medium text-emerald-300">Commute Travel Times</td>
-                    <td className="py-1.5 pr-2">GTFS Timetables (8:00 AM weekday rush hour)</td>
+                    <td className="py-1.5 pr-2">TTC / regional schedule estimates; times above 120 minutes are rejected</td>
                     <td className="py-1.5 pr-2">TTC &amp; Metrolinx (UP / GO Transit)</td>
                     <td className="py-1.5 font-mono text-stone-400">2024/2025</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5 pr-2 font-medium text-emerald-300">Car Route Distance &amp; Time</td>
+                    <td className="py-1.5 pr-2">Road matrix between area representative points and workplace</td>
+                    <td className="py-1.5 pr-2">OpenRouteService (no live traffic)</td>
+                    <td className="py-1.5 font-mono text-stone-400">On analysis</td>
                   </tr>
                   <tr>
                     <td className="py-1.5 pr-2 font-medium text-emerald-300">Commute Time Value</td>
@@ -128,16 +140,16 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
                   </tr>
                   <tr>
                     <td className="py-1.5 pr-2 font-medium text-emerald-300">Demo Rent Examples</td>
-                    <td className="py-1.5 pr-2">Illustrative samples generated around Toronto CMA asking-rent averages</td>
-                    <td className="py-1.5 pr-2">Statistics Canada Table 46-10-0092-01</td>
-                    <td className="py-1.5 font-mono text-stone-400">Q2 2026</td>
+                    <td className="py-1.5 pr-2">Illustrative samples generated around each area's CMHC rent reference</td>
+                    <td className="py-1.5 pr-2">CMHC zone source listed in area-card citations</td>
+                    <td className="py-1.5 font-mono text-stone-400">Oct 2024</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
             <div className="mt-3 p-2.5 rounded-lg bg-stone-800 text-[11px] text-emerald-200 border border-emerald-500/20">
-              💡 <strong>Demo disclaimer:</strong> These examples are not actual available units. Their prices are generated around Statistics Canada Toronto CMA averages; current individual listing prices and availability must be checked with listing providers.
+              💡 <strong>Rent data note:</strong> Area-specific references are historical October 2024 CMHC zone figures, not current asking rents. Demo cards are illustrative only and are not available units.
             </div>
           </div>
 
@@ -152,10 +164,10 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
             </div>
             <ul className="list-disc list-inside space-y-1 text-stone-600">
               <li>
-                <strong>Sticker Rent:</strong> Statistics Canada average Toronto CMA apartment asking rents by bedroom count (Q2 2026). This is a city-wide quarterly estimate, applied uniformly across the displayed neighbourhoods; it is not a neighbourhood-level listing price.
+                <strong>Sticker Rent:</strong> Historical CMHC rent reference for the selected neighbourhood zone and bedroom count (October 2024). These area-specific figures distinguish neighbourhoods, but are not current asking rents or a promise of what a particular unit costs.
               </li>
               <li>
-                <strong>Monthly Commute Expenses:</strong> Either TTC Adult Monthly Pass ($156.00/mo) or single-ride PRESTO ($3.30/trip); OR personal vehicle operating costs (GTA average unleaded fuel at $1.62/L, 8.8 L/100km, plus CAA standard $410/mo insurance & maintenance baseline, plus workplace destination parking).
+                <strong>Monthly Commute Expenses:</strong> TTC fares use the schedule shown above. For driving, OpenRouteService road distance from an approximate area centre is converted to fuel using 8.8 L/100 km and the configured $1.62/L gasoline assumption, then adds the $410/mo insurance and maintenance baseline and workplace parking. Driving times are route estimates without live traffic; results over 120 minutes fall back to the saved estimate. TTC times use published schedule estimates, not live trip planning.
               </li>
               <li>
                 <strong>Utilities:</strong> Standardized electricity, space heating natural gas, and municipal water estimates based on City of Toronto Energy Benchmarking data scaled by bedroom count.
