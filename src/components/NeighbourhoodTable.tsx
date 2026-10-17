@@ -278,10 +278,10 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
                             type="button"
                             onClick={() => onOpenPostingsModal(n.id)}
                             className="mt-1 text-[10px] text-amber-900 hover:text-amber-950 font-medium flex items-center gap-1 cursor-pointer bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded-md border border-amber-200 transition-colors"
-                            title="View attached live postings from HouseSigma, Realtor.ca, and Zillow"
+                            title="View illustrative demo rent examples"
                           >
                             <Building2 className="w-2.5 h-2.5 text-amber-700" />
-                            <span>Attached Postings</span>
+                            <span>Demo Rent Examples</span>
                           </button>
                         )}
                       </div>

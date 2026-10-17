@@ -334,7 +334,8 @@ app.post('/api/gemini/what-if', handleWhatIfChat);
 app.get('/api/listings', (req: Request, res: Response) => {
   const { neighbourhoodId, bedrooms, platform, maxPrice } = req.query;
 
-  let results = [...ATTACHED_POSTINGS];
+  // No licensed verified listing feed is connected; do not return bundled sample postings as live data.
+  let results: typeof ATTACHED_POSTINGS = [];
 
   if (neighbourhoodId && typeof neighbourhoodId === 'string' && neighbourhoodId !== 'all') {
     results = results.filter((p) => p.neighbourhoodId === neighbourhoodId);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   LayoutGrid,
   Table as TableIcon,
@@ -46,6 +46,7 @@ export default function App() {
     customFixedRent: null, // Left unspecified until user defines it!
     customNeighbourhoodRents: {},
   });
+  const [analyzedPreferences, setAnalyzedPreferences] = useState<UserPreferences | null>(null);
 
   // View state: grid | table | chart | sensitivity | uncertainty
   const [viewMode, setViewMode] = useState<'grid' | 'table' | 'chart' | 'sensitivity' | 'uncertainty'>('grid');
@@ -82,22 +83,22 @@ export default function App() {
 
   // Calculate costs deterministically (instant and transparent)
   const calculatedResults = useMemo(() => {
-    return calculateNeighbourhoodCosts(preferences);
-  }, [preferences]);
+    return analyzedPreferences ? calculateNeighbourhoodCosts(analyzedPreferences) : [];
+  }, [analyzedPreferences]);
 
   // Fast Monte Carlo simulation for 80% CI bands across cards and panels
   const monteCarloSimulation = useMemo(() => {
-    return runMonteCarloSimulation(preferences, 1500);
-  }, [preferences]);
+    return analyzedPreferences ? runMonteCarloSimulation(analyzedPreferences, 1500) : null;
+  }, [analyzedPreferences]);
 
   // Fetch AI explanation whenever preferences change
-  const fetchAiExplanation = async () => {
+  const fetchAiExplanation = async (profile: UserPreferences = analyzedPreferences || preferences) => {
     setIsLoadingAi(true);
     try {
       const res = await fetch('/api/gemini/explain', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preferences }),
+        body: JSON.stringify({ preferences: profile }),
       });
 
       if (!res.ok) throw new Error('API failed');
@@ -110,23 +111,12 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchAiExplanation();
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [
-    preferences.workplaceId,
-    preferences.annualIncome,
-    preferences.bedrooms,
-    preferences.commuteMode,
-    preferences.hybridRemoteDaysPerWeek,
-    preferences.rentMode,
-    preferences.customFixedRent,
-    preferences.customNeighbourhoodRents,
-    preferences.timeValuationRate,
-    preferences.timeValuationType,
-  ]);
+  const handleAnalyze = () => {
+    const snapshot = { ...preferences, customNeighbourhoodRents: { ...preferences.customNeighbourhoodRents } };
+    setAnalyzedPreferences(snapshot);
+    setAiExplanation(null);
+    void fetchAiExplanation(snapshot);
+  };
 
   // Preference update handler
   const handlePreferenceChange = (updated: Partial<UserPreferences>) => {
@@ -168,7 +158,8 @@ export default function App() {
   };
 
   const handleOpenPostingsModal = (neighbourhoodId?: string) => {
-    setPostingsModalNeighbourhoodId(neighbourhoodId || null);
+    const recommendedNeighbourhoodId = analyzedPreferences ? calculatedResults[0]?.neighbourhood.id : undefined;
+    setPostingsModalNeighbourhoodId(neighbourhoodId || recommendedNeighbourhoodId || null);
     setIsLivePostingsOpen(true);
   };
 
@@ -220,7 +211,7 @@ export default function App() {
         onOpenMethodology={() => setIsMethodologyOpen(true)}
         onOpenTenantResources={() => setIsTenantResourcesOpen(true)}
         onOpenWhatIf={() => setIsWhatIfOpen(true)}
-        onOpenLivePostings={() => handleOpenPostingsModal()}
+        onOpenDemoListings={() => handleOpenPostingsModal()}
         onOpenMlEstimator={() => {
           setMlEstimatorNeighbourhoodId(null);
           setIsMlEstimatorOpen(true);
@@ -232,18 +223,32 @@ export default function App() {
       <UserInputBar
         preferences={preferences}
         onChange={handlePreferenceChange}
+        onAnalyze={handleAnalyze}
+        hasAnalyzed={!!analyzedPreferences}
+        hasUnanalyzedChanges={JSON.stringify(preferences) !== JSON.stringify(analyzedPreferences)}
         onOpenMethodology={() => setIsMethodologyOpen(true)}
       />
 
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full">
         {/* Key Finding Banner (True cost vs sticker rent insight with break-even & Monte Carlo) */}
+        {!analyzedPreferences ? (
+          <section className="mb-6 rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-8 text-center shadow-sm">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700"><BrainCircuit className="h-6 w-6" /></div>
+            <h2 className="text-xl font-bold tracking-tight text-stone-900">Your recommendation is one click away</h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-stone-600">Enter your circumstances above, then select <span className="font-semibold text-emerald-800">Analyze my options</span> to see the neighbourhood that best fits your budget and commute.</p>
+          </section>
+        ) : (
+        <>
+        {JSON.stringify(preferences) !== JSON.stringify(analyzedPreferences) && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"><span>Your details changed. Results still show your last analysis.</span><button onClick={handleAnalyze} className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800">Analyze updates</button></div>
+        )}
         <KeyFindingBanner
           results={calculatedResults}
-          preferences={preferences}
+          preferences={analyzedPreferences}
           aiExplanation={aiExplanation}
           isLoadingAi={isLoadingAi}
-          onRefreshAi={fetchAiExplanation}
+          onRefreshAi={() => fetchAiExplanation(analyzedPreferences)}
           onOpenWhatIf={() => setIsWhatIfOpen(true)}
           onOpenSensitivity={() => setViewMode('sensitivity')}
           onOpenMonteCarlo={() => setViewMode('uncertainty')}
@@ -368,7 +373,7 @@ export default function App() {
         {viewMode === 'sensitivity' ? (
           <div className="mb-16">
             <SensitivityExplorer
-              preferences={preferences}
+              preferences={analyzedPreferences}
               results={calculatedResults}
               onApplyPreference={handlePreferenceChange}
             />
@@ -376,7 +381,7 @@ export default function App() {
         ) : viewMode === 'uncertainty' ? (
           <div className="mb-16">
             <MonteCarloUncertaintyPanel
-              preferences={preferences}
+              preferences={analyzedPreferences}
               results={calculatedResults}
             />
           </div>
@@ -386,7 +391,7 @@ export default function App() {
               <NeighbourhoodCard
                 key={cost.neighbourhood.id}
                 cost={cost}
-                preferences={preferences}
+                preferences={analyzedPreferences}
                 isCompared={comparedIds.includes(cost.neighbourhood.id)}
                 onToggleCompare={handleToggleCompare}
                 onSelectForDetails={() => {}}
@@ -397,7 +402,7 @@ export default function App() {
                   setIsMlEstimatorOpen(true);
                 }}
                 monteCarloRange={
-                  monteCarloSimulation.neighbourhoodStats[cost.neighbourhood.id]?.confidenceInterval80
+                  monteCarloSimulation?.neighbourhoodStats[cost.neighbourhood.id]?.confidenceInterval80
                 }
               />
             ))}
@@ -406,13 +411,13 @@ export default function App() {
           <div className="mb-16">
             <NeighbourhoodTable
               results={filteredResults}
-              preferences={preferences}
+              preferences={analyzedPreferences}
               comparedIds={comparedIds}
               onToggleCompare={handleToggleCompare}
               onUpdateNeighbourhoodRent={handleUpdateNeighbourhoodRent}
               onOpenPostingsModal={handleOpenPostingsModal}
               getMonteCarloRange={(id) =>
-                monteCarloSimulation.neighbourhoodStats[id]?.confidenceInterval80
+                monteCarloSimulation?.neighbourhoodStats[id]?.confidenceInterval80
               }
             />
           </div>
@@ -433,7 +438,7 @@ export default function App() {
                 Civic Transparency &amp; Non-Assumptive Methodology
               </h4>
               <p className="text-xs text-stone-600 leading-relaxed max-w-4xl">
-                TrueRent Toronto is built for renters, commuters, and families. We do not categorize you into predefined personas or silently assume what rent you pay. Calculations adapt dynamically to your inputs. Data sources are 100% public (CMHC, City of Toronto, TRCA, TTC). Real rental postings from HouseSigma (MLS®), Realtor.ca, and Zillow are attached directly so you can test real asking rents against your commute budget.
+                TrueRent Toronto is built for renters, commuters, and families. We do not categorize you into predefined personas or silently assume what rent you pay. The rent calculator uses Statistics Canada’s quarterly Toronto CMA estimates. Demo listing examples are generated around those published averages and do not represent real available units.
               </p>
               <div className="mt-3.5 flex flex-wrap gap-4 text-xs font-semibold text-emerald-800">
                 <button
@@ -441,7 +446,7 @@ export default function App() {
                   className="hover:underline flex items-center gap-1.5 cursor-pointer text-amber-800"
                 >
                   <Building2 className="w-3.5 h-3.5" />
-                  Browse all attached HouseSigma, Realtor.ca &amp; Zillow postings
+                  Browse demo rent examples
                 </button>
                 <button
                   onClick={() => setIsMethodologyOpen(true)}
@@ -461,6 +466,8 @@ export default function App() {
             </div>
           </div>
         </section>
+        </>
+        )}
       </main>
 
       {/* Floating Bottom Comparison Drawer (when neighbourhoods are selected) */}
@@ -521,7 +528,7 @@ export default function App() {
             <span>&bull; Public Housing &amp; Commute Intelligence</span>
           </div>
           <div className="text-stone-400 text-center md:text-right">
-            <span>CMHC Rental Market Survey &bull; HouseSigma &amp; Realtor.ca Listings &bull; City of Toronto Open Data &bull; TTC GTFS</span>
+            <span>Statistics Canada Quarterly Rent Statistics &bull; Demo examples, not live listings &bull; City of Toronto Open Data &bull; TTC GTFS</span>
           </div>
         </div>
       </footer>

@@ -180,7 +180,7 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
                       className="mt-2.5 w-full py-1.5 px-2 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Building2 className="w-3.5 h-3.5 text-amber-700" />
-                      <span>Attached Postings (HouseSigma/Zillow)</span>
+                      <span>Demo Rent Examples</span>
                     </button>
                   )}
                 </div>

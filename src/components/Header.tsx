@@ -4,8 +4,8 @@ import {
   ShieldCheck,
   Sparkles,
   Database,
-  Building2,
   BrainCircuit,
+  Building2,
 } from 'lucide-react';
 import { UserPreferences } from '../types';
 
@@ -14,7 +14,7 @@ interface HeaderProps {
   onOpenMethodology: () => void;
   onOpenTenantResources: () => void;
   onOpenWhatIf: () => void;
-  onOpenLivePostings: () => void;
+  onOpenDemoListings: () => void;
   onOpenMlEstimator?: () => void;
   onResetPreferences: () => void;
 }
@@ -24,7 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMethodology,
   onOpenTenantResources,
   onOpenWhatIf,
-  onOpenLivePostings,
+  onOpenDemoListings,
   onOpenMlEstimator,
   onResetPreferences,
 }) => {
@@ -43,15 +43,6 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           <div className="flex items-center gap-4 text-xs font-medium">
-            <button
-              onClick={onOpenLivePostings}
-              className="hover:text-amber-300 flex items-center gap-1.5 transition-colors cursor-pointer text-amber-200"
-              title="Browse attached rental postings from HouseSigma, Realtor.ca, and Zillow"
-            >
-              <Building2 className="w-3.5 h-3.5 text-amber-400" />
-              <span>HouseSigma &amp; Zillow Feeds</span>
-            </button>
-            <span className="text-stone-700">|</span>
             <button
               onClick={onOpenMethodology}
               className="hover:text-emerald-300 flex items-center gap-1.5 transition-colors cursor-pointer text-stone-300"
@@ -97,17 +88,13 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Action Controls */}
         <div className="flex items-center gap-2.5 self-start md:self-auto flex-wrap">
           <button
-            onClick={onOpenLivePostings}
-            className="px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 cursor-pointer shadow-2xs hover:shadow-xs"
-            title="Browse attached rental postings from HouseSigma, Realtor.ca, Zillow, and Rentals.ca"
+            onClick={onOpenDemoListings}
+            className="px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-200 cursor-pointer shadow-2xs"
+            title="Browse illustrative demo rent examples"
           >
             <Building2 className="w-4 h-4 text-amber-700" />
-            <span>Live Postings</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-200/90 text-amber-900 font-bold">
-              Feeds
-            </span>
+            <span>Demo Listings</span>
           </button>
-
           <button
             onClick={onOpenWhatIf}
             className="px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 cursor-pointer shadow-2xs hover:shadow-xs"

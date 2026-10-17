@@ -10,6 +10,7 @@ import {
   UserPreferences,
   WorkplaceLocation,
 } from '../types';
+import { TORONTO_ASKING_RENT_BENCHMARKS } from '../data/rentBenchmarks';
 
 export function calculateNeighbourhoodCosts(
   preferences: UserPreferences
@@ -41,9 +42,7 @@ export function calculateNeighbourhoodCosts(
     onSiteWorkdays * CALCULATION_ASSUMPTIONS.commuteTripsPerDay;
 
   const rawResults = NEIGHBOURHOODS.map((neighbourhood: NeighbourhoodData) => {
-    const originalMarketRent =
-      neighbourhood.rents[preferences.bedrooms] ||
-      neighbourhood.rents['1bed'];
+    const originalMarketRent = TORONTO_ASKING_RENT_BENCHMARKS[preferences.bedrooms];
 
     const missingInformation: string[] = [];
 

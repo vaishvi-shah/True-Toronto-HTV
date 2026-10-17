@@ -23,12 +23,18 @@ import { BedroomType, CommuteMode, RentMode, UserPreferences } from '../types';
 interface UserInputBarProps {
   preferences: UserPreferences;
   onChange: (updated: Partial<UserPreferences>) => void;
+  onAnalyze: () => void;
+  hasAnalyzed: boolean;
+  hasUnanalyzedChanges: boolean;
   onOpenMethodology: () => void;
 }
 
 export const UserInputBar: React.FC<UserInputBarProps> = ({
   preferences,
   onChange,
+  onAnalyze,
+  hasAnalyzed,
+  hasUnanalyzedChanges,
   onOpenMethodology,
 }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -628,6 +634,13 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <span>Zero assumptions &bull; Driven by your inputs</span>
           </div>
+        </div>
+        <div className="mt-5 flex flex-col items-center gap-2 border-t border-stone-100 pt-5 sm:flex-row sm:justify-between">
+          <p className="text-xs text-stone-500">{hasAnalyzed && !hasUnanalyzedChanges ? 'Your results are up to date.' : hasAnalyzed ? 'Your changes are ready to analyze.' : 'Your information stays private and is used to personalize this comparison.'}</p>
+          <button type="button" onClick={onAnalyze} className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-6 py-3 text-sm font-bold text-white shadow-md shadow-emerald-900/10 transition hover:-translate-y-0.5 hover:bg-emerald-800 hover:shadow-lg sm:w-auto">
+            <span>{hasAnalyzed ? 'Analyze my updates' : 'Analyze my options'}</span>
+            <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">→</span>
+          </button>
         </div>
       </div>
     </section>

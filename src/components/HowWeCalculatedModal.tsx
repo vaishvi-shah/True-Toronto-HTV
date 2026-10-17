@@ -127,17 +127,17 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
                     <td className="py-1.5 font-mono text-stone-400">Oct 2024</td>
                   </tr>
                   <tr>
-                    <td className="py-1.5 pr-2 font-medium text-emerald-300">Attached Live Postings</td>
-                    <td className="py-1.5 pr-2">Active MLS® Listings, Deep Search &amp; Rentals</td>
-                    <td className="py-1.5 pr-2">HouseSigma, Realtor.ca, Zillow &amp; Rentals.ca</td>
-                    <td className="py-1.5 font-mono text-stone-400">Live Feeds</td>
+                    <td className="py-1.5 pr-2 font-medium text-emerald-300">Demo Rent Examples</td>
+                    <td className="py-1.5 pr-2">Illustrative samples generated around Toronto CMA asking-rent averages</td>
+                    <td className="py-1.5 pr-2">Statistics Canada Table 46-10-0092-01</td>
+                    <td className="py-1.5 font-mono text-stone-400">Q2 2026</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
             <div className="mt-3 p-2.5 rounded-lg bg-stone-800 text-[11px] text-emerald-200 border border-emerald-500/20">
-              💡 <strong>Prefer real apartment listings?</strong> You are never locked into CMHC averages! Browse attached live postings directly from HouseSigma, Realtor.ca, and Zillow on each card or click &ldquo;Adopt Rent&rdquo; to test real asking rents inside your true monthly budget.
+              💡 <strong>Demo disclaimer:</strong> These examples are not actual available units. Their prices are generated around Statistics Canada Toronto CMA averages; current individual listing prices and availability must be checked with listing providers.
             </div>
           </div>
 
@@ -152,7 +152,7 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
             </div>
             <ul className="list-disc list-inside space-y-1 text-stone-600">
               <li>
-                <strong>Sticker Rent:</strong> Median market asking rents by bedroom count, drawn directly from the Canada Mortgage and Housing Corporation (CMHC) Rental Market Survey (October 2024 tables).
+                <strong>Sticker Rent:</strong> Statistics Canada average Toronto CMA apartment asking rents by bedroom count (Q2 2026). This is a city-wide quarterly estimate, applied uniformly across the displayed neighbourhoods; it is not a neighbourhood-level listing price.
               </li>
               <li>
                 <strong>Monthly Commute Expenses:</strong> Either TTC Adult Monthly Pass ($156.00/mo) or single-ride PRESTO ($3.30/trip); OR personal vehicle operating costs (GTA average unleaded fuel at $1.62/L, 8.8 L/100km, plus CAA standard $410/mo insurance & maintenance baseline, plus workplace destination parking).

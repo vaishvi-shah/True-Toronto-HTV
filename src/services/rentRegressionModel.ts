@@ -1,6 +1,5 @@
-import { BedroomType, RentalPosting } from '../types';
+import { BedroomType } from '../types';
 import { NEIGHBOURHOODS } from '../data/neighbourhoods';
-import { ATTACHED_POSTINGS } from '../data/listings';
 
 export interface RegressionModelCoefficients {
   intercept: number;
@@ -157,22 +156,6 @@ function trainModel(): {
     }
   }
 
-  // 2. Ingest active attached postings (28 observations from HouseSigma, Realtor.ca, Zillow)
-  for (const p of ATTACHED_POSTINGS) {
-    const n = NEIGHBOURHOODS.find((item) => item.id === p.neighbourhoodId);
-    const commuteMin = n?.commutes['downtown-hospital']?.transitMinutes || 35;
-    const boroughScore = n ? BOROUGH_ZONE_SCORES[n.borough] || 0.8 : 0.8;
-    const hasRapid = (p.walkToSubwayMins !== undefined && p.walkToSubwayMins <= 8) ? 1 : 0;
-
-    dataset.push({
-      bedrooms: BEDROOM_NUMERIC[p.bedrooms] ?? 1,
-      transitMinutes: commuteMin,
-      boroughScore,
-      hasRapidTransit: hasRapid,
-      monthlyRent: p.monthlyRent,
-    });
-  }
-
   // Build design matrix X: [1, bedrooms, transitMinutes, boroughScore, hasRapidTransit]
   const X: number[][] = dataset.map((d) => [
     1,
@@ -263,7 +246,7 @@ export function estimateRentWithInterval(
   const intervalLow = Math.round(predictedRent - margin);
   const intervalHigh = Math.round(predictedRent + margin);
 
-  const explanation = `Estimated using Multivariable Linear Regression (R² = ${coeff.rSquared}) trained on N=${coeff.trainingSamplesCount} Toronto CMHC benchmark points and MLS asking listings. Feature breakdown: Base Intercept ($${coeff.intercept.toLocaleString()}) + ${numBeds} Beds (+$${bedroomAdj.toLocaleString()}) + Transit to Core (${commuteAdj >= 0 ? '+' : ''}$${commuteAdj}) + Zone Weight (+$${boroughAdj.toLocaleString()}) + Rapid Transit Access (+$${transitAdj}).`;
+  const explanation = `Indicative model estimate (R² = ${coeff.rSquared}) based on ${coeff.trainingSamplesCount} dated neighbourhood-bedroom benchmark points. It is not a current listing price and should not replace a verified asking rent. Feature breakdown: Base Intercept ($${coeff.intercept.toLocaleString()}) + ${numBeds} Beds (+$${bedroomAdj.toLocaleString()}) + Transit to Core (${commuteAdj >= 0 ? '+' : ''}$${commuteAdj}) + Zone Weight (+$${boroughAdj.toLocaleString()}) + Rapid Transit Access (+$${transitAdj}).`;
 
   return {
     neighbourhoodId: n.id,

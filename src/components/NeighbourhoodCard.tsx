@@ -9,21 +9,15 @@ import {
   Leaf,
   Check,
   ChevronDown,
-  ChevronUp,
   Edit2,
   Save,
   RotateCcw,
   Database,
-  Building2,
-  ExternalLink,
-  Sparkles,
-  MapPin,
-  ShieldCheck,
   ChevronRight,
   BrainCircuit,
   Dices,
 } from 'lucide-react';
-import { buildPlatformSearchUrls, getPostingsForNeighbourhood } from '../data/listings';
+import { TORONTO_RENT_BENCHMARK_PERIOD, TORONTO_RENT_BENCHMARK_SOURCE } from '../data/rentBenchmarks';
 import { CalculatedCost, UserPreferences } from '../types';
 import { RiskBadge } from './RiskBadge';
 
@@ -50,15 +44,10 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
   monteCarloRange,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showPostings, setShowPostings] = useState(false);
   const [isEditingRent, setIsEditingRent] = useState(false);
   const [tempRentInput, setTempRentInput] = useState<number>(b.effectiveRent ?? b.originalMarketRent);
 
   const n = b.neighbourhood;
-
-  // Attached postings from HouseSigma, Realtor.ca, Zillow, Rentals.ca
-  const attachedPostings = getPostingsForNeighbourhood(n.id, preferences.bedrooms);
-  const searchUrls = buildPlatformSearchUrls(n.name, preferences.bedrooms);
 
   const handleSaveCustomRent = () => {
     if (onUpdateNeighbourhoodRent) {
@@ -290,11 +279,11 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
                               title="Reset to survey median"
                             >
                               <RotateCcw className="w-2.5 h-2.5" />
-                              CMHC: ${b.originalMarketRent}
+                              Toronto CMA asking rent: ${b.originalMarketRent}
                             </button>
                           </>
                         ) : (
-                          <span>CMHC Benchmark ({preferences.bedrooms})</span>
+                          <span>Toronto CMA avg. asking rent ({TORONTO_RENT_BENCHMARK_PERIOD})</span>
                         )}
                       </div>
                     </div>
@@ -364,177 +353,15 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
         </div>
       </div>
 
-      {/* --- ATTACHED POSTINGS SECTION (HouseSigma / Realtor.ca / Zillow) --- */}
-      <div className="border-t border-b border-stone-200 bg-amber-50/30">
-        <div className="p-3.5 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
-              <Building2 className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-stone-900">
-                  Attached Live Postings
-                </span>
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-200/80 text-amber-900">
-                  {attachedPostings.length}
-                </span>
-              </div>
-              <p className="text-[10px] text-stone-500">
-                HouseSigma, Realtor.ca &amp; Zillow
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setShowPostings(!showPostings)}
-              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-white hover:bg-stone-50 text-stone-700 border border-stone-200 flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
-            >
-              <span>{showPostings ? 'Hide Postings' : 'View Postings'}</span>
-              {showPostings ? (
-                <ChevronUp className="w-3.5 h-3.5 text-stone-500" />
-              ) : (
-                <ChevronDown className="w-3.5 h-3.5 text-stone-500" />
-              )}
-            </button>
-
-            {onOpenPostingsModal && (
-              <button
-                type="button"
-                onClick={() => onOpenPostingsModal(n.id)}
-                className="p-1 rounded-lg text-stone-500 hover:text-stone-800 hover:bg-white/80 transition-colors cursor-pointer"
-                title="Open full listings browser"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+      <div className="border-t border-b border-stone-200 bg-amber-50/30 p-3.5 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold text-stone-900">Demo rent examples</p>
+          <p className="mt-0.5 text-[10px] text-stone-500">Illustrations based on city-wide asking-rent averages; not available units.</p>
         </div>
-
-        {/* Expanded Postings Drawer */}
-        {showPostings && (
-          <div className="p-3.5 pt-0 space-y-3 animate-in fade-in duration-150">
-            {attachedPostings.slice(0, 2).map((posting) => {
-              const isApplied = b.effectiveRent === posting.monthlyRent;
-              return (
-                <div
-                  key={posting.id}
-                  className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-2xs p-3 flex flex-col gap-2"
-                >
-                  <div className="flex items-start gap-2.5">
-                    <img
-                      src={posting.imageUrl}
-                      alt={posting.title}
-                      className="w-16 h-16 rounded-lg object-cover shrink-0 border border-stone-200"
-                      loading="lazy"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded-md border border-amber-200">
-                          {posting.platform === 'housesigma'
-                            ? 'HouseSigma'
-                            : posting.platform === 'zillow'
-                            ? 'Zillow'
-                            : posting.platform === 'realtor'
-                            ? 'Realtor.ca'
-                            : 'Rentals.ca'}
-                        </span>
-                        <span className="text-xs font-mono font-bold text-stone-900">
-                          ${posting.monthlyRent.toLocaleString()}
-                          <span className="text-[10px] font-normal text-stone-400">/mo</span>
-                        </span>
-                      </div>
-
-                      <h5 className="text-xs font-semibold text-stone-900 truncate mt-1">
-                        {posting.title}
-                      </h5>
-
-                      <div className="text-[10px] text-stone-500 flex items-center gap-1 truncate mt-0.5">
-                        <MapPin className="w-2.5 h-2.5 shrink-0 text-stone-400" />
-                        <span>{posting.address} {posting.unit || ''}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px]">
-                    {posting.rentControlStatus === 'protected_pre_2018' ? (
-                      <span className="text-[10px] text-emerald-800 font-medium flex items-center gap-0.5">
-                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                        Rent Controlled
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-amber-800 font-medium">
-                        Exempt Post-2018
-                      </span>
-                    )}
-
-                    <div className="flex items-center gap-1.5">
-                      {onUpdateNeighbourhoodRent && !isRentFree && (
-                        <button
-                          type="button"
-                          onClick={() => onUpdateNeighbourhoodRent(n.id, posting.monthlyRent)}
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold flex items-center gap-1 cursor-pointer transition-colors ${
-                            isApplied
-                              ? 'bg-emerald-700 text-white'
-                              : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200'
-                          }`}
-                          title="Adopt this rent into this neighbourhood's true cost calculation"
-                        >
-                          <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
-                          <span>{isApplied ? 'Applied' : 'Adopt Rent'}</span>
-                        </button>
-                      )}
-
-                      <a
-                        href={posting.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-2 py-0.5 rounded-md text-[10px] bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 flex items-center gap-0.5 transition-colors cursor-pointer"
-                      >
-                        <span>Open</span>
-                        <ExternalLink className="w-2.5 h-2.5" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Platform Quick Links */}
-            <div className="pt-1 flex items-center justify-between text-[11px] text-stone-500">
-              <span className="text-[10px]">Direct search:</span>
-              <div className="flex items-center gap-2">
-                <a
-                  href={searchUrls.houseSigma}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-amber-800 font-medium flex items-center gap-0.5 underline cursor-pointer"
-                >
-                  HouseSigma ↗
-                </a>
-                <span>&bull;</span>
-                <a
-                  href={searchUrls.zillow}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-blue-700 font-medium flex items-center gap-0.5 underline cursor-pointer"
-                >
-                  Zillow ↗
-                </a>
-                <span>&bull;</span>
-                <a
-                  href={searchUrls.realtorCa}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-red-700 font-medium flex items-center gap-0.5 underline cursor-pointer"
-                >
-                  Realtor.ca ↗
-                </a>
-              </div>
-            </div>
-          </div>
+        {onOpenPostingsModal && (
+          <button type="button" onClick={() => onOpenPostingsModal(n.id)} className="shrink-0 rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100">
+            View examples
+          </button>
         )}
       </div>
 
@@ -638,7 +465,7 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
         {isExpanded && (
           <div className="p-4 bg-stone-50 text-[11px] text-stone-600 space-y-2 border-t border-stone-200">
             <div>
-              <strong className="text-stone-800">Rent Survey:</strong> {n.provenance.rentSource} ({n.provenance.rentDate}).
+              <strong className="text-stone-800">Rent benchmark:</strong> Statistics Canada Toronto CMA apartment asking rent, {TORONTO_RENT_BENCHMARK_PERIOD}. This city-wide average is applied uniformly; it is not a neighbourhood estimate or a live listing. <a href={TORONTO_RENT_BENCHMARK_SOURCE} target="_blank" rel="noreferrer" className="underline">Source table</a>.
             </div>
             <div>
               <strong className="text-stone-800">Transit:</strong> {n.provenance.transitSource} &bull; Route: {commuteDetail.transitRouteDescription}.

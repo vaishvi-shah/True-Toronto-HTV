@@ -1,8 +1,9 @@
 import { BedroomType, ListingPlatform, RentalPosting } from '../types';
 
 /**
- * Real active and recently verified rental postings for the 10 Toronto neighbourhoods.
- * Direct links connect to HouseSigma, Realtor.ca (MLS®), Zillow, and Rentals.ca.
+ * Deprecated sample records retained for historical reference only.
+ * These are not verified current listings and must not be presented as real offers
+ * or used in cost calculations. Use the direct portal-search URL builder below.
  */
 export const ATTACHED_POSTINGS: RentalPosting[] = [
   // --- SCARBOROUGH CENTRE ---
