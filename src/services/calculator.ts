@@ -10,14 +10,16 @@ import {
   UserPreferences,
   WorkplaceLocation,
 } from '../types';
+import { AREA_ROUTING_COORDINATES } from '../data/routingCoordinates';
 
-const MAX_REASONABLE_COMMUTE_MINUTES = 120;
+const MAX_REASONABLE_COMMUTE_MINUTES = 300;
 
 export function calculateNeighbourhoodCosts(
   preferences: UserPreferences
 ): CalculatedCost[] {
-  const workplace =
-    WORKPLACES.find((w) => w.id === preferences.workplaceId) || WORKPLACES[0];
+  const workplace = preferences.workplaceId === 'custom-workplace' && preferences.customWorkplace
+      ? { ...WORKPLACES[0], id: 'custom-workplace', name: preferences.customWorkplace.name || preferences.customWorkplace.address, address: preferences.customWorkplace.address, parkingCostMonthly: 0 }
+    : WORKPLACES.find((w) => w.id === preferences.workplaceId) || WORKPLACES[0];
 
   const hasIncome =
     typeof preferences.annualIncome === 'number' && preferences.annualIncome > 0;
@@ -121,17 +123,24 @@ export function calculateNeighbourhoodCosts(
       carDistanceKm: 15,
     };
     const routeEstimate = preferences.routeEstimates?.[neighbourhood.id];
+    const areaCoordinates = AREA_ROUTING_COORDINATES[neighbourhood.id];
+    const customDistanceKm = preferences.customWorkplace && areaCoordinates
+      ? Math.hypot((preferences.customWorkplace.longitude - areaCoordinates[0]) * 81, (preferences.customWorkplace.latitude - areaCoordinates[1]) * 111)
+      : null;
+    const customCommuteFallback = customDistanceKm !== null
+      ? { carDistanceKm: Math.max(1, customDistanceKm * 1.25), carMinutes: Math.min(MAX_REASONABLE_COMMUTE_MINUTES, Math.max(10, Math.round(customDistanceKm * 1.25 / 55 * 60))), transitMinutes: Math.min(MAX_REASONABLE_COMMUTE_MINUTES, Math.max(20, Math.round(customDistanceKm * 1.25 / 25 * 60 + 20))) }
+      : null;
     const commuteInfo = {
       ...baseCommuteInfo,
       carMinutes: routeEstimate && Number.isFinite(routeEstimate.carMinutes) && routeEstimate.carMinutes > 0 && routeEstimate.carMinutes <= MAX_REASONABLE_COMMUTE_MINUTES
         ? routeEstimate.carMinutes
-        : baseCommuteInfo.carMinutes,
-      carDistanceKm: routeEstimate && Number.isFinite(routeEstimate.carDistanceKm) && routeEstimate.carDistanceKm > 0 && routeEstimate.carDistanceKm <= 100
+        : customCommuteFallback?.carMinutes ?? baseCommuteInfo.carMinutes,
+      carDistanceKm: routeEstimate && Number.isFinite(routeEstimate.carDistanceKm) && routeEstimate.carDistanceKm > 0 && routeEstimate.carDistanceKm <= 500
         ? routeEstimate.carDistanceKm
-        : baseCommuteInfo.carDistanceKm,
+        : customCommuteFallback?.carDistanceKm ?? baseCommuteInfo.carDistanceKm,
       // TTC schedule times are validated too; fall back to the application's safe default on bad data.
       transitMinutes: Number.isFinite(baseCommuteInfo.transitMinutes) && baseCommuteInfo.transitMinutes > 0 && baseCommuteInfo.transitMinutes <= MAX_REASONABLE_COMMUTE_MINUTES
-        ? baseCommuteInfo.transitMinutes
+        ? (customCommuteFallback?.transitMinutes ?? baseCommuteInfo.transitMinutes)
         : 40,
     };
 

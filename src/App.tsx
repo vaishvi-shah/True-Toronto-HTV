@@ -142,7 +142,7 @@ export default function App() {
       const routeResponse = await fetch('/api/routes/driving', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workplaceId: snapshot.workplaceId }),
+        body: JSON.stringify({ workplaceId: snapshot.workplaceId, destination: snapshot.customWorkplace ? { latitude: snapshot.customWorkplace.latitude, longitude: snapshot.customWorkplace.longitude } : undefined }),
       });
       if (routeResponse.ok) {
         const routeData = await routeResponse.json();

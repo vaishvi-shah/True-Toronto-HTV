@@ -329,13 +329,52 @@ Respond with JSON:
 app.post('/api/chat', handleWhatIfChat);
 app.post('/api/gemini/what-if', handleWhatIfChat);
 
+/** Search OpenStreetMap-backed places through OpenRouteService (keeps the API key server-side). */
+app.post('/api/locations/search', async (req: Request, res: Response) => {
+  const query = typeof req.body?.query === 'string' ? req.body.query.trim().slice(0, 160) : '';
+  if (query.length < 2) return res.status(400).json({ error: 'Enter at least two characters to search.' });
+  const orsApiKey = process.env.ORS_API_KEY;
+  if (!orsApiKey) return res.status(503).json({ error: 'Place search is not configured. You can still select a location by clicking the map.' });
+
+  try {
+    const url = new URL('https://api.openrouteservice.org/geocode/search');
+    url.searchParams.set('text', query);
+    url.searchParams.set('size', '8');
+    url.searchParams.set('boundary.rect.min_lon', '-85.5');
+    url.searchParams.set('boundary.rect.min_lat', '40.2');
+    url.searchParams.set('boundary.rect.max_lon', '-73.5');
+    url.searchParams.set('boundary.rect.max_lat', '47.2');
+    const response = await fetch(url, { headers: { Authorization: orsApiKey } });
+    if (!response.ok) {
+      console.warn(`OpenRouteService geocoding failed: HTTP ${response.status}`);
+      return res.status(502).json({ error: 'Place search is temporarily unavailable. You can still click the map to select a point.' });
+    }
+    const payload = await response.json() as { features?: Array<{ geometry?: { coordinates?: [number, number] }; properties?: { label?: string } }> };
+    const results = (payload.features || []).flatMap((feature) => {
+      const coordinates = feature.geometry?.coordinates;
+      const label = feature.properties?.label;
+      if (!coordinates || !label || !Number.isFinite(coordinates[0]) || !Number.isFinite(coordinates[1])) return [];
+      return [{ name: label, latitude: coordinates[1], longitude: coordinates[0] }];
+    });
+    return res.json({ results, source: 'OpenStreetMap via OpenRouteService' });
+  } catch (error) {
+    console.warn('OpenRouteService geocoding failed:', error instanceof Error ? error.message : 'unknown error');
+    return res.status(502).json({ error: 'Place search is temporarily unavailable. You can still click the map to select a point.' });
+  }
+});
+
 /**
  * Route: POST /api/routes/driving
  * OpenRouteService road distances and durations from neighborhood centers to a workplace.
  */
 app.post('/api/routes/driving', async (req: Request, res: Response) => {
   const workplaceId = req.body?.workplaceId;
-  const destination = WORKPLACE_ROUTING_COORDINATES[workplaceId];
+  const rawDestination = req.body?.destination;
+  const customCoordinates = rawDestination && Number.isFinite(rawDestination.latitude) && Number.isFinite(rawDestination.longitude)
+    && rawDestination.latitude >= 40 && rawDestination.latitude <= 48 && rawDestination.longitude >= -85 && rawDestination.longitude <= -75
+    ? [rawDestination.longitude, rawDestination.latitude] as [number, number]
+    : undefined;
+  const destination = customCoordinates || WORKPLACE_ROUTING_COORDINATES[workplaceId];
   if (!destination) return res.status(400).json({ error: 'Unknown workplace' });
 
   const orsApiKey = process.env.ORS_API_KEY;
@@ -379,8 +418,8 @@ app.post('/api/routes/driving', async (req: Request, res: Response) => {
       const distanceMeters = matrix.distances?.[index]?.[0];
       const durationSeconds = matrix.durations?.[index]?.[0];
       // Ignore missing or implausibly long results; the calculator retains its TTC/area-data fallback.
-      if (typeof distanceMeters !== 'number' || !Number.isFinite(distanceMeters) || distanceMeters <= 0 || distanceMeters > 100_000) return;
-      if (typeof durationSeconds !== 'number' || !Number.isFinite(durationSeconds) || durationSeconds <= 0 || durationSeconds > 120 * 60) return;
+      if (typeof distanceMeters !== 'number' || !Number.isFinite(distanceMeters) || distanceMeters <= 0 || distanceMeters > 500_000) return;
+      if (typeof durationSeconds !== 'number' || !Number.isFinite(durationSeconds) || durationSeconds <= 0 || durationSeconds > 300 * 60) return;
       estimates[area.id] = {
         carDistanceKm: Number((distanceMeters / 1000).toFixed(1)),
         carMinutes: Math.max(1, Math.round(durationSeconds / 60)),

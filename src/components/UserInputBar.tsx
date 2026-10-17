@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { WORKPLACES, NEIGHBOURHOODS, CALCULATION_ASSUMPTIONS } from '../data/neighbourhoods';
 import { BedroomType, CommuteMode, RentMode, UserPreferences } from '../types';
+import { WorkplaceMapPicker } from './WorkplaceMapPicker';
 
 interface UserInputBarProps {
   preferences: UserPreferences;
@@ -43,7 +44,11 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
   const [incomeMode, setIncomeMode] = useState<'annual' | 'monthly'>('annual');
 
   const selectedWorkplace =
-    WORKPLACES.find((w) => w.id === preferences.workplaceId) || WORKPLACES[0];
+    preferences.workplaceId === 'custom-workplace' && preferences.customWorkplace
+      ? { ...WORKPLACES[0], name: preferences.customWorkplace.name, shortName: preferences.customWorkplace.name, address: preferences.customWorkplace.address, district: 'Custom destination', parkingCostMonthly: 0, description: 'User-selected destination' }
+      : WORKPLACES.find((w) => w.id === preferences.workplaceId) || WORKPLACES[0];
+  const isCustomWorkplace = preferences.workplaceId === 'custom-workplace';
+  const customWorkplace = preferences.customWorkplace;
 
   const hasNeighbourhoodOverrides =
     preferences.customNeighbourhoodRents &&
@@ -124,10 +129,15 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
                       {wp.name} ({wp.district})
                     </option>
                   ))}
+                  <option value="custom-workplace">Enter a custom destination…</option>
                 </select>
-                <p className="mt-1 text-[11px] text-stone-500 truncate" title={selectedWorkplace.description}>
-                  {selectedWorkplace.address} &bull; {selectedWorkplace.parkingCostMonthly > 0 ? `$${selectedWorkplace.parkingCostMonthly}/mo parking` : 'Free parking'}
-                </p>
+                {isCustomWorkplace ? (
+                  <WorkplaceMapPicker value={customWorkplace} onChange={(location) => onChange({ customWorkplace: location })} />
+                ) : (
+                  <p className="mt-1 text-[11px] text-stone-500 truncate" title={selectedWorkplace.description}>
+                    {selectedWorkplace.address} &bull; {selectedWorkplace.parkingCostMonthly > 0 ? `$${selectedWorkplace.parkingCostMonthly}/mo parking` : 'Free parking'}
+                  </p>
+                )}
               </div>
 
               {/* Travel Mode */}

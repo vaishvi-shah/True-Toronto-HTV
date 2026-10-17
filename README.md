@@ -1,96 +1,71 @@
 # True Cost of Home
 
-True Cost of Home is an early-stage Toronto housing comparison project. The intended app will compare housing and commute costs, show sourced neighbourhood indicators, and eventually explain trade-offs. **At this stage, it is a scaffold with a small compiled data set: the home page is blank, and no cost calculations or data display have been implemented.**
+A Toronto-area housing and commuting comparison app built with React, TypeScript, Vite, and Express. The workplace picker uses Leaflet/OpenStreetMap, and place search and driving-route estimates use the server-side OpenRouteService API.
 
-## Run the project
+## Run it on a new computer
 
-Run these commands from the repository root (`Hack the Valley`):
+This project needs **Node.js and npm**. npm is included when Node.js is installed; there is no separate npm download. It does not use Python or `pip`.
 
-```powershell
-npm ci
-npm run dev
-```
+1. Install the current **Node.js LTS** release from [nodejs.org](https://nodejs.org/en/download). On Windows, use the installer and leave the option to add Node to PATH enabled. On macOS or Linux, use the official installer or your preferred Node version manager.
+2. Open a terminal (PowerShell on Windows, Terminal on macOS/Linux) and check the installs:
 
-Then open <http://localhost:3000>. The Next.js server should start, but the page will be blank because `app/page.tsx` currently returns `null`. There is no separate application file to run directly; use the npm scripts in `package.json`.
+   ```sh
+   node --version
+   npm --version
+   ```
 
-To stop the development server, press `Ctrl+C` in the terminal.
+   Use Node.js 22.12 or newer. If those commands are not found, close and reopen the terminal after installation.
 
-The project also has these scripts:
+3. Download/clone this repository, open a terminal in the project folder (the folder containing `package.json`), then install the exact dependencies recorded in `package-lock.json`:
 
-```powershell
-npm run build
-npm start
-npm test
-```
+   ```sh
+   npm ci
+   ```
 
-`npm start` runs the production server after a successful `npm run build`. Vitest is installed, but no tests have been written yet.
+4. Configure the optional server keys as described below.
+5. Start the development app:
 
-The current project successfully completed `npm run build` on 2026-10-17. This confirms compilation and static prerendering; the resulting home page is still blank by design.
+   ```sh
+   npm run dev
+   ```
 
-## Data included and where it comes from
+6. Open <http://localhost:3000> in a browser. Keep the terminal running while using the app. Press `Ctrl+C` in that terminal to stop it.
 
-### Toronto 2021 Neighbourhood Profiles
+## API keys
 
-The source workbook is stored at [`data/sources/neighbourhood-profiles-2021.xlsx`](data/sources/neighbourhood-profiles-2021.xlsx). It was downloaded from the [City of Toronto Open Data Neighbourhood Profiles dataset](https://open.toronto.ca/dataset/neighbourhood-profiles/). The profiles are based on 2021 Census data and include Toronto social-planning neighbourhood names, renter and total household counts, monthly renter shelter costs, and the City’s TSNS 2020 designation.
+The app can open without keys, but the corresponding connected features will not work:
 
-[`data/neighbourhoods.json`](data/neighbourhoods.json) contains compiled indicators for the ten project labels:
+- `ORS_API_KEY` enables place search and driving route estimates. Create a key at [openrouteservice.org](https://openrouteservice.org/dev/#/signup), then keep it on the server—do not prefix it with `VITE_` or commit it.
+- `GEMINI_API_KEY` enables AI-generated explanations. It is optional; deterministic app calculations can still be used without it.
 
-- **Exact profile matches:** The Annex (City profile name “Annex”), Regent Park, South Riverdale, Thorncliffe Park, and Mount Dennis.
-- **Explicit predictions from proxy profiles:** Church-Yonge Corridor, Parkdale, North York Centre, Jane-Finch, and Scarborough Centre. The proxy profile names and calculation method are included in the JSON and [`data/neighbourhood-crosswalk.json`](data/neighbourhood-crosswalk.json). These are predictions, not observed City values for the custom project areas; the proxy groups have not been confirmed against those areas’ exact boundaries.
+Create a local environment file by copying the example:
 
-The renter share is calculated from the source household counts. The shelter-cost value is kept in its own `censusMedianMonthlyShelterCostCad` field. It is **not** treated as rent-only: Statistics Canada defines renter shelter cost to include rent and, where applicable, electricity, heat, water, and other municipal services. See the [2021 Census dictionary](https://www12.statcan.gc.ca/census-recensement/2021/ref/dict/98-301-x2021001-eng.pdf). These are historical 2021 measures, not current rent listings or current asking rents. Missing or unverified fields are `null`.
-
-The workbook and data compiler are already in the repository, so compilation does not require a key or network access. With Python 3 installed, regenerate the JSON by running:
-
-```powershell
-python scripts/extract-neighbourhood-data.py
-```
-
-The script uses Python’s standard library only.
-
-### TTC fare assumptions
-
-[`data/assumptions.ts`](data/assumptions.ts) contains two values entered from official TTC pages:
-
-- Adult PRESTO/eligible-card single fare: [TTC fares and passes](https://www.ttc.ca/en/Fares-and-passes).
-- Eligible paid trip starts before monthly fare capping: [TTC monthly fare capping](https://www.ttc.ca/riding-the-ttc/Updates/TTC-monthly-fare-capping).
-
-Each value has a source URL, checked date, and note. They are reference assumptions only; the transportation cost engine that would use them has not been written.
-
-### Other source files and source research
-
-- [`data/sources/wellbeing-toronto-civics-equity-indicators.xlsx`](data/sources/wellbeing-toronto-civics-equity-indicators.xlsx) is a City-related equity workbook with reference periods 2008 and 2011. It is retained for research but **is not used** as current neighbourhood data.
-- [`data/source-catalog.md`](data/source-catalog.md) records other potential sources and their limitations: City neighbourhood boundaries and forest/land cover, CMHC rental tables, the TRCA floodplain viewer, ECCC emissions factors, and possible utility/routing sources. Those sources have not been compiled into values for the app unless specifically noted above.
-- No Housesigma or Zillow data, listings, or API connections are included.
-
-## Data and API keys
-
-The app does not currently fetch external data at runtime. The intended architecture is to prepare source data ahead of time and store it under `data/`; the future Gemini integration would be the only planned request-time external call.
-
-`.env.example` contains blank `GEMINI_API_KEY` and `GEMINI_MODEL` entries for a future Gemini integration. **No key is needed to run the current blank app or regenerate the neighbourhood JSON**, because Gemini has not been connected. Copy the example to `.env.local` only when the integration is implemented:
+Windows PowerShell:
 
 ```powershell
 Copy-Item .env.example .env.local
 ```
 
-Local `.env` files are ignored by Git.
+macOS/Linux:
 
-## Current project status
+```sh
+cp .env.example .env.local
+```
 
-### Included
+Open `.env.local`, replace the placeholder values for the keys you have, and save. `.env.local` is ignored by Git. Restart `npm run dev` after changing it. Never share or commit this file.
 
-- Next.js App Router, TypeScript strict mode, and Tailwind CSS setup.
-- Vitest, Recharts, and Google’s `@google/genai` package installed.
-- Domain types in [`lib/types.ts`](lib/types.ts).
-- Saved Toronto profile workbooks, a neighbourhood crosswalk, compiled 2021 indicators, TTC assumptions, and a source inventory.
-- A repeatable local script for compiling the 2021 neighbourhood indicators.
+## Useful commands
 
-### Not implemented yet
+```sh
+npm run dev    # start the local app
+npm run lint   # TypeScript check
+npm test       # run tests
+npm run build  # create a production build in dist/
+npm start      # run the server (normally after npm run build)
+```
 
-- UI to display or edit profile/neighbourhood information; charts and maps.
-- Rent, commute, car, utility, carbon, affordability, climate-risk, or displacement calculations.
-- Current asking rents, rent-only in-place rents, validated CMHC mappings, utility estimates, neighbourhood commute data, or neighbourhood-scale heat, canopy, and flood indicators.
-- Online data-refresh scripts, API routes, or Gemini requests.
-- Automated tests, deployment, database, or authentication.
+If `npm ci` reports a lockfile or dependency error, check that you are in the repository root and that Node/npm installed correctly. If port 3000 is already in use, stop the other app using it and retry.
 
-See [`current.md`](current.md) for the detailed project handoff and [`plan.md`](plan.md) for the build plan and decisions.
+## Why there is also a `requirements.txt`
+
+`requirements.txt` is conventionally for Python packages installed with `pip`. This repository is not a Python project, so its `requirements.txt` intentionally contains no installable packages; use `npm ci` to install the JavaScript/TypeScript dependencies. The authoritative dependency lists are `package.json` and `package-lock.json`.

@@ -1,0 +1,4 @@
+# This repository is a Node.js / TypeScript application, not a Python project.
+# There are no Python packages to install with pip.
+# Install the application dependencies with: npm ci
+# Setup and run instructions: README.md
