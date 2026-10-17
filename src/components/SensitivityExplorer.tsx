@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   Sliders,
   RotateCcw,
-  Sparkles,
   Info,
 } from 'lucide-react';
 import { UserPreferences, CalculatedCost } from '../types';
@@ -48,9 +47,9 @@ export function SensitivityExplorer({
   const topNeighbourhoods = results.slice(0, 4);
   const palette = [
     { line: '#059669', bg: 'bg-emerald-600', text: 'text-emerald-700' }, // #1 emerald
-    { line: '#2563eb', bg: 'bg-blue-600', text: 'text-blue-700' },       // #2 blue
+    { line: '#1c1917', bg: 'bg-stone-900', text: 'text-stone-900' },     // #2 stone
     { line: '#d97706', bg: 'bg-amber-600', text: 'text-amber-700' },     // #3 amber
-    { line: '#7c3aed', bg: 'bg-purple-600', text: 'text-purple-700' },   // #4 purple
+    { line: '#57534e', bg: 'bg-stone-600', text: 'text-stone-700' },     // #4 stone
   ];
 
   // SVG Chart bounds
@@ -87,7 +86,7 @@ export function SensitivityExplorer({
   const getY = (val: number) => padding.top + innerHeight - ((val - scaledMinY) / (scaledMaxY - scaledMinY || 1)) * innerHeight;
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200 p-6 shadow-xs mb-10">
+    <div className="bg-white rounded-xl border border-stone-200 p-6 mb-10">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-stone-200">
         <div>
@@ -114,7 +113,7 @@ export function SensitivityExplorer({
         <div className="flex items-center gap-1.5 bg-stone-100 p-1 rounded-xl self-start md:self-auto border border-stone-200">
           <button
             onClick={() => setActiveSweep('commuteDays')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-[background-color,color] cursor-pointer ${
               activeSweep === 'commuteDays'
                 ? 'bg-white text-stone-900 shadow-xs'
                 : 'text-stone-600 hover:text-stone-900'
@@ -124,7 +123,7 @@ export function SensitivityExplorer({
           </button>
           <button
             onClick={() => setActiveSweep('wageFactor')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-[background-color,color] cursor-pointer ${
               activeSweep === 'wageFactor'
                 ? 'bg-white text-stone-900 shadow-xs'
                 : 'text-stone-600 hover:text-stone-900'
@@ -136,7 +135,7 @@ export function SensitivityExplorer({
       </div>
 
       {/* Primary Break-Even Callout Banner */}
-      <div className="mt-5 p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="mt-5 p-4 rounded-xl bg-amber-50 border border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-start gap-3">
           <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-900 flex items-center justify-center shrink-0 mt-0.5">
             <TrendingUp className="w-4 h-4" />
@@ -167,11 +166,11 @@ export function SensitivityExplorer({
             Detected Ranking Crossovers &amp; Flip Points
           </h4>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {activeCrossovers.map((crossover, idx) => (
               <div
                 key={idx}
-                className={`p-4 rounded-xl border transition-all ${
+                className={`p-4 rounded-xl border transition-[background-color,border-color] duration-200 ${
                   crossover.fragility === 'fragile'
                     ? 'bg-rose-50/50 border-rose-200'
                     : crossover.fragility === 'moderate'
@@ -190,10 +189,10 @@ export function SensitivityExplorer({
                     }`}
                   >
                     {crossover.fragility === 'fragile'
-                      ? '⚡ High Sensitivity'
+                      ? 'High Sensitivity'
                       : crossover.fragility === 'moderate'
-                      ? '⚖️ Moderate Sensitivity'
-                      : '🛡️ Robust'}
+                      ? 'Moderate Sensitivity'
+                      : 'Robust'}
                   </span>
 
                   <span className="text-xs font-bold text-stone-800">
@@ -361,7 +360,7 @@ export function SensitivityExplorer({
                         fill={isHovered ? '#ffffff' : color}
                         stroke={color}
                         strokeWidth="2"
-                        className="transition-all cursor-pointer"
+                        className="transition-[fill,r] duration-150 cursor-pointer"
                         onMouseEnter={() => setHoveredIndex(dIdx)}
                         onMouseLeave={() => setHoveredIndex(null)}
                       />

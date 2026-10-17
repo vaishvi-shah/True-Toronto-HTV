@@ -21,8 +21,8 @@ export const TenantResourcesModal: React.FC<TenantResourcesModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-stone-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60">
+      <div className="modal-enter bg-white rounded-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-stone-200">
         {/* Header */}
         <div className="p-5 border-b border-stone-200 flex items-center justify-between bg-stone-50">
           <div className="flex items-center gap-2.5">

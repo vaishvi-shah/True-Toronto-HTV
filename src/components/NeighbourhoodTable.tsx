@@ -194,7 +194,7 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
                       ${cost.trueMonthlyCost.toLocaleString()}/mo
                     </div>
                     {getMonteCarloRange && getMonteCarloRange(n.id) && (
-                      <div className="text-[10px] text-indigo-700 font-medium">
+                      <div className="text-[10px] text-stone-700 font-medium">
                         CI: ${getMonteCarloRange(n.id)![0].toLocaleString()}–${getMonteCarloRange(n.id)![1].toLocaleString()}
                       </div>
                     )}

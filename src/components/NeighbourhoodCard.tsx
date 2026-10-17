@@ -107,10 +107,10 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
 
   return (
     <div
-      className={`bg-white rounded-2xl border transition-all duration-200 overflow-hidden shadow-xs hover:shadow-md flex flex-col ${
+      className={`bg-white rounded-xl border transition-[border-color] duration-200 overflow-hidden flex flex-col ${
         isCompared
-          ? 'border-emerald-600 ring-2 ring-emerald-500/20'
-          : 'border-stone-200 hover:border-stone-300'
+          ? 'border-stone-900 ring-1 ring-stone-900/20'
+          : 'border-stone-200 hover:border-stone-400'
       }`}
     >
       {/* Top Header */}
@@ -135,9 +135,9 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
 
           <button
             onClick={() => onToggleCompare(n.id)}
-            className={`px-2.5 py-1 rounded-xl text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer shrink-0 ${
+            className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition-[background-color,color] cursor-pointer shrink-0 ${
               isCompared
-                ? 'bg-emerald-700 text-white font-semibold'
+                ? 'bg-stone-900 text-white font-semibold'
                 : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200'
             }`}
           >
@@ -180,8 +180,8 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
                 : 'Rent + Commute + Utilities'}
             </div>
             {monteCarloRange && (
-              <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200/80">
-                <Dices className="w-3 h-3 text-indigo-500 shrink-0" />
+              <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-stone-700 bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200/80">
+                <Dices className="w-3 h-3 shrink-0" />
                 <span>80% CI: ${monteCarloRange[0].toLocaleString()}–${monteCarloRange[1].toLocaleString()}</span>
               </div>
             )}
@@ -200,10 +200,10 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
                     <button
                       type="button"
                       onClick={() => onOpenMlEstimator(b.neighbourhood.id)}
-                      className="text-[10px] text-purple-700 hover:text-purple-900 font-semibold flex items-center gap-0.5 cursor-pointer bg-purple-50 px-1.5 py-0.5 rounded-md border border-purple-200"
+                      className="text-[10px] text-stone-700 hover:text-stone-900 font-semibold flex items-center gap-0.5 cursor-pointer bg-stone-100 px-1.5 py-0.5 rounded-md border border-stone-300"
                       title="Estimate rent for unit gaps using Multivariable Linear Regression"
                     >
-                      <BrainCircuit className="w-2.5 h-2.5 text-purple-600" />
+                      <BrainCircuit className="w-2.5 h-2.5" />
                       <span>ML Gap</span>
                     </button>
                   )}

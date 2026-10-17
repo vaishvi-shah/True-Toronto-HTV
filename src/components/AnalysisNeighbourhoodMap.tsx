@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { divIcon } from 'leaflet';
-import { Activity, Bus, ExternalLink, Footprints, Home, MapPin, Search, ShoppingBasket, SlidersHorizontal, Trees } from 'lucide-react';
+import { Activity, Bus, ExternalLink, Footprints, Home, MapPin, Plus, Search, ShoppingBasket, SlidersHorizontal, Trees } from 'lucide-react';
 import { MapContainer, Marker, TileLayer, Tooltip } from 'react-leaflet';
 import { CalculatedCost, UserPreferences, BedroomType } from '../types';
 import { AREA_ROUTING_COORDINATES } from '../data/routingCoordinates';
 import { DEMO_LISTINGS } from '../data/demoListings';
 import { buildPlatformSearchUrls } from '../data/listings';
+import { areaPinName } from '../services/mapAccessibility';
 import 'leaflet/dist/leaflet.css';
 
 interface AnalysisNeighbourhoodMapProps {
@@ -30,22 +31,12 @@ type AreaPriority = 'cost' | 'rent' | 'commute' | 'transit' | 'groceries' | 'wal
 const currency = (amount: number | null) => amount === null ? 'Not entered' : `$${Math.round(amount).toLocaleString()}`;
 const unitLabel = (bedrooms: BedroomType) => bedrooms === 'bachelor' ? 'Studio' : bedrooms.replace('bed', ' bedroom');
 
-function areaEmoji(id: string) {
-  const icons: Record<string, string> = {
-    'scarborough-centre': '🚇', 'islington-etobicoke': '✈️', 'downtown-east': '🏙️',
-    'high-park-junction': '🌳', 'north-york-centre': '🏢', 'thorncliffe-park': '🌲',
-    'parkdale-little-portugal': '🎨', 'danforth-east-york': '🚲',
-    'weston-mount-dennis': '🏡', 'malvern-rouge': '🌿',
-  };
-  return icons[id] || '📍';
-}
-
-function areaIcon(id: string, selected: boolean) {
+function areaIcon(rank: number, selected: boolean, accessibleName: string) {
   return divIcon({
     className: 'housing-area-marker',
-    html: `<div style="width:38px;height:38px;border-radius:50% 50% 50% 8px;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;background:${selected ? '#047857' : '#ffffff'};border:2px solid #047857;box-shadow:0 3px 10px #0003"><span style="transform:rotate(45deg);font-size:18px;line-height:1">${areaEmoji(id)}</span></div>`,
-    iconSize: [38, 38],
-    iconAnchor: [19, 38],
+    html: `<div style="width:34px;height:34px;border-radius:50% 50% 50% 8px;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;background:${selected ? '#1c1917' : '#ffffff'};border:2px solid #1c1917"><span aria-hidden="true" style="transform:rotate(45deg);font-size:13px;line-height:1;font-weight:800;font-family:system-ui,sans-serif;color:${selected ? '#ffffff' : '#1c1917'}">${rank}</span><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;">${accessibleName}</span></div>`,
+    iconSize: [34, 34],
+    iconAnchor: [17, 34],
   });
 }
 
@@ -122,13 +113,13 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
   });
 
   return (
-    <section className="my-7 overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm" aria-label="Explore Toronto neighbourhoods and demo rental examples">
-      <div className="border-b border-stone-100 px-5 py-5 sm:px-7">
+    <section className="my-10 border-y-2 border-[#1b1712] bg-white/40" aria-label="Explore Toronto neighbourhoods and demo rental examples" data-reveal="fade-up">
+      <div className="border-b border-[#1b1712]/15 px-5 py-5 sm:px-7">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <div className="mb-1 flex items-center gap-2 text-emerald-800"><MapPin className="h-4 w-4" /><span className="text-[11px] font-bold uppercase tracking-[0.15em]">Explore places to live</span></div>
-            <h2 className="text-xl font-bold tracking-tight text-stone-900">Toronto neighbourhood map</h2>
-            <p className="mt-1 text-xs text-stone-600">Hover a marker for a cost and lifestyle snapshot. Click it to explore that neighbourhood in detail.</p>
+            <div className="mb-1 flex items-center gap-2 text-stone-500"><MapPin className="h-4 w-4" /><span className="dateline">Explore places to live</span></div>
+            <h2 className="font-display text-2xl font-semibold tracking-tight text-[#1b1712]">Toronto neighbourhood map</h2>
+            <p className="mt-1 text-[13px] text-stone-600">Select a marker for a cost and lifestyle snapshot — every pin names its area, rank, and monthly cost.</p>
           </div>
           <label className="flex items-center gap-2 text-[10px] font-semibold text-stone-500">PRIORITIZE
             <select value={priority} onChange={(event) => setPriority(event.target.value as AreaPriority)} className="rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-2 text-xs font-semibold text-stone-800">
@@ -141,16 +132,16 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
       <div className="relative">
         <MapContainer center={[43.7001, -79.4163]} zoom={10} scrollWheelZoom className="h-[58vh] min-h-[390px] w-full">
           <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={19} />
-          {results.map((item) => {
+          {results.map((item, index) => {
             const point = AREA_ROUTING_COORDINATES[item.neighbourhood.id];
             const nearby = amenitiesByArea[item.neighbourhood.id];
             const route = preferences.routeEstimates?.[item.neighbourhood.id];
             const oneWayMinutes = item.commuteBreakdown.monthlyOneWayTrips ? Math.round(item.monthlyCommuteHours * 60 / item.commuteBreakdown.monthlyOneWayTrips) : 0;
             if (!point) return null;
-            return <Marker key={item.neighbourhood.id} position={[point[1], point[0]]} icon={areaIcon(item.neighbourhood.id, item.neighbourhood.id === selectedId)} eventHandlers={{ click: () => setSelectedId(item.neighbourhood.id) }}>
+            return <Marker key={item.neighbourhood.id} position={[point[1], point[0]]} icon={areaIcon(index + 1, item.neighbourhood.id === selectedId, areaPinName(index + 1, item))} title={areaPinName(index + 1, item)} eventHandlers={{ click: () => setSelectedId(item.neighbourhood.id) }}>
               <Tooltip direction="top" offset={[0, -30]} opacity={1}>
                 <div className="min-w-48 py-0.5">
-                  <div className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-stone-900"><span>{areaEmoji(item.neighbourhood.id)}</span>{item.neighbourhood.name}</div>
+                  <div className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-stone-900">{item.neighbourhood.name}</div>
                   <div className="space-y-0.5 text-[10px] text-stone-700">
                     <div className="flex justify-between gap-4"><span>Rent</span><b>{currency(item.effectiveRent)}/mo</b></div>
                     <div className="flex justify-between gap-4"><span>Transportation</span><b>{currency(item.commuteBreakdown.totalMonthlyCommuteCost)}/mo</b></div>
@@ -170,14 +161,18 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
             </Marker>;
           })}
         </MapContainer>
-        <div className="pointer-events-none absolute bottom-4 left-4 rounded-xl border border-white/80 bg-white/90 px-3 py-2 text-[10px] font-medium text-stone-600 shadow-md backdrop-blur-sm"><span className="font-bold text-stone-800">10 neighbourhoods</span> · click a pin to explore</div>
+        <div className="pointer-events-none absolute bottom-4 left-4 bg-[#1b1712] px-3 py-2 text-[10px] font-semibold text-[#f4f1e8]"><span className="font-bold">10 neighbourhoods</span> · select a pin to explore</div>
       </div>
-      <div className="border-t border-stone-100 bg-white px-4 py-3 sm:px-6">
-        <div className="mb-2 flex items-center justify-between gap-2"><span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Areas ranked by {priority === 'cost' ? 'monthly cost' : priority === 'rent' ? 'rent' : priority === 'commute' ? 'commute time' : priority}</span><span className="text-[9px] text-stone-400">Choose a card to open the area</span></div>
-        <div className="flex gap-2 overflow-x-auto pb-1">{orderedResults.map((item, index) => <div key={item.neighbourhood.id} className={`min-w-48 rounded-xl border p-2.5 ${selectedId === item.neighbourhood.id ? 'border-emerald-300 bg-emerald-50' : 'border-stone-200 bg-stone-50'}`}>
-          <button type="button" onClick={() => setSelectedId(item.neighbourhood.id)} className="block w-full text-left"><span className="text-[9px] font-bold text-emerald-800">#{index + 1} · {item.neighbourhood.borough}</span><span className="mt-0.5 block truncate text-[11px] font-bold text-stone-800">{item.neighbourhood.name}</span><span className="mt-1 flex justify-between text-[10px] text-stone-600"><span>{currency(item.trueMonthlyCost)}/mo</span><span>{item.monthlyCommuteHours} commute hrs</span></span></button>
-          <button type="button" onClick={() => toggleAreaCompare(item.neighbourhood.id)} className={`mt-2 rounded-md border px-2 py-1 text-[9px] font-semibold ${comparedAreaIds.includes(item.neighbourhood.id) ? 'border-emerald-300 bg-white text-emerald-800' : 'border-stone-200 bg-white text-stone-600 hover:text-emerald-800'}`}>{comparedAreaIds.includes(item.neighbourhood.id) ? 'Added to compare' : comparedAreaIds.length >= 3 ? 'Compare limit reached' : '+ Compare'}</button>
-        </div>)}</div>
+      <div className="border-t border-[#1b1712]/15 px-4 py-4 sm:px-6">
+        <div className="mb-1 flex items-baseline justify-between gap-2"><span className="dateline text-stone-500">Areas ranked by {priority === 'cost' ? 'monthly cost' : priority === 'rent' ? 'rent' : priority === 'commute' ? 'commute time' : priority}</span><span className="text-[11px] text-stone-500">Select a rank to open the area</span></div>
+        <ol className="grid gap-x-10 sm:grid-cols-2" data-reveal-group>{orderedResults.map((item, index) => <li key={item.neighbourhood.id} className={`flex min-w-0 items-center gap-1.5 border-b border-[#1b1712]/10 ${selectedId === item.neighbourhood.id ? 'bg-emerald-900/[0.06]' : ''}`} data-reveal-item>
+          <button type="button" onClick={() => setSelectedId(item.neighbourhood.id)} title={`${item.neighbourhood.name} — open area details`} aria-label={`Rank ${index + 1}: ${item.neighbourhood.name}, ${currency(item.trueMonthlyCost)} per month`} className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-2 py-2 text-left">
+            <span className="figures w-5 shrink-0 text-xs font-bold text-[#1b1712]">{index + 1}</span>
+            <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[#1b1712]">{item.neighbourhood.name}</span>
+            <span className="figures shrink-0 text-xs font-semibold text-stone-600">{currency(item.trueMonthlyCost)}/mo</span>
+          </button>
+          <button type="button" onClick={() => toggleAreaCompare(item.neighbourhood.id)} title={comparedAreaIds.includes(item.neighbourhood.id) ? `Remove ${item.neighbourhood.name} from comparison` : `Compare ${item.neighbourhood.name} (max 3)`} aria-pressed={comparedAreaIds.includes(item.neighbourhood.id)} aria-label={comparedAreaIds.includes(item.neighbourhood.id) ? `Remove ${item.neighbourhood.name} from comparison` : `Compare ${item.neighbourhood.name}`} className={`flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center border transition-colors ${comparedAreaIds.includes(item.neighbourhood.id) ? 'border-emerald-800 bg-emerald-800 text-white' : 'border-[#1b1712]/20 text-stone-400 hover:border-[#1b1712] hover:text-[#1b1712]'}`}><Plus className="h-3.5 w-3.5" /></button>
+        </li>)}</ol>
       </div>
       {comparedAreas.length > 1 && <div className="border-t border-stone-100 bg-stone-50 px-4 py-4 sm:px-6"><div className="mb-2 flex items-center justify-between"><h3 className="text-xs font-bold text-stone-800">Neighbourhood comparison ({comparedAreas.length}/3)</h3><button type="button" onClick={() => setComparedAreaIds([])} className="text-[10px] font-semibold text-stone-500 underline">Clear comparison</button></div><div className="overflow-x-auto rounded-xl border border-stone-200 bg-white"><table className="w-full min-w-[620px] text-left text-[10px]"><thead><tr className="bg-stone-50"><th className="p-2.5 text-stone-500">Monthly indicator</th>{comparedAreas.map((item) => <th key={item.neighbourhood.id} className="min-w-32 p-2.5 font-bold text-stone-800">{item.neighbourhood.name}</th>)}</tr></thead><tbody>{[
         ['True monthly cost', (item: CalculatedCost) => `${currency(item.trueMonthlyCost)}/mo`],['Rent', (item: CalculatedCost) => `${currency(item.effectiveRent)}/mo`],['Transportation', (item: CalculatedCost) => `${currency(item.commuteBreakdown.totalMonthlyCommuteCost)}/mo`],['Utilities', (item: CalculatedCost) => `${currency(item.utilitiesCost)}/mo`],['Commute time', (item: CalculatedCost) => `${item.monthlyCommuteHours} hrs/mo`],['Grocers within 1.5 km', (item: CalculatedCost) => amenitiesByArea[item.neighbourhood.id] ? String(amenitiesByArea[item.neighbourhood.id].groceries.countWithin1_5Km) : 'Unavailable'],['Recreation places within 1.5 km', (item: CalculatedCost) => amenitiesByArea[item.neighbourhood.id] ? String(amenitiesByArea[item.neighbourhood.id].recreation.countWithin1_5Km) : 'Unavailable'],
@@ -185,7 +180,7 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 bg-stone-50 px-4 py-2.5 text-[10px] text-stone-500 sm:px-6"><span>Points show representative locations, not official neighbourhood boundaries. Costs are estimates for your analyzed inputs.</span><span>Map and nearby-place data © OpenStreetMap contributors{amenitiesAsOf ? ` · OSM snapshot ${amenitiesAsOf}` : ''}</span></div>
 
       {selected && <section ref={listingSection} className="scroll-mt-4 border-t border-stone-200" aria-live="polite">
-        <div className="flex flex-col gap-3 bg-gradient-to-r from-emerald-50 to-stone-50 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+        <div className="flex flex-col gap-3 bg-stone-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
           <div><span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Neighbourhood details · {selected.neighbourhood.borough}</span><h3 className="mt-1 text-lg font-bold text-stone-900">{selected.neighbourhood.name}</h3><p className="mt-1 text-xs text-stone-600">A cost and lifestyle snapshot for your selected workplace, household, and commute mode.</p></div>
           <button type="button" onClick={() => setSelectedId(null)} className="self-start rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-100 sm:self-center">Close area</button>
         </div>

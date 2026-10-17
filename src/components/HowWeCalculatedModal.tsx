@@ -25,8 +25,8 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-stone-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60">
+      <div className="modal-enter bg-white rounded-xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-stone-200">
         {/* Header */}
         <div className="p-5 border-b border-stone-200 flex items-center justify-between bg-stone-50">
           <div className="flex items-center gap-2.5">
@@ -149,7 +149,7 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
             </div>
 
             <div className="mt-3 p-2.5 rounded-lg bg-stone-800 text-[11px] text-emerald-200 border border-emerald-500/20">
-              💡 <strong>Rent data note:</strong> Area-specific references are historical October 2024 CMHC zone figures, not current asking rents. Demo cards are illustrative only and are not available units.
+              <strong>Rent data note:</strong> Area-specific references are historical October 2024 CMHC zone figures, not current asking rents. Demo cards are illustrative only and are not available units.
             </div>
           </div>
 
@@ -280,8 +280,8 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
           </div>
 
           {/* Section 8: Monte Carlo Uncertainty Bands */}
-          <div className="p-4 rounded-xl bg-indigo-50/70 border border-indigo-200">
-            <h4 className="font-bold text-stone-900 text-sm mb-1 text-indigo-900 flex items-center gap-1.5">
+          <div className="p-4 rounded-xl bg-stone-100 border border-stone-200">
+            <h4 className="font-bold text-stone-900 text-sm mb-1 flex items-center gap-1.5">
               <span>8. Monte Carlo Uncertainty Bands (2,000 Iterations)</span>
             </h4>
             <p className="text-[11px] text-stone-700 leading-relaxed">
@@ -290,8 +290,8 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
           </div>
 
           {/* Section 9: ML Rent Gap Estimation */}
-          <div className="p-4 rounded-xl bg-purple-50/70 border border-purple-200">
-            <h4 className="font-bold text-stone-900 text-sm mb-1 text-purple-900 flex items-center gap-1.5">
+          <div className="p-4 rounded-xl bg-stone-100 border border-stone-200">
+            <h4 className="font-bold text-stone-900 text-sm mb-1 flex items-center gap-1.5">
               <span>9. ML Rent Gap Estimation (Multivariable Ridge Regression)</span>
             </h4>
             <p className="text-[11px] text-stone-700 leading-relaxed">

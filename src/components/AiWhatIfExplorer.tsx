@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Sparkles,
+  SlidersHorizontal,
   X,
   Send,
   RotateCw,
@@ -112,13 +112,13 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-stone-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60">
+      <div className="modal-enter bg-white rounded-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-stone-200">
         {/* Header */}
         <div className="p-5 border-b border-stone-200 flex items-center justify-between bg-stone-50">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-lg bg-stone-900 text-white flex items-center justify-center">
+              <SlidersHorizontal className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-bold text-stone-900 text-base">
@@ -150,11 +150,11 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
                   key={sc.id}
                   onClick={() => runScenario(sc.patch, sc.label)}
                   disabled={loading}
-                  className="p-3 rounded-xl border border-stone-200 hover:border-amber-400 bg-white hover:bg-amber-50/50 text-left transition-all group cursor-pointer disabled:opacity-50"
+                  className="pressable p-3 rounded-xl border border-stone-200 hover:border-stone-400 bg-white hover:bg-stone-100 text-left transition-[background-color,border-color] duration-200 cursor-pointer disabled:opacity-50"
                 >
-                  <div className="font-semibold text-xs text-stone-900 group-hover:text-amber-900 flex items-center justify-between">
+                  <div className="font-semibold text-xs text-stone-900 flex items-center justify-between">
                     <span>{sc.label}</span>
-                    <Sparkles className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-600" />
+                    <ArrowRight className="w-3.5 h-3.5 text-stone-400" />
                   </div>
                   <p className="text-[11px] text-stone-500 mt-1 line-clamp-1">
                     {sc.description}

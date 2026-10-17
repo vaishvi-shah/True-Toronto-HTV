@@ -66,26 +66,22 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
   const onSiteDays = 5 - preferences.hybridRemoteDaysPerWeek;
 
   return (
-    <section className="bg-white border-b border-stone-200 py-6 px-4 sm:px-6 shadow-xs">
+    <section className="border-b border-[#1b1712] bg-[#f4f1e8] px-4 py-8 sm:px-6">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight flex items-center gap-2">
-              <span>Your Circumstances &amp; Financial Information</span>
-              <span className="text-[11px] font-normal px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
-                User-Defined &bull; No Presets
-              </span>
-            </h2>
-            <p className="text-xs text-stone-500 mt-0.5">
-              All calculations and cost breakdowns reflect only the details you specify below.
+            <p className="dateline text-stone-500">Your circumstances &middot; user-defined, never assumed</p>
+            <h2 className="font-display mt-1 text-2xl font-semibold tracking-tight text-[#1b1712] sm:text-3xl" data-motion-text="words">Your circumstances &amp; financial information</h2>
+            <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-stone-600">
+              Every figure on this page is computed only from what you enter &mdash; no preset personas, no silent defaults.
             </p>
           </div>
 
           <div className="flex items-center gap-2.5 text-xs">
             <button
               onClick={onOpenMethodology}
-              className="inline-flex items-center gap-1.5 text-emerald-800 hover:text-emerald-950 font-medium bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 border border-[#1b1712]/25 px-3 py-1.5 text-xs font-semibold text-[#1b1712] transition-colors hover:border-[#1b1712] cursor-pointer"
             >
               <Info className="w-3.5 h-3.5 text-emerald-600" />
               <span>How Calculations Work</span>
@@ -94,16 +90,16 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
         </div>
 
         {/* 3 Main Configuration Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-10" data-reveal-group>
           {/* Card 1: Work Destination & Commute */}
-          <div className="bg-stone-50/70 border border-stone-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-stone-300 transition-colors">
+          <div className="border-t-2 border-[#1b1712] pt-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-stone-700 flex items-center gap-2">
-                  <Briefcase className="w-4 h-4 text-emerald-600" />
+                  <Briefcase className="w-4 h-4 text-[#1b1712]" />
                   1. Work &amp; Travel
                 </span>
-                <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-md">
+                <span className="figures text-[11px] font-semibold text-stone-600">
                   {onSiteDays} {onSiteDays === 1 ? 'day' : 'days'}/wk on-site
                 </span>
               </div>
@@ -138,9 +134,9 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
                   <button
                     type="button"
                     onClick={() => onChange({ commuteMode: 'transit' })}
-                    className={`py-2 px-1 rounded-xl text-xs font-medium flex flex-col items-center justify-center transition-all cursor-pointer ${
+                    className={`py-2 px-1 rounded-lg text-xs font-medium flex flex-col items-center justify-center transition-[background-color,color] cursor-pointer ${
                       preferences.commuteMode === 'transit'
-                        ? 'bg-emerald-700 text-white shadow-xs font-semibold'
+                        ? 'bg-stone-900 text-white font-semibold'
                         : 'bg-white hover:bg-stone-100 text-stone-700 border border-stone-200'
                     }`}
                   >
@@ -151,9 +147,9 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
                   <button
                     type="button"
                     onClick={() => onChange({ commuteMode: 'car' })}
-                    className={`py-2 px-1 rounded-xl text-xs font-medium flex flex-col items-center justify-center transition-all cursor-pointer ${
+                    className={`py-2 px-1 rounded-lg text-xs font-medium flex flex-col items-center justify-center transition-[background-color,color] cursor-pointer ${
                       preferences.commuteMode === 'car'
-                        ? 'bg-emerald-700 text-white shadow-xs font-semibold'
+                        ? 'bg-stone-900 text-white font-semibold'
                         : 'bg-white hover:bg-stone-100 text-stone-700 border border-stone-200'
                     }`}
                   >
@@ -164,9 +160,9 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
                   <button
                     type="button"
                     onClick={() => onChange({ commuteMode: 'hybrid' })}
-                    className={`py-2 px-1 rounded-xl text-xs font-medium flex flex-col items-center justify-center transition-all cursor-pointer ${
+                    className={`py-2 px-1 rounded-lg text-xs font-medium flex flex-col items-center justify-center transition-[background-color,color] cursor-pointer ${
                       preferences.commuteMode === 'hybrid'
-                        ? 'bg-emerald-700 text-white shadow-xs font-semibold'
+                        ? 'bg-stone-900 text-white font-semibold'
                         : 'bg-white hover:bg-stone-100 text-stone-700 border border-stone-200'
                     }`}
                   >
@@ -177,9 +173,9 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
                   <button
                     type="button"
                     onClick={() => onChange({ commuteMode: 'walk_bike' })}
-                    className={`py-2 px-1 rounded-xl text-xs font-medium flex flex-col items-center justify-center transition-all cursor-pointer ${
+                    className={`py-2 px-1 rounded-lg text-xs font-medium flex flex-col items-center justify-center transition-[background-color,color] cursor-pointer ${
                       preferences.commuteMode === 'walk_bike'
-                        ? 'bg-emerald-700 text-white shadow-xs font-semibold'
+                        ? 'bg-stone-900 text-white font-semibold'
                         : 'bg-white hover:bg-stone-100 text-stone-700 border border-stone-200'
                     }`}
                   >
@@ -191,7 +187,7 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
             </div>
 
             {/* Remote / WFH Days Slider */}
-            <div className="pt-3 border-t border-stone-200/80">
+            <div className="pt-3 border-t border-[#1b1712]/15">
               <div className="flex items-center justify-between text-xs text-stone-700 mb-1.5">
                 <span className="font-semibold">Remote / WFH Days:</span>
                 <span className="font-mono font-bold text-emerald-800">
@@ -217,15 +213,15 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
           </div>
 
           {/* Card 2: Housing & Rent Choice (Never Assumed) */}
-          <div className="bg-stone-50/70 border border-stone-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-stone-300 transition-colors">
+          <div className="border-t-2 border-[#1b1712] pt-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-stone-700 flex items-center gap-2">
-                  <Home className="w-4 h-4 text-emerald-600" />
+                  <Home className="w-4 h-4 text-[#1b1712]" />
                   2. Housing &amp; Rent
                 </span>
-                <span className="text-[11px] font-semibold text-stone-600 bg-stone-200/80 px-2 py-0.5 rounded-md">
-                  Never Assumed
+                <span className="figures text-[11px] font-semibold text-stone-600">
+                  Never assumed
                 </span>
               </div>
 
@@ -402,14 +398,14 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
           </div>
 
           {/* Card 3: Income & Value of Your Time */}
-          <div className="bg-stone-50/70 border border-stone-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-stone-300 transition-colors">
+          <div className="border-t-2 border-[#1b1712] pt-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-stone-700 flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-emerald-600" />
+                  <DollarSign className="w-4 h-4 text-[#1b1712]" />
                   3. Income &amp; Time Value
                 </span>
-                <span className="text-[11px] font-semibold text-stone-600 bg-stone-200/80 px-2 py-0.5 rounded-md">
+                <span className="figures text-[11px] font-semibold text-stone-600">
                   {hasIncome ? `$${annualIncomeValue.toLocaleString()}/yr` : 'Unspecified'}
                 </span>
               </div>
@@ -492,7 +488,7 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
               <div>
                 <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center justify-between">
                   <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                    <Clock className="w-3.5 h-3.5 text-[#1b1712]" />
                     How to Value Your Commute Time:
                   </span>
                 </label>
@@ -560,7 +556,7 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
             </div>
 
             {/* Advanced Preferences Toggle */}
-            <div className="pt-3 border-t border-stone-200/80 mt-3">
+            <div className="pt-3 border-t border-[#1b1712]/15 mt-3">
               <button
                 type="button"
                 onClick={() => setShowAdvanced(!showAdvanced)}
@@ -613,13 +609,13 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
           </div>
         </div>
 
-        <div className="mt-5 rounded-2xl border border-sky-200 bg-sky-50/60 p-4 sm:p-5">
+        <div className="mt-8 border border-[#1b1712]/20 bg-white/60 p-4 sm:p-5" data-reveal="fade-up">
           <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-stone-800">4. Compare with your current home</h3>
               <p className="mt-1 text-[11px] text-stone-600">Enter your current rent and area. We estimate commute and utilities with the same assumptions used for recommended areas.</p>
             </div>
-            <span className="rounded-md border border-sky-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-sky-900">Optional comparison</span>
+            <span className="border border-[#1b1712]/25 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-stone-600">Optional comparison</span>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <div>
@@ -662,33 +658,32 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
         </div>
 
         {/* Active Configuration Summary Pill */}
-        <div className="mt-4 pt-3 border-t border-stone-200/80 flex flex-wrap items-center justify-between gap-3 text-xs text-stone-600">
+        <div className="mt-4 pt-3 border-t border-[#1b1712]/15 flex flex-wrap items-center justify-between gap-3 text-xs text-stone-600">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold text-stone-800">Current Scope:</span>
-            <span className="px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
+            <span className="px-2.5 py-0.5 rounded-full bg-white/70 text-stone-700 border border-[#1b1712]/15">
               Destination: {selectedWorkplace.shortName}
             </span>
-            <span className="px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
+            <span className="px-2.5 py-0.5 rounded-full bg-white/70 text-stone-700 border border-[#1b1712]/15">
               Mode: {preferences.commuteMode.toUpperCase()} ({onSiteDays}d/wk)
             </span>
-            <span className="px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
+            <span className="px-2.5 py-0.5 rounded-full bg-white/70 text-stone-700 border border-[#1b1712]/15">
               Housing: {currentRentMode === 'user_entered' ? (preferences.customFixedRent ? `Your Rent: $${preferences.customFixedRent}/mo` : 'Rent Unspecified') : currentRentMode === 'no_rent' ? 'No Rent (Rent-Free)' : 'Area CMHC reference'}
             </span>
-            <span className="px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
+            <span className="px-2.5 py-0.5 rounded-full bg-white/70 text-stone-700 border border-[#1b1712]/15">
               Income: {hasIncome ? `$${annualIncomeValue.toLocaleString()}/yr` : 'Not specified'}
             </span>
           </div>
 
           <div className="flex items-center gap-1.5 text-stone-600 font-medium">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <CheckCircle2 className="w-4 h-4 text-[#1b1712]" />
             <span>Zero assumptions &bull; Driven by your inputs</span>
           </div>
         </div>
-        <div className="mt-5 flex flex-col items-center gap-2 border-t border-stone-100 pt-5 sm:flex-row sm:justify-between">
+        <div className="mt-6 flex flex-col items-center gap-3 border-t border-[#1b1712]/15 pt-5 sm:flex-row sm:justify-between">
           <p className="text-xs text-stone-500">{hasAnalyzed && !hasUnanalyzedChanges ? 'Your results are up to date.' : hasAnalyzed ? 'Your changes are ready to analyze.' : 'Your information stays private and is used to personalize this comparison.'}</p>
-          <button type="button" onClick={onAnalyze} disabled={isAnalyzing} className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-6 py-3 text-sm font-bold text-white shadow-md shadow-emerald-900/10 transition hover:-translate-y-0.5 hover:bg-emerald-800 hover:shadow-lg disabled:cursor-wait disabled:opacity-70 sm:w-auto">
+          <button type="button" onClick={onAnalyze} disabled={isAnalyzing} className="pressable inline-flex w-full items-center justify-center gap-2 bg-[#1b1712] px-8 py-3.5 text-sm font-bold text-[#f4f1e8] transition-[background-color] hover:bg-emerald-900 disabled:cursor-wait disabled:opacity-70 sm:w-auto">
             <span>{isAnalyzing ? 'Calculating routes…' : hasAnalyzed ? 'Analyze my updates' : 'Analyze my options'}</span>
-            <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">→</span>
           </button>
         </div>
       </div>

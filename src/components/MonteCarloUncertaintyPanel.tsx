@@ -5,7 +5,6 @@ import {
   TrendingUp,
   Percent,
   CheckCircle2,
-  Sparkles,
   Info,
   ArrowRight,
   BarChart2,
@@ -67,18 +66,18 @@ export function MonteCarloUncertaintyPanel({
   const globalCostRange = Math.max(1, maxCostGlobal - minCostGlobal);
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200 p-6 shadow-xs mb-10">
+    <div className="bg-white rounded-xl border border-stone-200 p-6 mb-10">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-stone-200">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-indigo-100 text-indigo-800">
+            <span className="p-1.5 rounded-lg bg-stone-100 text-stone-800">
               <Dices className="w-5 h-5" />
             </span>
             <h3 className="text-lg font-bold text-stone-900">
               Monte Carlo Uncertainty Bands
             </h3>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-100 text-stone-700 border border-stone-200">
               {simulation.iterations.toLocaleString()} Simulations ({simulation.runtimeMs}ms)
             </span>
           </div>
@@ -90,21 +89,21 @@ export function MonteCarloUncertaintyPanel({
         <button
           type="button"
           onClick={() => setSimulationSeed((s) => s + 1)}
-          className="self-start md:self-auto px-3 py-1.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+          className="pressable self-start md:self-auto px-3 py-1.5 rounded-lg border border-stone-300 text-xs font-semibold text-stone-700 hover:bg-stone-100 transition-[background-color] cursor-pointer flex items-center gap-1.5"
         >
-          <Dices className="w-3.5 h-3.5 text-indigo-600" />
+          <Dices className="w-3.5 h-3.5" />
           Re-run 2,000 Trials
         </button>
       </div>
 
       {/* Primary Probability Banner */}
-      <div className="mt-5 p-4 rounded-xl bg-gradient-to-r from-indigo-50 via-blue-50 to-emerald-50 border border-indigo-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="mt-5 p-4 rounded-xl bg-stone-100 border border-stone-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 font-extrabold text-sm shadow-xs">
+          <div className="w-9 h-9 rounded-lg bg-stone-900 text-white flex items-center justify-center shrink-0 font-extrabold text-sm">
             {simulation.winnerStabilityPercent}%
           </div>
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-800">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-700">
               Winner Stability Across Uncertainty
             </span>
             <p className="text-sm font-bold text-stone-900 mt-0.5">
@@ -116,7 +115,7 @@ export function MonteCarloUncertaintyPanel({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-end md:self-auto shrink-0 bg-white/80 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-indigo-100 text-xs font-semibold text-indigo-900">
+        <div className="flex items-center gap-2 self-end md:self-auto shrink-0 bg-white px-3 py-1.5 rounded-lg border border-stone-200 text-xs font-semibold text-stone-800">
           <ShieldCheck className="w-4 h-4 text-emerald-600" />
           Honest Indicators &bull; 80% Confidence Interval
         </div>
@@ -125,7 +124,7 @@ export function MonteCarloUncertaintyPanel({
       {/* Interactive Pairwise Win Probability Tool */}
       <div className="mt-6 p-4 rounded-xl bg-stone-50 border border-stone-200">
         <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700 mb-3 flex items-center gap-1.5">
-          <Percent className="w-3.5 h-3.5 text-indigo-600" />
+          <Percent className="w-3.5 h-3.5" />
           Interactive Pairwise Win Probability Calculator
         </h4>
 
@@ -135,7 +134,7 @@ export function MonteCarloUncertaintyPanel({
             <select
               value={selectedPairA}
               onChange={(e) => setSelectedPairA(e.target.value)}
-              className="bg-white border border-stone-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-stone-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="bg-white border border-stone-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-stone-800 focus:outline-hidden focus:ring-2 focus:ring-stone-500 cursor-pointer"
             >
               {results.map((r) => (
                 <option key={r.neighbourhood.id} value={r.neighbourhood.id}>
@@ -151,7 +150,7 @@ export function MonteCarloUncertaintyPanel({
             <select
               value={selectedPairB}
               onChange={(e) => setSelectedPairB(e.target.value)}
-              className="bg-white border border-stone-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-stone-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="bg-white border border-stone-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-stone-800 focus:outline-hidden focus:ring-2 focus:ring-stone-500 cursor-pointer"
             >
               {results.map((r) => (
                 <option key={r.neighbourhood.id} value={r.neighbourhood.id}>
@@ -166,24 +165,24 @@ export function MonteCarloUncertaintyPanel({
           <div className="mt-4 pt-3 border-t border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex-1">
               <div className="flex items-center justify-between text-xs mb-1.5 font-bold">
-                <span className="text-indigo-900">{activePairwise.neighbourhoodAName}</span>
+                <span className="text-stone-900">{activePairwise.neighbourhoodAName}</span>
                 <span className="text-stone-700">{activePairwise.neighbourhoodBName}</span>
               </div>
 
               {/* Progress bar */}
               <div className="h-3 w-full bg-stone-200 rounded-full overflow-hidden flex">
                 <div
-                  className="bg-indigo-600 h-full transition-all duration-300"
+                  className="bg-stone-900 h-full transition-[width] duration-300"
                   style={{ width: `${activePairwise.probabilityACheaperPercent}%` }}
                 />
                 <div
-                  className="bg-stone-400 h-full transition-all duration-300"
+                  className="bg-stone-300 h-full transition-[width] duration-300"
                   style={{ width: `${100 - activePairwise.probabilityACheaperPercent}%` }}
                 />
               </div>
 
               <div className="flex items-center justify-between text-[11px] font-mono font-bold mt-1">
-                <span className="text-indigo-700">{activePairwise.probabilityACheaperPercent}% cheaper</span>
+                <span className="text-stone-800">{activePairwise.probabilityACheaperPercent}% cheaper</span>
                 <span className="text-stone-600">{Number((100 - activePairwise.probabilityACheaperPercent).toFixed(1))}% cheaper</span>
               </div>
             </div>
@@ -199,7 +198,7 @@ export function MonteCarloUncertaintyPanel({
       <div className="mt-8">
         <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700 mb-3 flex items-center justify-between">
           <span className="flex items-center gap-1.5">
-            <BarChart2 className="w-3.5 h-3.5 text-indigo-600" />
+            <BarChart2 className="w-3.5 h-3.5" />
             True Cost 80% Uncertainty Bands (P10 — P90 Range)
           </span>
           <span className="text-[11px] text-stone-500 font-normal">
@@ -223,14 +222,14 @@ export function MonteCarloUncertaintyPanel({
               <div
                 key={cost.neighbourhood.id}
                 className={`p-3.5 rounded-xl border transition-colors ${
-                  isTop ? 'bg-indigo-50/40 border-indigo-200' : 'bg-stone-50/50 border-stone-200'
+                  isTop ? 'bg-stone-100 border-stone-300' : 'bg-stone-50/50 border-stone-200'
                 }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2">
                     <span
                       className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold ${
-                        isTop ? 'bg-indigo-600 text-white' : 'bg-stone-200 text-stone-700'
+                        isTop ? 'bg-stone-900 text-white' : 'bg-stone-200 text-stone-700'
                       }`}
                     >
                       {idx + 1}
@@ -247,7 +246,7 @@ export function MonteCarloUncertaintyPanel({
                     <span className="text-stone-600">
                       Point: <strong className="text-stone-900">${cost.trueMonthlyCost.toLocaleString()}</strong>
                     </span>
-                    <span className="font-mono font-bold text-indigo-900 px-2 py-0.5 rounded-md bg-indigo-100/70">
+                    <span className="font-mono font-bold text-stone-900 px-2 py-0.5 rounded-md bg-stone-200/70">
                       80% CI: ${stats.p10.toLocaleString()} – ${stats.p90.toLocaleString()}
                     </span>
                     <span className="text-[11px] text-stone-500 font-mono">
@@ -260,8 +259,8 @@ export function MonteCarloUncertaintyPanel({
                 <div className="relative h-6 bg-stone-200/80 rounded-lg overflow-hidden flex items-center px-1">
                   {/* Shaded 80% CI Band */}
                   <div
-                    className={`absolute h-4 rounded-md transition-all duration-300 ${
-                      isTop ? 'bg-indigo-500/80' : 'bg-stone-400'
+                    className={`absolute h-4 rounded-md transition-[left,width] duration-300 ${
+                      isTop ? 'bg-stone-700' : 'bg-stone-400'
                     }`}
                     style={{
                       left: `${p10Left}%`,

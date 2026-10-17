@@ -4,13 +4,15 @@ import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { COMMUTES } from './data/commutes';
-import { NEIGHBOURHOODS } from './data/neighbourhoods';
-import { WORKPLACES } from './data/workplaces';
-import { computeAllTrueCosts, computeTrueCost } from './lib/engine/computeTrueCost';
-import { buildExplainPrompt, SYSTEM_DIRECTIVE } from './lib/llm/prompts';
-import { Breakdown, Profile } from './lib/types';
+import { SYSTEM_DIRECTIVE } from './lib/llm/prompts';
 import { ATTACHED_POSTINGS, buildPlatformSearchUrls } from './src/data/listings';
+import {
+  buildUnifiedExplainPrompt,
+  buildUnifiedFallback,
+  calculateNeighbourhoodCosts,
+  normalizeToUserPreferences,
+} from './src/services/unifiedEngine';
+import { UserPreferences } from './src/types';
 import { analyzeSensitivity } from './src/services/sensitivityAnalysis';
 import { runMonteCarloSimulation } from './src/services/monteCarloSimulation';
 import { estimateRentWithInterval, getModelCoefficients } from './src/services/rentRegressionModel';
@@ -40,92 +42,12 @@ const ai = new GoogleGenAI({
 });
 
 /**
- * Generate fallback explanation without AI if API key is absent or quota exceeded
+ * Single-engine note: all routes below run the SAME client calculator via
+ * src/services/unifiedEngine (normalize + calculateNeighbourhoodCosts).
+ * The legacy lib/engine copy is no longer used in serving paths, so server
+ * anchors always agree with the banner/panel/cards ($2,039 unanimous).
+ * The isExplanationConsistent guard stays client-side as a safety net.
  */
-function generateDeterministicFallback(
-  profile: Profile & { rentMode?: string },
-  breakdowns: Breakdown[],
-  sensitivityNarrative?: string,
-  monteCarloInsight?: string
-) {
-  const isRentFree = profile.rentMode === 'no_rent' || profile.customRent === 0;
-  const isRentUnspecified = profile.rentMode === 'user_entered' && (profile.customRent === null || profile.customRent === undefined);
-
-  const cheapestRent = [...breakdowns].sort(
-    (a, b) => a.rent.effectivePaid - b.rent.effectivePaid
-  )[0];
-  const cheapestTrue = breakdowns[0];
-
-  const hasRankDiscrepancy = cheapestRent.neighbourhoodId !== cheapestTrue.neighbourhoodId;
-  const rentDifference = cheapestTrue.rent.effectivePaid - cheapestRent.rent.effectivePaid;
-  const netSavings = cheapestRent.trueMonthlyCost - cheapestTrue.trueMonthlyCost;
-
-  let headline = '';
-  let body = '';
-
-  if (isRentFree) {
-    headline = `${cheapestTrue.neighbourhoodName} offers the lowest overall expenses with rent excluded ($${cheapestTrue.trueMonthlyCost}/mo).`;
-    body = `With housing expenses excluded, your total overhead consists of transportation ($${cheapestTrue.transport.totalMonthlyCost}/mo) and utilities ($${cheapestTrue.utilities.totalMonthlyCost}/mo), with ${cheapestTrue.transport.monthlyHours} monthly hours spent commuting.`;
-  } else if (isRentUnspecified) {
-    headline = `${cheapestTrue.neighbourhoodName} has the lowest transport + utility overhead at $${cheapestTrue.trueMonthlyCost}/mo (rent unspecified).`;
-    body = `Because rent was not specified, costs include travel ($${cheapestTrue.transport.totalMonthlyCost}/mo) and home utilities ($${cheapestTrue.utilities.totalMonthlyCost}/mo). You can enter your specific rent or select CMHC survey medians in the parameters to include housing expenses.`;
-  } else if (hasRankDiscrepancy) {
-    headline = `${cheapestTrue.neighbourhoodName} is $${netSavings}/mo cheaper overall than ${cheapestRent.neighbourhoodName}, despite having higher asking rent.`;
-    body = `While ${cheapestRent.neighbourhoodName} has the lowest advertised rent ($${cheapestRent.rent.effectivePaid}/mo), its commute costs ($${cheapestRent.transport.totalMonthlyCost}/mo) and ${cheapestRent.transport.monthlyHours} hours of travel push its true monthly cost to $${cheapestRent.trueMonthlyCost}/mo. In comparison, living closer in ${cheapestTrue.neighbourhoodName} costs $${rentDifference} more in rent ($${cheapestTrue.rent.effectivePaid}/mo), but lower travel expenses ($${cheapestTrue.transport.totalMonthlyCost}/mo) bring your total out-of-pocket cost down to $${cheapestTrue.trueMonthlyCost}/mo.`;
-  } else {
-    headline = `${cheapestTrue.neighbourhoodName} offers both the lowest housing cost ($${cheapestTrue.rent.effectivePaid}) and lowest true monthly cost ($${cheapestTrue.trueMonthlyCost}).`;
-    body = `Because your workplace is located conveniently close to ${cheapestTrue.neighbourhoodName}, commute penalties do not overwhelm the housing advantage. However, be sure to weigh climate risks (${cheapestTrue.climateRisk.flood.label}, ${cheapestTrue.climateRisk.heat.label}) and tenant displacement vulnerability (${cheapestTrue.displacement.label}).`;
-  }
-
-  return {
-    headline,
-    body,
-    cheapestRentNeighbourhood: cheapestRent.neighbourhoodName,
-    cheapestTrueNeighbourhood: cheapestTrue.neighbourhoodName,
-    monthlyDifference: Math.abs(netSavings),
-    timeDifferenceHours: Math.abs(
-      Number((cheapestRent.transport.monthlyHours - cheapestTrue.transport.monthlyHours).toFixed(1))
-    ),
-    breakEvenNarrative: sensitivityNarrative || '',
-    monteCarloInsight: monteCarloInsight || '',
-    tenantRightsNotice:
-      'Tenant reminder: Market rents shown represent new vacancies (turnover rates from CMHC). Existing Ontario tenants under rent control are protected by the provincial annual guideline cap (2.5% in 2024/2025). Units first occupied after Nov 15, 2018 have no statutory rent cap upon renewal. For legal advice, consult the Federation of Metro Tenants\' Associations (FMTA) or the Landlord and Tenant Board (LTB).',
-    isAiGenerated: false,
-  };
-}
-
-function normalizeProfile(raw: any): Profile & { rentMode?: string } {
-  const onSiteDaysPerWeek =
-    raw.hybridRemoteDaysPerWeek !== undefined
-      ? Math.max(0, 5 - raw.hybridRemoteDaysPerWeek)
-      : 5;
-  const commuteDaysPerMonth =
-    raw.commuteDaysPerMonth ?? Math.round(onSiteDaysPerWeek * 4.3);
-
-  let customRent: number | null = null;
-  if (raw.rentMode === 'no_rent') {
-    customRent = 0;
-  } else if (raw.customFixedRent !== undefined && raw.customFixedRent !== null && raw.customFixedRent > 0) {
-    customRent = raw.customFixedRent;
-  } else if (raw.customRent !== undefined && raw.customRent !== null) {
-    customRent = raw.customRent;
-  }
-
-  return {
-    workplaceId: raw.workplaceId || 'hospital-row',
-    annualIncome: raw.annualIncome || 55000,
-    incomeBasis: raw.incomeBasis || 'pretax',
-    householdSize: raw.householdMembers || raw.householdSize || 1,
-    bedrooms: raw.bedrooms || '1bed',
-    commuteDaysPerMonth: commuteDaysPerMonth || 20,
-    wageFactor: raw.timeValuationRate ?? raw.wageFactor ?? 0.5,
-    hasCar: raw.commuteMode === 'car' || raw.commuteMode === 'hybrid' || !!raw.hasCar,
-    commuteMode: raw.commuteMode || 'transit',
-    customRent,
-    customNeighbourhoodRents: raw.customNeighbourhoodRents || {},
-    rentMode: raw.rentMode,
-  };
-}
 
 /**
  * Route: POST /api/compare
@@ -136,16 +58,16 @@ app.post('/api/compare', (req: Request, res: Response) => {
   if (!raw) {
     return res.status(400).json({ error: 'Missing profile parameter' });
   }
-  const profile: Profile = normalizeProfile(raw);
+  const preferences: UserPreferences = normalizeToUserPreferences(raw);
   const ids: string[] | undefined = req.body.neighbourhoodIds;
 
-  let selectedNeighbourhoods = NEIGHBOURHOODS;
+  let results = calculateNeighbourhoodCosts(preferences);
   if (Array.isArray(ids) && ids.length > 0) {
-    selectedNeighbourhoods = NEIGHBOURHOODS.filter((n) => ids.includes(n.id));
+    results = results.filter((r) => ids.includes(r.neighbourhood.id));
   }
 
-  const results = computeAllTrueCosts(profile, selectedNeighbourhoods, COMMUTES, WORKPLACES);
-  return res.json({ breakdowns: results });
+  // `breakdowns` kept for legacy consumers; `results` is the canonical shape.
+  return res.json({ breakdowns: results, results });
 });
 
 /**
@@ -160,22 +82,22 @@ const handleExplain = async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Missing profile/preferences' });
   }
 
-  const profile: Profile = normalizeProfile(raw);
-  const breakdowns = computeAllTrueCosts(profile, NEIGHBOURHOODS, COMMUTES, WORKPLACES);
+  const preferences: UserPreferences = normalizeToUserPreferences(raw);
+  const results = calculateNeighbourhoodCosts(preferences);
 
   // Compute deterministic sensitivity & Monte Carlo simulation
   let sensitivityResult;
   let monteCarloResult;
   try {
-    sensitivityResult = analyzeSensitivity(raw);
-    monteCarloResult = runMonteCarloSimulation(raw, 1000);
+    sensitivityResult = analyzeSensitivity(preferences);
+    monteCarloResult = runMonteCarloSimulation(preferences, 1000);
   } catch (err) {
     console.warn('Sensitivity/Monte Carlo computation error:', err);
   }
 
   const sensitivityNarrative = sensitivityResult?.primaryBreakEvenNarrative || '';
   const monteCarloInsight = monteCarloResult?.primaryInsight || '';
-  const fallback = generateDeterministicFallback(profile, breakdowns, sensitivityNarrative, monteCarloInsight);
+  const fallback = buildUnifiedFallback(preferences, results, sensitivityNarrative, monteCarloInsight);
 
   if (!apiKey) {
     return res.json({
@@ -186,7 +108,7 @@ const handleExplain = async (req: Request, res: Response) => {
   }
 
   try {
-    const prompt = buildExplainPrompt(profile, breakdowns, sensitivityNarrative, monteCarloInsight);
+    const prompt = buildUnifiedExplainPrompt(preferences, results, sensitivityNarrative, monteCarloInsight);
 
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('Gemini API timeout')), 6000)
@@ -229,44 +151,45 @@ app.post('/api/gemini/explain', handleExplain);
  * What-if exploration: executes deterministic engine, then LLM explains tradeoffs
  */
 const handleWhatIfChat = async (req: Request, res: Response) => {
-  const originalProfile: Profile = req.body.originalProfile || req.body.originalPreferences;
-  const scenarioPatch: Partial<Profile> = req.body.scenarioPatch || {};
+  const originalRaw = req.body.originalProfile || req.body.originalPreferences;
+  const scenarioPatch = req.body.scenarioPatch || {};
   const question: string = req.body.question || req.body.message || 'What if I change my commute or rent?';
 
-  if (!originalProfile) {
+  if (!originalRaw) {
     return res.status(400).json({ error: 'Missing originalProfile' });
   }
 
-  const newProfile: Profile = {
-    ...originalProfile,
+  const originalPreferences: UserPreferences = normalizeToUserPreferences(originalRaw);
+  const newPreferences: UserPreferences = normalizeToUserPreferences({
+    ...originalRaw,
     ...scenarioPatch,
-  };
+  });
 
-  const oldBreakdowns = computeAllTrueCosts(originalProfile, NEIGHBOURHOODS, COMMUTES, WORKPLACES);
-  const newBreakdowns = computeAllTrueCosts(newProfile, NEIGHBOURHOODS, COMMUTES, WORKPLACES);
+  const oldResults = calculateNeighbourhoodCosts(originalPreferences);
+  const newResults = calculateNeighbourhoodCosts(newPreferences);
 
-  const oldCheapest = oldBreakdowns[0];
-  const newCheapest = newBreakdowns[0];
+  const oldCheapest = oldResults[0];
+  const newCheapest = newResults[0];
 
   const costDifference = newCheapest.trueMonthlyCost - oldCheapest.trueMonthlyCost;
   const hoursDifference = Number(
-    (newCheapest.transport.monthlyHours - oldCheapest.transport.monthlyHours).toFixed(1)
+    (newCheapest.monthlyCommuteHours - oldCheapest.monthlyCommuteHours).toFixed(1)
   );
-  const carbonDifference = newCheapest.carbon.totalMonthlyKg - oldCheapest.carbon.totalMonthlyKg;
+  const carbonDifference = newCheapest.carbonFootprintKg.total - oldCheapest.carbonFootprintKg.total;
 
   const fallbackAnswer = {
     scenarioTitle: question,
     costDifference,
     hoursDifference,
     carbonDifference,
-    oldCheapestName: oldCheapest.neighbourhoodName,
-    newCheapestName: newCheapest.neighbourhoodName,
+    oldCheapestName: oldCheapest.neighbourhood.name,
+    newCheapestName: newCheapest.neighbourhood.name,
     summary:
       costDifference < 0
-        ? `This scenario saves $${Math.abs(costDifference)}/month in out-of-pocket true costs and shifts your best option to ${newCheapest.neighbourhoodName}. Monthly commute travel changes by ${hoursDifference > 0 ? '+' : ''}${hoursDifference} hours.`
+        ? `This scenario saves $${Math.abs(costDifference)}/month in out-of-pocket true costs and shifts your best option to ${newCheapest.neighbourhood.name}. Monthly commute travel changes by ${hoursDifference > 0 ? '+' : ''}${hoursDifference} hours.`
         : `This scenario increases true costs by $${costDifference}/month. Monthly commute travel changes by ${hoursDifference > 0 ? '+' : ''}${hoursDifference} hours.`,
     isAiGenerated: false,
-    newBreakdowns: newBreakdowns.slice(0, 5),
+    newBreakdowns: newResults.slice(0, 5),
   };
 
   if (!apiKey) {
@@ -278,12 +201,12 @@ const handleWhatIfChat = async (req: Request, res: Response) => {
 
 The deterministic calculator has already rerun all the math.
 BASELINE:
-- Mode: ${originalProfile.commuteMode}, Income: $${originalProfile.annualIncome}, Commute Days: ${originalProfile.commuteDaysPerMonth}
-- Best True Cost Option: ${oldCheapest.neighbourhoodName} ($${oldCheapest.trueMonthlyCost}/mo true cost, ${oldCheapest.transport.monthlyHours}h commute/mo, ${oldCheapest.carbon.totalMonthlyKg} kg CO2e/mo)
+- Mode: ${originalPreferences.commuteMode}, Income: $${originalPreferences.annualIncome}, Remote days/week: ${originalPreferences.hybridRemoteDaysPerWeek}
+- Best True Cost Option: ${oldCheapest.neighbourhood.name} ($${oldCheapest.trueMonthlyCost}/mo true cost, ${oldCheapest.monthlyCommuteHours}h commute/mo, ${oldCheapest.carbonFootprintKg.total} kg CO2e/mo)
 
 NEW SCENARIO:
-- Mode: ${newProfile.commuteMode}, Income: $${newProfile.annualIncome}, Commute Days: ${newProfile.commuteDaysPerMonth}
-- Best True Cost Option: ${newCheapest.neighbourhoodName} ($${newCheapest.trueMonthlyCost}/mo true cost, ${newCheapest.transport.monthlyHours}h commute/mo, ${newCheapest.carbon.totalMonthlyKg} kg CO2e/mo)
+- Mode: ${newPreferences.commuteMode}, Income: $${newPreferences.annualIncome}, Remote days/week: ${newPreferences.hybridRemoteDaysPerWeek}
+- Best True Cost Option: ${newCheapest.neighbourhood.name} ($${newCheapest.trueMonthlyCost}/mo true cost, ${newCheapest.monthlyCommuteHours}h commute/mo, ${newCheapest.carbonFootprintKg.total} kg CO2e/mo)
 
 DIFFERENCES:
 - True monthly cost delta: $${costDifference} (negative is savings, positive is more expensive)
@@ -296,8 +219,8 @@ Respond with JSON:
   "costDifference": ${costDifference},
   "hoursDifference": ${hoursDifference},
   "carbonDifference": ${carbonDifference},
-  "oldCheapestName": "${oldCheapest.neighbourhoodName}",
-  "newCheapestName": "${newCheapest.neighbourhoodName}",
+  "oldCheapestName": "${oldCheapest.neighbourhood.name}",
+  "newCheapestName": "${newCheapest.neighbourhood.name}",
   "summary": "2-3 short, friendly, precise sentences explaining the financial and quality-of-life impact using only the numbers above. Never invent numbers."
 }`;
 
@@ -319,7 +242,7 @@ Respond with JSON:
     return res.json({
       ...parsed,
       isAiGenerated: true,
-      newBreakdowns: newBreakdowns.slice(0, 5),
+      newBreakdowns: newResults.slice(0, 5),
     });
   } catch (error) {
     console.warn('Gemini what-if error, falling back:', error);

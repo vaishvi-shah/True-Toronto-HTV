@@ -79,6 +79,8 @@ Respond with JSON matching this structure:
   "cheapestTrueNeighbourhood": "${cheapestTrue.neighbourhoodName}",
   "monthlyDifference": ${Math.abs(cheapestRent.trueMonthlyCost - cheapestTrue.trueMonthlyCost)},
   "timeDifferenceHours": ${Math.abs(Number((cheapestRent.transport.monthlyHours - cheapestTrue.transport.monthlyHours).toFixed(1)))},
+  "cheapestTrueMonthlyCost": ${cheapestTrue.trueMonthlyCost},
+  "cheapestTrueRent": ${cheapestTrue.rent.effectivePaid},
   "breakEvenNarrative": "${sensitivityNarrative || ''}",
   "monteCarloInsight": "${monteCarloInsight || ''}",
   "tenantRightsNotice": "Standard reminder directing renters to FMTA or LTB"

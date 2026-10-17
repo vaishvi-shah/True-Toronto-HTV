@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   LayoutGrid,
   Table as TableIcon,
@@ -16,7 +16,7 @@ import {
 import { Header } from './components/Header';
 import { UserInputBar } from './components/UserInputBar';
 import { KeyFindingBanner } from './components/KeyFindingBanner';
-import { NeighbourhoodCard } from './components/NeighbourhoodCard';
+import { ResultsLedger } from './components/ResultsLedger';
 import { NeighbourhoodTable } from './components/NeighbourhoodTable';
 import { CostBarChart } from './components/CostBarChart';
 import { ComparisonDrawer } from './components/ComparisonDrawer';
@@ -29,6 +29,7 @@ import { MonteCarloUncertaintyPanel } from './components/MonteCarloUncertaintyPa
 import { MlRentGapEstimatorModal } from './components/MlRentGapEstimatorModal';
 import { NeighbourhoodExplorer } from './components/NeighbourhoodExplorer';
 import { AnalysisNeighbourhoodMap } from './components/AnalysisNeighbourhoodMap';
+import { initCinematic } from './motion/cinematic';
 import { calculateNeighbourhoodCosts } from './services/calculator';
 import { runMonteCarloSimulation } from './services/monteCarloSimulation';
 import { CalculatedCost, UserPreferences } from './types';
@@ -55,6 +56,12 @@ export default function App() {
     customNeighbourhoodRents: {},
   });
   const [analyzedPreferences, setAnalyzedPreferences] = useState<UserPreferences | null>(null);
+
+  // Cinematic motion initializes here (not only at entry) so the first
+  // scan always sees committed DOM — the entry rAF may run pre-commit.
+  useEffect(() => {
+    initCinematic();
+  }, []);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activePage, setActivePage] = useState<'analysis' | 'explore'>('analysis');
 
@@ -81,6 +88,8 @@ export default function App() {
     body: string;
     cheapestRentNeighbourhood?: string;
     cheapestTrueNeighbourhood?: string;
+    cheapestTrueMonthlyCost?: number;
+    cheapestTrueRent?: number | null;
     monthlyDifference?: number;
     timeDifferenceHours?: number;
     breakEvenNarrative?: string;
@@ -305,8 +314,8 @@ export default function App() {
               onToggleCompare={handleToggleCompare}
             />
           ) : (
-            <section className="mx-auto my-16 max-w-xl rounded-3xl border border-emerald-200 bg-white p-8 text-center shadow-sm">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700"><Compass className="h-6 w-6" /></div>
+            <section className="mx-auto my-16 max-w-xl rounded-xl border border-stone-200 bg-stone-100 p-8 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-stone-900 text-white"><Compass className="h-6 w-6" /></div>
               <h1 className="text-xl font-bold text-stone-900">Start with your cost and commute details</h1>
               <p className="mt-2 text-sm leading-6 text-stone-600">Analyze your options first. Then the map will show the estimated rent, transportation, utilities, and commute costs for every neighbourhood.</p>
               <button type="button" onClick={() => setActivePage('analysis')} className="mt-5 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800">Go to analysis</button>
@@ -316,9 +325,10 @@ export default function App() {
         <>
         {/* Key Finding Banner (True cost vs sticker rent insight with break-even & Monte Carlo) */}
         {!analyzedPreferences ? (
-          <section className="mb-6 rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-8 text-center shadow-sm">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700"><BrainCircuit className="h-6 w-6" /></div>
-            <h2 className="text-xl font-bold tracking-tight text-stone-900">Your recommendation is one click away</h2>
+          <section className="mb-6 border border-[#1b1712]/20 bg-white/60 p-8 text-center" data-reveal="fade-up">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center bg-[#1b1712] text-[#f4f1e8]"><BrainCircuit className="h-6 w-6" /></div>
+            <p className="dateline text-stone-500">No results yet</p>
+            <h2 className="font-display mt-1 text-2xl font-semibold tracking-tight text-[#1b1712]">Your recommendation is one click away</h2>
             <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-stone-600">Enter your circumstances above, then select <span className="font-semibold text-emerald-800">Analyze my options</span> to see the neighbourhood that best fits your budget and commute.</p>
           </section>
         ) : (
@@ -384,7 +394,7 @@ export default function App() {
           </div>
 
           {/* Sort & View Mode Controls */}
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             <div className="flex items-center gap-1.5 text-xs text-stone-600">
               <ArrowUpDown className="w-3.5 h-3.5 text-stone-400" />
               <label htmlFor="sort-select" className="font-medium">Sort by:</label>
@@ -404,7 +414,7 @@ export default function App() {
             </div>
 
             {/* View Mode Switcher: Cards vs Table vs Stacked Chart vs Sensitivity vs Uncertainty */}
-            <div className="flex items-center bg-stone-200/80 p-0.5 rounded-xl border border-stone-300 shadow-2xs">
+            <div className="flex max-w-full items-center overflow-x-auto bg-stone-200/80 p-0.5 rounded-xl border border-stone-300 shadow-2xs">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
@@ -412,10 +422,10 @@ export default function App() {
                     ? 'bg-white text-stone-900 shadow-xs font-semibold'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
-                title="Card View"
+                title="Ledger View"
               >
                 <LayoutGrid className="w-4 h-4" />
-                <span className="hidden xl:inline text-[11px]">Cards</span>
+                <span className="hidden xl:inline text-[11px]">Ledger</span>
               </button>
               <button
                 onClick={() => setViewMode('table')}
@@ -457,8 +467,8 @@ export default function App() {
                 onClick={() => setViewMode('uncertainty')}
                 className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
                   viewMode === 'uncertainty'
-                    ? 'bg-indigo-600 text-white shadow-xs font-bold'
-                    : 'text-indigo-800 hover:text-indigo-950'
+                    ? 'bg-stone-900 text-white font-bold'
+                    : 'text-stone-700 hover:text-stone-900'
                 }`}
                 title="Monte Carlo Uncertainty Bands (2,000 Simulations)"
               >
@@ -486,26 +496,22 @@ export default function App() {
             />
           </div>
         ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-            {filteredResults.map((cost) => (
-              <NeighbourhoodCard
-                key={cost.neighbourhood.id}
-                cost={cost}
-                preferences={analyzedPreferences}
-                isCompared={comparedIds.includes(cost.neighbourhood.id)}
-                onToggleCompare={handleToggleCompare}
-                onSelectForDetails={() => {}}
-                onUpdateNeighbourhoodRent={handleUpdateNeighbourhoodRent}
-                onOpenPostingsModal={handleOpenPostingsModal}
-                onOpenMlEstimator={(id) => {
-                  setMlEstimatorNeighbourhoodId(id);
-                  setIsMlEstimatorOpen(true);
-                }}
-                monteCarloRange={
-                  monteCarloSimulation?.neighbourhoodStats[cost.neighbourhood.id]?.confidenceInterval80
-                }
-              />
-            ))}
+          <div className="mb-16">
+            <ResultsLedger
+              results={filteredResults}
+              preferences={analyzedPreferences}
+              comparedIds={comparedIds}
+              onToggleCompare={handleToggleCompare}
+              onUpdateNeighbourhoodRent={handleUpdateNeighbourhoodRent}
+              onOpenPostingsModal={handleOpenPostingsModal}
+              onOpenMlEstimator={(id) => {
+                setMlEstimatorNeighbourhoodId(id);
+                setIsMlEstimatorOpen(true);
+              }}
+              getMonteCarloRange={(id) =>
+                monteCarloSimulation?.neighbourhoodStats[id]?.confidenceInterval80
+              }
+            />
           </div>
         ) : viewMode === 'table' ? (
           <div className="mb-16">
@@ -528,9 +534,9 @@ export default function App() {
         )}
 
         {/* Civic Integrity Pledge Section */}
-        <section className="bg-white rounded-2xl border border-stone-200 p-6 shadow-xs mb-12">
+        <section className="mb-12 border-t-2 border-[#1b1712] pt-5" data-reveal="fade-up">
           <div className="flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-stone-900 text-white flex items-center justify-center shrink-0">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
@@ -631,6 +637,11 @@ export default function App() {
           </div>
           <div className="text-stone-400 text-center md:text-right">
             <span>Statistics Canada Quarterly Rent Statistics &bull; Demo examples, not live listings &bull; City of Toronto Open Data &bull; TTC GTFS</span>
+            <details className="mt-2">
+              <summary className="cursor-pointer font-semibold text-stone-300">Terms and privacy</summary>
+              <p className="mt-1 max-w-xl leading-relaxed">Estimates only, not housing or financial advice. Verify rents before deciding. Inputs stay in your browser. Explain and what-if requests send the current profile to the AI endpoint. No accounts, no tracking.</p>
+              <p className="mt-1"><span className="font-semibold text-stone-300">Contact:</span> use the methodology panel for data sources and tenant resources for advocacy contacts.</p>
+            </details>
           </div>
         </div>
       </footer>

@@ -6,7 +6,6 @@ import {
   Building2,
   Filter,
   ShieldCheck,
-  Sparkles,
   ArrowUpDown,
   Home,
   CheckCircle2,
@@ -92,8 +91,8 @@ export const LivePostingsModal: React.FC<LivePostingsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-stone-900/60">
+      <div className="modal-enter bg-white rounded-xl border border-stone-200 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="p-4 sm:p-6 border-b border-stone-200 bg-stone-50/80 flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
@@ -136,7 +135,7 @@ export const LivePostingsModal: React.FC<LivePostingsModalProps> = ({
               href={currentSearchUrls.houseSigma}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+              className="pressable px-2.5 py-1 rounded-lg bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 font-semibold flex items-center gap-1 transition-[background-color] cursor-pointer"
             >
               <span>HouseSigma (MLS)</span>
               <ExternalLink className="w-3 h-3" />
@@ -146,7 +145,7 @@ export const LivePostingsModal: React.FC<LivePostingsModalProps> = ({
               href={currentSearchUrls.realtorCa}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-900 border border-red-300 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+              className="pressable px-2.5 py-1 rounded-lg bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 font-semibold flex items-center gap-1 transition-[background-color] cursor-pointer"
             >
               <span>Realtor.ca</span>
               <ExternalLink className="w-3 h-3" />
@@ -156,7 +155,7 @@ export const LivePostingsModal: React.FC<LivePostingsModalProps> = ({
               href={currentSearchUrls.zillow}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-300 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+              className="pressable px-2.5 py-1 rounded-lg bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 font-semibold flex items-center gap-1 transition-[background-color] cursor-pointer"
             >
               <span>Zillow</span>
               <ExternalLink className="w-3 h-3" />
@@ -166,7 +165,7 @@ export const LivePostingsModal: React.FC<LivePostingsModalProps> = ({
               href={currentSearchUrls.rentalsCa}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-300 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+              className="pressable px-2.5 py-1 rounded-lg bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 font-semibold flex items-center gap-1 transition-[background-color] cursor-pointer"
             >
               <span>Rentals.ca</span>
               <ExternalLink className="w-3 h-3" />
@@ -273,8 +272,8 @@ export const LivePostingsModal: React.FC<LivePostingsModalProps> = ({
               {visibleListings.map((posting) => {
                 const targetNeighbourhood = NEIGHBOURHOODS.find((n) => n.id === posting.neighbourhoodId);
                 return (
-                  <article key={posting.id} className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
-                    <div className="flex items-center justify-between bg-gradient-to-r from-emerald-50 to-stone-50 px-4 py-3">
+                  <article key={posting.id} className="overflow-hidden rounded-xl border border-stone-200 bg-white">
+                    <div className="flex items-center justify-between bg-stone-100 px-4 py-3">
                       <span className="rounded-full border border-amber-200 bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900">Demo example</span>
                       <span className="text-xs font-semibold text-stone-500">{posting.bedrooms === 'bachelor' ? 'Studio' : posting.bedrooms.replace('bed', ' bedroom')}</span>
                     </div>

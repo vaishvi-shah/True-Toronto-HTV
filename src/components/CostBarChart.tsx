@@ -44,11 +44,11 @@ export const CostBarChart: React.FC<CostBarChartProps> = ({
             <span>Housing / Rent</span>
           </span>
           <span className="flex items-center gap-1.5 text-stone-700">
-            <span className="w-3 h-3 rounded-xs bg-indigo-600 shrink-0" />
+            <span className="w-3 h-3 rounded-xs bg-stone-800 shrink-0" />
             <span>Transport</span>
           </span>
           <span className="flex items-center gap-1.5 text-stone-700">
-            <span className="w-3 h-3 rounded-xs bg-sky-500 shrink-0" />
+            <span className="w-3 h-3 rounded-xs bg-stone-400 shrink-0" />
             <span>Utilities</span>
           </span>
           <span className="flex items-center gap-1.5 text-amber-900 font-medium">
@@ -120,7 +120,7 @@ export const CostBarChart: React.FC<CostBarChartProps> = ({
                 {/* Commute segment */}
                 <div
                   style={{ width: `${transitWidth}%` }}
-                  className="bg-indigo-600 h-full flex items-center justify-center text-[10px] text-white font-mono font-semibold"
+                  className="bg-stone-800 h-full flex items-center justify-center text-[10px] text-white font-mono font-semibold"
                   title={`Transport: $${b.commuteBreakdown.totalMonthlyCommuteCost}/mo`}
                 >
                   {transitWidth > 8 && `$${b.commuteBreakdown.totalMonthlyCommuteCost}`}
@@ -129,7 +129,7 @@ export const CostBarChart: React.FC<CostBarChartProps> = ({
                 {/* Utilities segment */}
                 <div
                   style={{ width: `${utilsWidth}%` }}
-                  className="bg-sky-500 h-full flex items-center justify-center text-[10px] text-white font-mono font-semibold"
+                  className="bg-stone-400 h-full flex items-center justify-center text-[10px] text-stone-900 font-mono font-semibold"
                   title={`Utilities: $${b.utilitiesCost}/mo`}
                 >
                   {utilsWidth > 6 && `$${b.utilitiesCost}`}

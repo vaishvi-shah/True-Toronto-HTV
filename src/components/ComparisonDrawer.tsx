@@ -22,7 +22,7 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
   const cheapest = [...comparedCosts].sort((a, b) => a.trueMonthlyCost - b.trueMonthlyCost)[0];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-stone-300 shadow-2xl p-4 sm:p-5 max-h-[85vh] overflow-y-auto">
+    <div className="drawer-enter fixed bottom-0 left-0 right-0 z-40 bg-stone-50 border-t border-stone-300 p-4 sm:p-5 max-h-[85vh] overflow-y-auto">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -44,7 +44,7 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
             </button>
             <button
               onClick={onClear}
-              className="p-1 rounded-md text-stone-400 hover:text-stone-700 bg-stone-100 cursor-pointer"
+              className="pressable p-1 rounded-md text-stone-400 hover:text-stone-700 bg-stone-100 cursor-pointer"
               title="Close drawer"
             >
               <X className="w-4 h-4" />
@@ -60,9 +60,9 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
             return (
               <div
                 key={item.neighbourhood.id}
-                className={`p-4 rounded-xl border relative transition-all ${
+                className={`p-4 rounded-lg border relative transition-[border-color] duration-200 ${
                   isWinner
-                    ? 'border-emerald-600 bg-emerald-50/30 ring-2 ring-emerald-500/20'
+                    ? 'border-stone-900 bg-white ring-1 ring-stone-900/20'
                     : 'border-stone-200 bg-white'
                 }`}
               >

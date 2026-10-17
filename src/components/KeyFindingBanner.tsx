@@ -1,19 +1,15 @@
 import React from 'react';
 import {
-  Sparkles,
-  TrendingDown,
-  Clock,
-  Car,
+  Info,
   RotateCw,
   Lightbulb,
-  CheckCircle2,
   AlertCircle,
-  HelpCircle,
   ArrowRight,
   Zap,
   Dices,
 } from 'lucide-react';
 import { CalculatedCost, UserPreferences } from '../types';
+import { isExplanationConsistent } from '../services/explanationTrust';
 
 interface KeyFindingBannerProps {
   results: CalculatedCost[];
@@ -75,214 +71,227 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
     ).toFixed(1)
   );
 
+  // Single source of truth: the banner may only reuse server explanation copy
+  // when its structured anchors agree with the client-computed winner. The
+  // server engine is a separate implementation and can disagree on absolutes
+  // (e.g. headline $2,010 vs panel $2,039). Any mismatch falls back to the
+  // deterministic client copy below, which renders from results[0].
+  const explanation = isExplanationConsistent(aiExplanation, {
+    cheapestTrueName: cheapestTrueItem.neighbourhood.name,
+    cheapestRentName: cheapestRentItem.neighbourhood.name,
+    cheapestTrueMonthlyCost: cheapestTrueItem.trueMonthlyCost,
+    cheapestTrueRent: cheapestTrueItem.effectiveRent,
+    monthlyDifference: Math.abs(netMonthlySavings),
+    timeDifferenceHours: Math.abs(hoursSaved),
+  })
+    ? aiExplanation
+    : null;
+
+  const verdictState = isRentExcluded
+    ? 'Commute & utilities focus'
+    : isRentUnspecified
+    ? 'Rent unspecified — transport + utilities'
+    : isDivergent
+    ? 'Sticker rent masks real commute expense'
+    : 'Rent & transit align';
+
   return (
-    <div className="bg-gradient-to-br from-stone-900 via-stone-850 to-emerald-950 text-white rounded-2xl p-5 sm:p-6 shadow-md mb-8 border border-stone-800">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        {/* Left Side: Insight Headline & Body */}
-        <div className="flex-1">
-          <div className="flex flex-wrap items-center gap-2 mb-2.5">
-            <span className="px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
-              <Lightbulb className="w-3.5 h-3.5 text-emerald-400" />
-              True Cost Reality
-            </span>
+    <section aria-label="Cost verdict" className="mb-10" data-reveal="fade-up">
+      <div className="rule-double pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="dateline flex items-center gap-2 text-stone-500">
+            <Lightbulb className="h-3.5 w-3.5 text-emerald-800" />
+            The verdict &middot; true cost reality
+          </p>
+          <p className="figures text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+            {verdictState}
+          </p>
+        </div>
 
-            {isRentExcluded ? (
-              <span className="text-xs font-medium text-stone-300 bg-stone-800 px-2 py-0.5 rounded-md border border-stone-700">
-                Commute &amp; Utilities Focused
-              </span>
-            ) : isRentUnspecified ? (
-              <span className="text-xs font-medium text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-md border border-amber-700/50">
-                Rent Unspecified (Showing Transport + Utilities)
-              </span>
-            ) : isDivergent ? (
-              <span className="text-xs font-semibold text-amber-300 bg-amber-900/40 px-2 py-0.5 rounded-md border border-amber-600/30">
-                Sticker Rent Masks Real Commute Expense
-              </span>
-            ) : (
-              <span className="text-xs font-semibold text-emerald-300 bg-emerald-900/40 px-2 py-0.5 rounded-md border border-emerald-600/30">
-                Rent &amp; Transit Align
-              </span>
-            )}
-          </div>
+        <h2
+          className="font-display mt-3 max-w-4xl text-3xl font-semibold leading-[1.08] tracking-tight text-[#1b1712] sm:text-[2.75rem]"
+          data-motion-text="words"
+        >
+          {explanation?.headline ||
+            (isRentExcluded
+              ? `${cheapestTrueItem.neighbourhood.name} offers the lowest transit & utility overhead for your trips.`
+              : isRentUnspecified
+              ? `${cheapestTrueItem.neighbourhood.name} provides the lowest transit + utilities overhead at $${cheapestTrueItem.trueMonthlyCost}/mo.`
+              : isDivergent
+              ? `${cheapestTrueItem.neighbourhood.name} is $${netMonthlySavings}/mo cheaper overall than ${cheapestRentItem.neighbourhood.name}, despite higher asking rent.`
+              : `${cheapestTrueItem.neighbourhood.name} delivers the most economical overall true monthly cost at $${cheapestTrueItem.trueMonthlyCost}/mo.`)}
+        </h2>
 
-          <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight leading-snug">
-            {aiExplanation?.headline ||
-              (isRentExcluded
-                ? `${cheapestTrueItem.neighbourhood.name} offers the lowest transit & utility overhead for your trips.`
-                : isRentUnspecified
-                ? `${cheapestTrueItem.neighbourhood.name} provides the lowest transit + utilities overhead at $${cheapestTrueItem.trueMonthlyCost}/mo.`
-                : isDivergent
-                ? `${cheapestTrueItem.neighbourhood.name} is $${netMonthlySavings}/mo cheaper overall than ${cheapestRentItem.neighbourhood.name}, despite higher asking rent.`
-                : `${cheapestTrueItem.neighbourhood.name} delivers the most economical overall true monthly cost at $${cheapestTrueItem.trueMonthlyCost}/mo.`)}
-          </h3>
-
-          <div className="mt-2.5 text-xs sm:text-sm text-stone-300 leading-relaxed max-w-3xl">
-            {isLoadingAi ? (
-              <div className="flex items-center gap-2 text-stone-400 py-1">
-                <RotateCw className="w-4 h-4 animate-spin text-emerald-400" />
-                <span>Formulating personalized analysis...</span>
-              </div>
-            ) : (
+        {/* Verdict ledger: the winning figure + its composition. Full per-area
+            numbers live in the ranked ledger below — this states the finding. */}
+        <div className="mt-5 flex flex-col gap-5 border-y border-[#1b1712]/20 py-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex items-end gap-4">
+            <p className="figures text-5xl font-bold leading-none tracking-tight text-[#1b1712] sm:text-6xl">
+              ${cheapestTrueItem.trueMonthlyCost.toLocaleString()}
+              <span className="ml-1 align-baseline text-base font-semibold text-stone-500">/mo</span>
+            </p>
+            <div className="pb-1 text-xs leading-relaxed text-stone-600">
+              <p className="font-bold text-[#1b1712]">{cheapestTrueItem.neighbourhood.name}</p>
               <p>
-                {aiExplanation?.body ||
-                  (isRentExcluded
-                    ? `With housing expenses excluded, your primary costs are travel ($${cheapestTrueItem.commuteBreakdown.totalMonthlyCommuteCost}/mo) and utilities ($${cheapestTrueItem.utilitiesCost}/mo). Living in ${cheapestTrueItem.neighbourhood.name} gives you a ${cheapestTrueItem.commuteBreakdown.monthlyCommuteHours} hour monthly commute to your destination.`
-                    : isRentUnspecified
-                    ? `Because no rent was entered, true costs currently tally transit ($${cheapestTrueItem.commuteBreakdown.totalMonthlyCommuteCost}/mo) and utilities ($${cheapestTrueItem.utilitiesCost}/mo). You can enter your specific rent or choose CMHC survey medians in the inputs above to include housing.`
-                    : isDivergent
-                    ? `${cheapestRentItem.neighbourhood.name} has the lowest advertised rent ($${cheapestRentItem.stickerRent}/mo), but its commute costs ($${cheapestRentItem.commuteBreakdown.totalMonthlyCommuteCost}/mo) push total out-of-pocket expenses to $${cheapestRentItem.trueMonthlyCost}. By contrast, ${cheapestTrueItem.neighbourhood.name} costs $${rentDelta}/mo more in rent but saves $${commuteDelta}/mo on travel—saving you $${netMonthlySavings} net each month.`
-                    : `${cheapestTrueItem.neighbourhood.name} minimizes your out-of-pocket overhead ($${cheapestTrueItem.trueMonthlyCost}/mo total) while keeping commute travel to ${cheapestTrueItem.commuteBreakdown.monthlyCommuteHours} hours per month.`)}
+                {cheapestTrueItem.effectiveRent !== null
+                  ? `Rent $${cheapestTrueItem.effectiveRent.toLocaleString()} · `
+                  : ''}
+                Travel ${cheapestTrueItem.commuteBreakdown.totalMonthlyCommuteCost} ·{' '}
+                {cheapestTrueItem.commuteBreakdown.monthlyCommuteHours} hrs/mo
               </p>
-            )}
+            </div>
           </div>
-
-          {/* Break-Even Tipping Point & Monte Carlo Uncertainty Callouts */}
-          {(aiExplanation?.breakEvenNarrative || aiExplanation?.monteCarloInsight) && (
-            <div className="mt-3.5 space-y-2">
-              {aiExplanation.breakEvenNarrative && (
-                <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/30 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
-                  <div className="flex items-center gap-2 text-amber-200">
-                    <Zap className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span>
-                      <strong className="text-amber-300">Break-Even Flip Point:</strong> &ldquo;{aiExplanation.breakEvenNarrative}&rdquo;
-                    </span>
-                  </div>
-                  {onOpenSensitivity && (
-                    <button
-                      type="button"
-                      onClick={onOpenSensitivity}
-                      className="text-amber-300 hover:text-amber-200 font-bold shrink-0 hover:underline flex items-center gap-1 cursor-pointer text-[11px]"
-                    >
-                      Explore Sensitivity Curves <ArrowRight className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {aiExplanation.monteCarloInsight && (
-                <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
-                  <div className="flex items-center gap-2 text-indigo-200">
-                    <Dices className="w-4 h-4 text-indigo-400 shrink-0" />
-                    <span>
-                      <strong className="text-indigo-300">Monte Carlo Uncertainty:</strong> {aiExplanation.monteCarloInsight}
-                    </span>
-                  </div>
-                  {onOpenMonteCarlo && (
-                    <button
-                      type="button"
-                      onClick={onOpenMonteCarlo}
-                      className="text-indigo-300 hover:text-indigo-200 font-bold shrink-0 hover:underline flex items-center gap-1 cursor-pointer text-[11px]"
-                    >
-                      View Uncertainty Bands <ArrowRight className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Missing info advisory if user left income or rent unspecified */}
-          {cheapestTrueItem.missingInformation.length > 0 && (
-            <div className="mt-3 text-[11px] text-amber-200/90 bg-amber-950/40 border border-amber-800/40 rounded-lg px-3 py-1.5 flex items-center gap-2">
-              <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <div className="figures flex flex-wrap gap-x-6 gap-y-1 pb-1 text-xs font-semibold text-stone-600">
+            {isDivergent && (
               <span>
-                <strong>Note:</strong> {cheapestTrueItem.missingInformation.join(' • ')}.
+                saves <strong className="text-emerald-800">${netMonthlySavings}/mo</strong> vs{' '}
+                {cheapestRentItem.neighbourhood.name}
               </span>
-            </div>
-          )}
-
-          {/* Footer Controls: Provenance & AI Status */}
-          <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-stone-400">
-            <span className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              {aiExplanation?.isAiGenerated
-                ? 'Narrated by Gemini 3.8 Flash'
-                : 'Deterministic Civic Engine (Instant calculation)'}
+            )}
+            <span>{cheapestTrueItem.monthlyCommuteHours} commute hrs</span>
+            <span>
+              {cheapestTrueItem.effectiveRent !== null
+                ? `$${cheapestTrueItem.effectiveRent.toLocaleString()} rent`
+                : 'rent excluded'}
             </span>
-            <span className="text-stone-600 hidden sm:inline">&bull;</span>
-            <span className="hidden sm:inline">Calculations strictly deterministic</span>
-
-            <button
-              onClick={onRefreshAi}
-              disabled={isLoadingAi}
-              className="text-emerald-400 hover:text-emerald-300 underline font-medium cursor-pointer ml-auto flex items-center gap-1"
-            >
-              <RotateCw className={`w-3 h-3 ${isLoadingAi ? 'animate-spin' : ''}`} />
-              Re-analyze
-            </button>
           </div>
         </div>
 
-        {/* Right Side: Quick Highlight Card */}
-        <div className="lg:w-[25rem] shrink-0 bg-stone-900/90 rounded-xl p-4 border border-stone-800 flex flex-col justify-between">
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-stone-400 mb-2">
-              #1 Ranked Neighbourhood
+        <div className="mt-4 max-w-3xl text-sm leading-relaxed text-stone-700">
+          {isLoadingAi ? (
+            <div className="py-1" role="status" aria-busy="true" aria-label="Loading analysis">
+              <div className="flex items-center gap-2 text-stone-500">
+                <RotateCw className="h-4 w-4 animate-spin" />
+                <span>Formulating personalized analysis...</span>
+              </div>
+              <div className="mt-3 space-y-2">
+                <div className="skeleton-block h-3 w-3/4" />
+                <div className="skeleton-block h-3 w-1/2" />
+              </div>
             </div>
-            <div className="text-base font-bold text-white">
-              {cheapestTrueItem.neighbourhood.name}
-            </div>
-            <div className="text-xs text-stone-400 mb-3">
-              {cheapestTrueItem.neighbourhood.borough}
-            </div>
+          ) : (
+            <p>
+              {explanation?.body ||
+                (isRentExcluded
+                  ? `With housing expenses excluded, your primary costs are travel ($${cheapestTrueItem.commuteBreakdown.totalMonthlyCommuteCost}/mo) and utilities ($${cheapestTrueItem.utilitiesCost}/mo). Living in ${cheapestTrueItem.neighbourhood.name} gives you a ${cheapestTrueItem.commuteBreakdown.monthlyCommuteHours} hour monthly commute to your destination.`
+                  : isRentUnspecified
+                  ? `Because no rent was entered, true costs currently tally transit ($${cheapestTrueItem.commuteBreakdown.totalMonthlyCommuteCost}/mo) and utilities ($${cheapestTrueItem.utilitiesCost}/mo). You can enter your specific rent or choose CMHC survey medians in the inputs above to include housing.`
+                  : isDivergent
+                  ? `${cheapestRentItem.neighbourhood.name} has the lowest advertised rent ($${cheapestRentItem.stickerRent}/mo), but its commute costs ($${cheapestRentItem.commuteBreakdown.totalMonthlyCommuteCost}/mo) push total out-of-pocket expenses to $${cheapestRentItem.trueMonthlyCost}. By contrast, ${cheapestTrueItem.neighbourhood.name} costs $${rentDelta}/mo more in rent but saves $${commuteDelta}/mo on travel, saving you $${netMonthlySavings} net each month.`
+                  : `${cheapestTrueItem.neighbourhood.name} minimizes your out-of-pocket overhead ($${cheapestTrueItem.trueMonthlyCost}/mo total) with commute travel of ${cheapestTrueItem.commuteBreakdown.monthlyCommuteHours} hours per month.`)}
+            </p>
+          )}
+        </div>
 
-            <div className="space-y-1.5 text-xs text-stone-300 border-t border-stone-800 pt-2.5">
-              <div className="flex justify-between">
-                <span className="text-stone-400">Out-of-Pocket Cost:</span>
-                <span className="font-mono font-bold text-emerald-400">
-                  ${cheapestTrueItem.trueMonthlyCost.toLocaleString()}/mo
-                </span>
+        {/* Break-even tipping point & Monte Carlo uncertainty */}
+        {(explanation?.breakEvenNarrative || explanation?.monteCarloInsight) && (
+          <div className="mt-4 grid gap-2.5 lg:grid-cols-2">
+            {explanation.breakEvenNarrative && (
+              <div className="flex flex-col gap-2 border border-amber-700/40 bg-amber-50 p-3 text-xs sm:flex-row sm:items-center sm:justify-between">
+                <p className="flex items-start gap-2 text-amber-950">
+                  <Zap className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                  <span>
+                    <strong>Break-even flip point:</strong> &ldquo;{explanation.breakEvenNarrative}&rdquo;
+                  </span>
+                </p>
+                {onOpenSensitivity && (
+                  <button
+                    type="button"
+                    onClick={onOpenSensitivity}
+                    className="flex shrink-0 cursor-pointer items-center gap-1 text-[11px] font-bold text-amber-900 hover:underline"
+                  >
+                    Explore sensitivity curves <ArrowRight className="h-3 w-3" />
+                  </button>
+                )}
               </div>
-              <div className="flex justify-between">
-                <span className="text-stone-400">Housing / Rent:</span>
-                <span className="font-mono">
-                  {cheapestTrueItem.effectiveRent !== null
-                    ? `$${cheapestTrueItem.effectiveRent.toLocaleString()}`
-                    : 'Unspecified'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-stone-400">Travel Expense:</span>
-                <span className="font-mono">
-                  ${cheapestTrueItem.commuteBreakdown.totalMonthlyCommuteCost}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-stone-400">Monthly Travel Time:</span>
-                <span className="font-mono">
-                  {cheapestTrueItem.commuteBreakdown.monthlyCommuteHours} hrs
-                </span>
-              </div>
-            </div>
-            {currentLivingCost && (
-              <div className="mt-3 border-t border-stone-700 pt-2.5">
-                <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-stone-400">Monthly cost comparison</div>
-                <div className="mb-1 grid grid-cols-[1fr_auto_auto] gap-x-3 text-[10px] font-semibold text-stone-400">
-                  <span></span><span className="text-right">Recommended</span><span className="text-right">Current</span>
-                </div>
-                <div className="space-y-1 text-[11px] text-stone-300">
-                  <div className="grid grid-cols-[1fr_auto_auto] gap-x-3"><span>Rent</span><span>{cheapestTrueItem.effectiveRent === null ? '—' : `$${cheapestTrueItem.effectiveRent.toLocaleString()}`}</span><span>${(currentLivingCost.effectiveRent ?? 0).toLocaleString()}</span></div>
-                  <div className="grid grid-cols-[1fr_auto_auto] gap-x-3"><span>Utilities{preferences.currentUtilitiesMonthly == null ? '*' : ''}</span><span>${cheapestTrueItem.utilitiesCost.toLocaleString()}</span><span>${currentLivingCost.utilitiesCost.toLocaleString()}</span></div>
-                  <div className="grid grid-cols-[1fr_auto_auto] gap-x-3"><span>Transport</span><span>${cheapestTrueItem.commuteBreakdown.totalMonthlyCommuteCost.toLocaleString()}</span><span>${currentLivingCost.commuteBreakdown.totalMonthlyCommuteCost.toLocaleString()}</span></div>
-                  <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 border-t border-stone-700 pt-1 font-bold"><span>Total / month</span><span className="text-emerald-300">${cheapestTrueItem.trueMonthlyCost.toLocaleString()}</span><span>${currentLivingCost.trueMonthlyCost.toLocaleString()}</span></div>
-                  {cheapestTrueItem.effectiveRent !== null && <div className={`text-[10px] font-semibold ${currentLivingCost.trueMonthlyCost >= cheapestTrueItem.trueMonthlyCost ? 'text-emerald-300' : 'text-amber-300'}`}>{currentLivingCost.trueMonthlyCost >= cheapestTrueItem.trueMonthlyCost ? `Recommended area is $${(currentLivingCost.trueMonthlyCost - cheapestTrueItem.trueMonthlyCost).toLocaleString()}/mo lower` : `Recommended area is $${(cheapestTrueItem.trueMonthlyCost - currentLivingCost.trueMonthlyCost).toLocaleString()}/mo higher`}</div>}
-                  <div className="pt-0.5 text-[10px] text-stone-400">Commute time: {cheapestTrueItem.monthlyCommuteHours} hrs vs {currentLivingCost.monthlyCommuteHours} hrs/mo</div>
-                  <div className="text-[10px] text-stone-500">Current: {currentLivingCost.neighbourhood.name} · office commute estimated from area data</div>
-                  {preferences.currentUtilitiesMonthly == null && <div className="text-[10px] text-stone-500">*Current utilities use the area/unit-size estimate.</div>}
-                </div>
+            )}
+
+            {explanation.monteCarloInsight && (
+              <div className="flex flex-col gap-2 border border-[#1b1712]/25 bg-white/60 p-3 text-xs sm:flex-row sm:items-center sm:justify-between">
+                <p className="flex items-start gap-2 text-stone-700">
+                  <Dices className="mt-0.5 h-4 w-4 shrink-0 text-stone-500" />
+                  <span>
+                    <strong className="text-[#1b1712]">Monte Carlo uncertainty:</strong>{' '}
+                    {explanation.monteCarloInsight}
+                  </span>
+                </p>
+                {onOpenMonteCarlo && (
+                  <button
+                    type="button"
+                    onClick={onOpenMonteCarlo}
+                    className="pressable flex shrink-0 cursor-pointer items-center gap-1 text-[11px] font-bold text-[#1b1712] hover:underline"
+                  >
+                    View uncertainty bands <ArrowRight className="h-3 w-3" />
+                  </button>
+                )}
               </div>
             )}
           </div>
+        )}
 
+        {/* Current-home comparison — compact ledger strip, not a second panel */}
+        {currentLivingCost && (
+          <div className="figures mt-4 flex flex-wrap items-baseline gap-x-8 gap-y-1 border-t border-[#1b1712]/15 pt-3 text-xs">
+            <span className="dateline text-stone-500">Your current home</span>
+            <span>
+              Recommended <strong>${cheapestTrueItem.trueMonthlyCost.toLocaleString()}/mo</strong>
+            </span>
+            <span>
+              Current <strong>${currentLivingCost.trueMonthlyCost.toLocaleString()}/mo</strong>
+            </span>
+            {cheapestTrueItem.effectiveRent !== null && (
+              <span
+                className={
+                  currentLivingCost.trueMonthlyCost >= cheapestTrueItem.trueMonthlyCost
+                    ? 'font-bold text-emerald-800'
+                    : 'font-bold text-amber-800'
+                }
+              >
+                {currentLivingCost.trueMonthlyCost >= cheapestTrueItem.trueMonthlyCost
+                  ? `−$${(currentLivingCost.trueMonthlyCost - cheapestTrueItem.trueMonthlyCost).toLocaleString()}/mo by moving`
+                  : `+$${(cheapestTrueItem.trueMonthlyCost - currentLivingCost.trueMonthlyCost).toLocaleString()}/mo by moving`}
+              </span>
+            )}
+            <span className="text-stone-500">
+              {cheapestTrueItem.monthlyCommuteHours} vs {currentLivingCost.monthlyCommuteHours} hrs/mo
+              · {currentLivingCost.neighbourhood.name}
+            </span>
+          </div>
+        )}
+
+        {cheapestTrueItem.missingInformation.length > 0 && (
+          <p className="mt-3 flex items-center gap-2 text-[11px] text-amber-800">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              <strong>Note:</strong> {cheapestTrueItem.missingInformation.join(' • ')}.
+            </span>
+          </p>
+        )}
+
+        {/* Provenance + actions */}
+        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-stone-500">
+          <span className="flex items-center gap-1.5">
+            <Info className="h-3.5 w-3.5" />
+            {explanation?.isAiGenerated
+              ? 'Narrated by Gemini 3.8 Flash'
+              : 'Deterministic civic engine · instant calculation'}
+          </span>
+          <button
+            onClick={onRefreshAi}
+            disabled={isLoadingAi}
+            className="flex cursor-pointer items-center gap-1 font-semibold text-[#1b1712] underline decoration-stone-300 underline-offset-4 hover:decoration-[#1b1712]"
+          >
+            <RotateCw className={`h-3 w-3 ${isLoadingAi ? 'animate-spin' : ''}`} />
+            Re-analyze
+          </button>
           <button
             onClick={onOpenWhatIf}
-            className="mt-4 w-full py-2 px-3 rounded-lg text-xs font-semibold bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/40 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            className="pressable ml-auto flex cursor-pointer items-center gap-1.5 bg-[#1b1712] px-4 py-2 text-xs font-bold text-[#f4f1e8] transition-colors hover:bg-emerald-900"
           >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Test a What-If Scenario</span>
+            Test a what-if scenario <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
-    </div>
+    </section>
   );
 };
