@@ -282,8 +282,8 @@ export const Journey: React.FC = () => {
     setBorough('all');
     if (dwell) await delay(dwell);
     if (token !== runToken.current) return;
-    // Phase 3 · explain (live Gemini call; failures surface the Gemini
-    // error code in the verdict — never silent placeholder narration)
+    // Phase 3 · explain (live Gemini call; the API returns a calculated
+    // fallback when narration is unavailable)
     setPhaseIdx(3);
     setIsLoadingAi(true);
     try {

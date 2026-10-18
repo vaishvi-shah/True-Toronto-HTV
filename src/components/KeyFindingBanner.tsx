@@ -178,9 +178,9 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
             </div>
           ) : (
             <>
-              {aiError && (
+              {(aiError || explanation?.isAiGenerated === false) && (
                 <p role="status" className="mb-2 text-xs text-stone-500">
-                  A personalized summary is temporarily unavailable. This comparison uses your calculated results.
+                  Personalized narration is temporarily unavailable. Your comparison and summary below use calculated results.
                 </p>
               )}
             <p>

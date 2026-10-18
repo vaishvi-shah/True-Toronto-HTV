@@ -95,8 +95,7 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
 
       const data = await response.json().catch(() => null);
       if (!response.ok) {
-        // Live Gemini failed: keep the real engine deltas, but show the
-        // Gemini error code instead of placeholder narration.
+        // Preserve any calculated scenario values and keep the message generic.
         setWhatIfError(
           data?.error ?? {
             status: response.status,
@@ -307,6 +306,12 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
                   </span>
                 </div>
               </div>
+
+              {!result.isAiGenerated && (
+                <p role="status" className="text-[11px] text-stone-400">
+                  Personalized narration is temporarily unavailable. This summary uses calculated scenario results.
+                </p>
+              )}
 
               {/* Best Neighbourhood Shift */}
               <div className="p-3 rounded-xl bg-stone-800/50 border border-stone-700 text-xs flex items-center justify-between">

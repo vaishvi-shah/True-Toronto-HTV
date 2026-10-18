@@ -19,6 +19,10 @@ For a stable, lower-cost alternative to the latest Flash model, try `gemini-3.5-
 
 Avoid `gemini-3.5-flash` and `gemini-3.7-flash`: Google marks them deprecated and routes requests to newer models. Avoid `gemini-2.0-flash`: Google lists its API shutdown as June 1, 2026.
 
+## Automatic service fallback
+
+Both Vercel Gemini endpoints try the configured model (or `gemini-3.6-flash` by default), then at most two compatible alternatives: `gemini-3.5-flash-lite` and `gemini-3.1-flash-lite`. The alternatives are only tried for upstream HTTP 500, 502, 503, or 504 responses. SDK-level retries are disabled so one user request makes no more than three Gemini calls. If all attempts fail, the app returns the locally calculated results and a short calculation-based summary without exposing provider error codes.
+
 ## Where the model is selected
 
 ### Vercel API functions
