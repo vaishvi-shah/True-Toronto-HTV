@@ -193,8 +193,10 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
                 : {aiError.message}{' '}
                 <span className="block mt-1 text-rose-900/80">
                   The engine numbers above are computed locally and still stand — only the AI
-                  narration is missing. Set GEMINI_API_KEY in .env.local, restart the server,
-                  then hit Re-analyze.
+                  narration is missing.{' '}
+                  {aiError.code === 'GEMINI_KEY_MISSING'
+                    ? 'Add GEMINI_API_KEY to the Vercel project environment variables, redeploy, then hit Re-analyze.'
+                    : 'Check the Vercel function logs for /api/gemini/explain, then hit Re-analyze.'}
                 </span>
               </span>
             </div>

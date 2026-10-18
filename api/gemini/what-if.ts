@@ -2,7 +2,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 import { GoogleGenAI } from '@google/genai';
-import { calculateNeighbourhoodCosts, normalizeToUserPreferences } from '../src/services/calculator';
+import { calculateNeighbourhoodCosts } from '../src/services/calculator';
+import { normalizeToUserPreferences } from '../src/services/unifiedEngine';
 import { SYSTEM_DIRECTIVE } from '../lib/llm/prompts';
 
 const apiKey = process.env.GEMINI_API_KEY || '';

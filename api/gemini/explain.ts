@@ -2,8 +2,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 import { GoogleGenAI } from '@google/genai';
-import { buildUnifiedExplainPrompt } from '../src/services/unifiedEngine';
-import { calculateNeighbourhoodCosts, normalizeToUserPreferences } from '../src/services/calculator';
+import {
+  buildUnifiedExplainPrompt,
+  normalizeToUserPreferences,
+} from '../src/services/unifiedEngine';
+import { calculateNeighbourhoodCosts } from '../src/services/calculator';
 import { analyzeSensitivity } from '../src/services/sensitivityAnalysis';
 import { runMonteCarloSimulation } from '../src/services/monteCarloSimulation';
 import { SYSTEM_DIRECTIVE } from '../lib/llm/prompts';
