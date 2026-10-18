@@ -143,10 +143,10 @@ Respond with JSON:
 
     const model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
     const { response, model: successfulModel, attempts } = await Promise.race([
-      generateWithGeminiFallback(model, (candidate) => ai.models.generateContent({
+      generateWithGeminiFallback(model, (candidate, signal) => ai.models.generateContent({
         model: candidate,
         contents: prompt,
-        config: { systemInstruction: SYSTEM_DIRECTIVE, responseMimeType: 'application/json' },
+        config: { systemInstruction: SYSTEM_DIRECTIVE, responseMimeType: 'application/json', abortSignal: signal },
       }), () => !timedOut),
       timeoutPromise,
     ]).finally(() => {

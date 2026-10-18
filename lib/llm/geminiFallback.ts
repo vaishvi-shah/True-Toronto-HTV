@@ -1,5 +1,6 @@
 const FALLBACK_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
 const RETRYABLE_STATUSES = new Set([500, 502, 503, 504]);
+const MODEL_ATTEMPT_TIMEOUT_MS = 2_800;
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -25,7 +26,7 @@ export function isRetryableGeminiError(error: unknown): boolean {
 /** Try the configured model and at most two compatible alternatives. */
 export async function generateWithGeminiFallback<T>(
   primaryModel: string,
-  generate: (model: string) => Promise<T>,
+  generate: (model: string, signal: AbortSignal) => Promise<T>,
   canContinue: () => boolean = () => true,
 ): Promise<{ response: T; model: string; attempts: number }> {
   const models = [...new Set([primaryModel, ...FALLBACK_MODELS])].slice(0, 3);
@@ -34,11 +35,22 @@ export async function generateWithGeminiFallback<T>(
   for (let index = 0; index < models.length; index += 1) {
     if (!canContinue()) throw lastError ?? new Error('Gemini fallback deadline reached');
     const model = models[index];
+    const controller = new AbortController();
+    let timedOut = false;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+        reject(Object.assign(new Error('Gemini model attempt timed out'), { status: 504 }));
+      }, MODEL_ATTEMPT_TIMEOUT_MS);
+    });
     try {
-      const response = await generate(model);
+      const response = await Promise.race([generate(model, controller.signal), timeout]);
       return { response, model, attempts: index + 1 };
     } catch (error) {
-      lastError = error;
+      lastError = timedOut ? Object.assign(new Error('Gemini model attempt timed out'), { status: 504 }) : error;
+      error = lastError;
       if (!isRetryableGeminiError(error) || index === models.length - 1) throw error;
       if (!canContinue()) throw error;
       console.warn('[gemini] transient upstream error; trying compatible fallback model', {
@@ -47,6 +59,8 @@ export async function generateWithGeminiFallback<T>(
         model: models[index + 1],
       });
       await pause(index === 0 ? 200 : 400);
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
     }
   }
 

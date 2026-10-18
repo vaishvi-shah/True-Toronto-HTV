@@ -122,10 +122,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     stage = 'gemini_request';
     console.info('[api/gemini/explain] Gemini request started', { model });
     const { response, model: successfulModel, attempts } = await Promise.race([
-      generateWithGeminiFallback(model, (candidate) => ai.models.generateContent({
+      generateWithGeminiFallback(model, (candidate, signal) => ai.models.generateContent({
         model: candidate,
         contents: prompt,
-        config: { systemInstruction: SYSTEM_DIRECTIVE, responseMimeType: 'application/json' },
+        config: { systemInstruction: SYSTEM_DIRECTIVE, responseMimeType: 'application/json', abortSignal: signal },
       }), () => !timedOut),
       timeoutPromise,
     ]).finally(() => {
