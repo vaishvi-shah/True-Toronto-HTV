@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Sparkles,
+  SlidersHorizontal,
   X,
   Send,
   RotateCw,
@@ -46,6 +46,11 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
   const [customQuestion, setCustomQuestion] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<WhatIfResponse | null>(null);
+  const [whatIfError, setWhatIfError] = useState<{
+    status: number | string;
+    code: string;
+    message: string;
+  } | null>(null);
 
   if (!isOpen) return null;
 
@@ -54,6 +59,7 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
     label: string
   ) => {
     setLoading(true);
+    setWhatIfError(null);
     try {
       const response = await fetch('/api/gemini/what-if', {
         method: 'POST',
@@ -65,17 +71,33 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
         }),
       });
 
+      const data = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error('Network response failed');
+        // Live Gemini failed: keep the real engine deltas, but show the
+        // Gemini error code instead of placeholder narration.
+        setWhatIfError(
+          data?.error ?? {
+            status: response.status,
+            code: `HTTP_${response.status}`,
+            message: 'Gemini what-if request failed',
+          }
+        );
+        setResult(data ? { ...data, activePatch: patch } : null);
+        return;
       }
 
-      const data = await response.json();
       setResult({
         ...data,
         activePatch: patch,
       });
     } catch (err) {
       console.error('Error running what-if scenario:', err);
+      setWhatIfError({
+        status: 0,
+        code: 'NETWORK_ERROR',
+        message: err instanceof Error ? err.message : 'Could not reach the analysis server',
+      });
+      setResult(null);
     } finally {
       setLoading(false);
     }
@@ -112,13 +134,13 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-stone-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60">
+      <div className="modal-enter bg-white rounded-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-stone-200">
         {/* Header */}
         <div className="p-5 border-b border-stone-200 flex items-center justify-between bg-stone-50">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-lg bg-stone-900 text-white flex items-center justify-center">
+              <SlidersHorizontal className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-bold text-stone-900 text-base">
@@ -150,11 +172,11 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
                   key={sc.id}
                   onClick={() => runScenario(sc.patch, sc.label)}
                   disabled={loading}
-                  className="p-3 rounded-xl border border-stone-200 hover:border-amber-400 bg-white hover:bg-amber-50/50 text-left transition-all group cursor-pointer disabled:opacity-50"
+                  className="pressable p-3 rounded-xl border border-stone-200 hover:border-stone-400 bg-white hover:bg-stone-100 text-left transition-[background-color,border-color] duration-200 cursor-pointer disabled:opacity-50"
                 >
-                  <div className="font-semibold text-xs text-stone-900 group-hover:text-amber-900 flex items-center justify-between">
+                  <div className="font-semibold text-xs text-stone-900 flex items-center justify-between">
                     <span>{sc.label}</span>
-                    <Sparkles className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-600" />
+                    <ArrowRight className="w-3.5 h-3.5 text-stone-400" />
                   </div>
                   <p className="text-[11px] text-stone-500 mt-1 line-clamp-1">
                     {sc.description}
@@ -195,6 +217,23 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
             </div>
           )}
 
+          {/* Gemini error — surfaced with its code, never placeholder copy */}
+          {whatIfError && !loading && (
+            <div
+              role="alert"
+              className="p-4 rounded-xl bg-rose-50 border border-rose-300 text-xs text-rose-950 leading-relaxed"
+            >
+              <strong>
+                Gemini error {String(whatIfError.status)} ({whatIfError.code})
+              </strong>
+              : {whatIfError.message}
+              <span className="block mt-1 text-rose-900/80">
+                The engine deltas below are computed locally and still stand — only the AI
+                narration is missing. Set GEMINI_API_KEY in .env.local and restart the server.
+              </span>
+            </div>
+          )}
+
           {/* Results Display */}
           {result && !loading && (
             <div className="p-5 rounded-2xl bg-stone-900 text-white space-y-4 border border-stone-800">
@@ -204,7 +243,11 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
                   {result.scenarioTitle}
                 </span>
                 <span className="text-[10px] text-stone-400">
-                  {result.isAiGenerated ? 'Gemini 3.8 Flash' : 'Deterministic Engine'}
+                  {whatIfError
+                    ? `Gemini error ${String(whatIfError.status)} · ${whatIfError.code}`
+                    : result.isAiGenerated
+                      ? 'Gemini 3.8 Flash'
+                      : 'Deterministic Engine'}
                 </span>
               </div>
 
@@ -270,10 +313,12 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
                 </div>
               </div>
 
-              {/* Plain Language Explanation */}
-              <p className="text-xs text-stone-300 leading-relaxed">
-                {result.summary}
-              </p>
+              {/* Plain Language Explanation — Gemini narration only; never fallback copy */}
+              {!whatIfError && (
+                <p className="text-xs text-stone-300 leading-relaxed">
+                  {result.summary}
+                </p>
+              )}
 
               {/* Action: Apply to Dashboard */}
               <button

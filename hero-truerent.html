@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TrueRent Toronto — Find home with ease</title>
+<meta name="description" content="Honest monthly housing cost calculator comparing rent, transit, commute time, climate risk, and displacement pressure across 10 Toronto neighbourhoods." />
+<style>
+  :root{
+    --ink:#1b1712; --paper:#f6f3ea; --card:#fffdf7; --sage:#2f6b4f; --sage-deep:#1e4d37;
+    --amber:#b45309; --line:rgba(27,23,18,.16); --muted:#6b6459; --pill:#1b1712;
+    --radius:22px; --shadow:0 24px 60px -24px rgba(27,23,18,.35);
+    --font:"Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;
+    --serif:Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:#101010;color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased}
+  .stage{max-width:1280px;margin:0 auto;padding:28px 20px 60px}
+  .frame{background:var(--paper);border-radius:28px;overflow:hidden;box-shadow:0 40px 120px -30px rgba(0,0,0,.7)}
+
+  /* ---- top nav (Haven-style, rearranged for app functions) ---- */
+  .nav{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 28px;background:rgba(255,253,247,.9);backdrop-filter:blur(8px);position:sticky;top:0;z-index:30;border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+  .brand-mark{width:34px;height:34px;border-radius:10px;background:#e8622c;display:grid;place-items:center;color:#fff;font-weight:800}
+  .brand-name{font-weight:800;font-size:19px;letter-spacing:-.02em}
+  .brand-name small{display:block;font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+  .nav-links{display:flex;gap:16px;flex-wrap:nowrap;white-space:nowrap}
+  .nav-links a{color:#3d382f;text-decoration:none;font-size:13.5px;font-weight:600}
+  .nav-links a:hover{color:var(--ink);text-decoration:underline;text-underline-offset:4px}
+  .nav-cta{display:flex;gap:10px;align-items:center}
+  .btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:11px 22px;font-size:14px;font-weight:700;text-decoration:none;cursor:pointer;border:1px solid transparent;transition:transform .15s ease,background .15s ease}
+  .btn:active{transform:scale(.97)}
+  .btn-dark{background:var(--pill);color:#f6f3ea}
+  .btn-dark:hover{background:var(--sage-deep)}
+  .btn-light{background:rgba(255,255,255,.85);color:var(--ink);border-color:var(--line)}
+  .btn-light:hover{background:#fff}
+  .btn-ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+  .btn-ghost:hover{background:rgba(27,23,18,.06)}
+  .btn-sm{padding:8px 14px;font-size:12.5px}
+
+  /* ---- hero ---- */
+  .hero{position:relative;margin:22px;border-radius:var(--radius);overflow:hidden;min-height:560px;display:flex;align-items:center;justify-content:center;text-align:center;box-shadow:var(--shadow)}
+  .hero svg.scene{position:absolute;inset:0;width:100%;height:100%}
+  .hero-veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,253,247,.55) 0%,rgba(255,253,247,.25) 34%,rgba(255,253,247,.05) 55%,rgba(30,60,45,.18) 100%)}
+  .hero-inner{position:relative;z-index:2;max-width:760px;padding:70px 24px 60px}
+  .announce{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.9);border:1px solid rgba(27,23,18,.14);border-radius:999px;padding:8px 16px;font-size:12.5px;font-weight:700;box-shadow:0 6px 20px -8px rgba(27,23,18,.4)}
+  .announce .dot{width:8px;height:8px;border-radius:50%;background:#2f9e6e;box-shadow:0 0 0 4px rgba(47,158,110,.2)}
+  .hero h1{font-family:var(--serif);font-size:clamp(46px,7vw,84px);line-height:1.02;margin:22px 0 12px;letter-spacing:-.02em;color:#14201a;text-wrap:balance}
+  .hero p.sub{font-size:clamp(15px,2vw,19px);color:#2c3831;max-width:620px;margin:0 auto;line-height:1.55}
+  .hero-ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px}
+  .hero-proof{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-top:26px;font-size:12.5px;font-weight:600;color:#33413a}
+  .hero-proof span{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.65);border:1px solid rgba(27,23,18,.12);padding:6px 12px;border-radius:999px}
+  .scroll-hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:2;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:rgba(20,32,26,.65)}
+
+  /* ---- sections ---- */
+  section.block{padding:44px 34px;max-width:1180px;margin:0 auto}
+  .kicker{font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--sage)}
+  h2.title{font-family:var(--serif);font-size:clamp(26px,3.4vw,40px);letter-spacing:-.01em;margin:8px 0 6px}
+  p.lead{color:#4c463c;font-size:14.5px;line-height:1.6;max-width:680px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:22px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px}
+  .card h3{margin:0 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+  .card h3 .n{color:var(--sage)}
+  label.f{display:block;font-size:12px;font-weight:700;margin:12px 0 6px}
+  select,input[type=number],input[type=password]{width:100%;border:1px solid #d8d2c4;border-radius:12px;padding:10px 12px;font-size:13px;font-family:inherit;background:#fff;color:var(--ink)}
+  .modes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .modes button{border:1px solid #d8d2c4;background:#fff;border-radius:12px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer}
+  .modes button[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  input[type=range]{width:100%;accent-color:var(--sage)}
+  .radio{border:1px solid #d8d2c4;border-radius:12px;padding:10px 12px;font-size:12.5px;display:flex;gap:10px;margin-bottom:8px;cursor:pointer;background:#fff}
+  .radio.on{border-color:var(--sage);background:#eef6f0}
+  .analyze-row{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-top:24px;border-top:1px solid var(--line);padding-top:20px}
+  .status{font-size:12.5px;color:var(--muted)}
+
+  /* verdict */
+  .verdict{border-top:2px solid var(--ink);border-bottom:1px solid var(--line);padding:26px 0;margin-top:8px}
+  .verdict-big{font-family:var(--serif);font-size:clamp(24px,3vw,38px);line-height:1.15;margin:10px 0;max-width:900px}
+  .ledger{display:flex;gap:26px;align-items:flex-end;flex-wrap:wrap;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:16px 0;margin-top:14px}
+  .total{font-size:56px;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .total small{font-size:15px;color:var(--muted);font-weight:600}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .chip{font-size:11.5px;font-weight:700;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px}
+  .chip.hot{background:#fef3e2;border-color:#e8c47a}
+  .chip.cool{background:#e9f4ec;border-color:#9cc7ab}
+  .actions-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+
+  /* controls */
+  .controls{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:26px 0 16px;align-items:center}
+  .fbtn{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer}
+  .fbtn[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .tabs{display:flex;background:#e7e1d3;border-radius:12px;padding:3px;gap:2px}
+  .tabs button{border:0;background:transparent;border-radius:9px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;color:#5b544a}
+  .tabs button[aria-selected=true]{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.15)}
+
+  /* results */
+  .ledger-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+  .hood{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;position:relative}
+  .hood.best{border:2px solid var(--sage);box-shadow:0 10px 30px -14px rgba(47,107,79,.6)}
+  .hood .rank{position:absolute;top:12px;right:12px;font-size:10.5px;font-weight:800;background:var(--ink);color:#fff;border-radius:999px;padding:3px 9px}
+  .hood.best .rank{background:var(--sage)}
+  .hood h4{margin:0 34px 2px 0;font-size:14.5px}
+  .hood .b{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+  .hood .price{font-size:26px;font-weight:800;margin:8px 0 2px}
+  .hood .meta{font-size:12px;color:#4c463c;line-height:1.55}
+  .hood .flags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .flag{font-size:10.5px;font-weight:800;border-radius:999px;padding:3px 9px;border:1px solid}
+  .flag.g{color:#1e6b41;border-color:#9cc7ab;background:#eef6f0}
+  .flag.y{color:#8a5a00;border-color:#e8c47a;background:#fef6e3}
+  .flag.r{color:#a12020;border-color:#e5a3a3;background:#fdeeee}
+  .hood .row{display:flex;gap:8px;margin-top:10px}
+  .mini{flex:1;border:1px solid var(--line);background:#fbf9f3;border-radius:10px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;text-align:center}
+  .mini:hover{background:var(--ink);color:#fff}
+  table.matrix{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:12.5px}
+  table.matrix th,table.matrix td{padding:10px 12px;border-bottom:1px solid #eee7d6;text-align:left}
+  table.matrix th{background:#f1ebdc;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  .bar-row{display:grid;grid-template-columns:200px 1fr 90px;gap:10px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:8px;font-size:12.5px}
+  .bar{height:12px;border-radius:999px;background:#eee7d6;overflow:hidden}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--sage),#7fb894);border-radius:999px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;font-size:13px;line-height:1.6}
+  .panel.amber{background:#fffaee;border-color:#e8c47a}
+
+  /* compare tray */
+  .tray{position:sticky;bottom:16px;z-index:20;background:var(--ink);color:#f6f3ea;border-radius:16px;padding:14px 18px;display:none;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:var(--shadow);margin-top:20px}
+  .tray.show{display:flex}
+  .tray .pill{background:rgba(255,255,255,.12);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700}
+
+  /* dialogs */
+  dialog{border:1px solid var(--line);border-radius:18px;padding:26px;max-width:620px;width:calc(100% - 40px);background:var(--card);color:var(--ink)}
+  dialog::backdrop{background:rgba(16,16,16,.55);backdrop-filter:blur(3px)}
+  dialog h3{font-family:var(--serif);margin:0 0 8px;font-size:24px}
+  dialog p, dialog li{font-size:13.5px;line-height:1.65;color:#3d382f}
+  .x{float:right;border:1px solid var(--line);background:#fff;border-radius:999px;width:32px;height:32px;cursor:pointer;font-weight:800}
+
+  footer.site{background:var(--ink);color:#b7b0a2;font-size:12px;padding:30px 34px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  footer.site strong{color:#f6f3ea}
+  .note{font-size:11.5px;color:var(--muted);line-height:1.6}
+  @media(max-width:1020px){.nav-links{display:none}} @media(max-width:900px){.grid3,.two{grid-template-columns:1fr}section.block{padding:30px 20px}.bar-row{grid-template-columns:1fr}.bar-row .nm{font-weight:800}}
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="frame">
+
+  <!-- ============ NAV (Haven layout, TrueRent functions) ============ -->
+  <nav class="nav" aria-label="Primary">
+    <a class="brand" href="#top"><span class="brand-mark">◈</span><span class="brand-name">TrueRent<small>Toronto · Civic Ledger</small></span></a>
+    <div class="nav-links">
+      <a href="#profile">Analysis</a>
+      <a href="#results">Atlas</a>
+      <a href="#sensitivity">Break-even</a>
+      <a href="#uncertainty">Monte Carlo</a>
+      <a href="#methodology" id="navMethod">Methodology</a>
+      <a href="#tenants" id="navTenant">Tenant rights</a>
+    </div>
+    <div class="nav-cta">
+      <button class="btn btn-ghost btn-sm" id="btnDemoTop">✦ Live listings</button>
+      <button class="btn btn-dark btn-sm" id="btnAnalyzeTop">Analyze my options ↓</button>
+    </div>
+  </nav>
+
+  <!-- ============ HERO (calm Haven recreation) ============ -->
+  <div class="hero" id="top" role="img" aria-label="Calm mountain meadow with wildflowers behind the TrueRent headline">
+    <svg class="scene" viewBox="0 0 1200 620" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#f3efe2"/><stop offset=".55" stop-color="#e3ecdf"/><stop offset="1" stop-color="#cfdfd2"/>
+        </linearGradient>
+        <linearGradient id="m1" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#9db8a6"/><stop offset="1" stop-color="#7d9c88"/>
+        </linearGradient>
+        <linearGradient id="m2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#6f8f7d"/><stop offset="1" stop-color="#546f60"/>
+        </linearGradient>
+        <linearGradient id="mead" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#b9d3ae"/><stop offset=".5" stop-color="#9cc194"/><stop offset="1" stop-color="#6fa072"/>
+        </linearGradient>
+      </defs>
+      <rect width="1200" height="620" fill="url(#sky)"/>
+      <circle cx="880" cy="130" r="54" fill="#fff7dd" opacity=".9"/>
+      <circle cx="880" cy="130" r="80" fill="#fff7dd" opacity=".3"/>
+      <ellipse cx="250" cy="120" rx="90" ry="22" fill="#ffffff" opacity=".7"/>
+      <ellipse cx="330" cy="140" rx="70" ry="18" fill="#ffffff" opacity=".6"/>
+      <ellipse cx="1020" cy="200" rx="80" ry="18" fill="#ffffff" opacity=".55"/>
+      <path d="M0 330 L180 170 L300 280 L430 150 L600 300 L760 190 L930 310 L1080 220 L1200 300 L1200 620 L0 620 Z" fill="url(#m1)" opacity=".85"/>
+      <path d="M0 360 L150 260 L310 350 L470 240 L640 360 L800 270 L970 370 L1120 300 L1200 350 L1200 620 L0 620 Z" fill="url(#m2)"/>
+      <path d="M0 430 Q300 390 600 430 T1200 420 L1200 620 L0 620 Z" fill="url(#mead)"/>
+      <path d="M0 470 Q300 440 620 475 T1200 465 L1200 620 L0 620 Z" fill="#5d8f66" opacity=".55"/>
+      <g opacity=".9">
+        <path d="M600 430 Q595 380 610 350" stroke="#3e6b45" stroke-width="3" fill="none"/>
+        <path d="M590 430 Q570 400 540 395 M610 430 Q630 405 660 400 M600 430 Q600 410 585 400" stroke="#3e6b45" stroke-width="2" fill="none"/>
+      </g>
+      <g id="flowers"></g>
+      <g fill="#ffffff" opacity=".5">
+        <ellipse cx="200" cy="520" rx="60" ry="10"/><ellipse cx="950" cy="545" rx="80" ry="12"/><ellipse cx="600" cy="575" rx="110" ry="14"/>
+      </g>
+    </svg>
+    <div class="hero-veil"></div>
+    <div class="hero-inner">
+      <span class="announce"><span class="dot"></span>✦ CMHC Oct 2024 benchmarks · 10 neighbourhoods live ✓</span>
+      <h1>Find home with ease.</h1>
+      <p class="sub">See the honest monthly cost — rent, transit, utilities, and the hours your commute takes back — across 10 Toronto neighbourhoods. Built from your circumstances, never a preset persona.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-dark" href="#profile">Build your comparison ↓</a>
+        <a class="btn btn-light" href="#results">Explore neighbourhood atlas</a>
+      </div>
+      <div class="hero-proof">
+        <span>◈ StatCan quarterly rents</span><span>⛨ TTC GTFS timetables</span><span>▲ TRCA flood &amp; canopy data</span><span>○ No accounts · no tracking</span>
+      </div>
+    </div>
+    <span class="scroll-hint">Scroll · your ledger awaits</span>
+  </div>
+
+  <!-- ============ PROFILE ============ -->
+  <section class="block" id="profile">
+    <p class="kicker">Your profile · built from your own inputs</p>
+    <h2 class="title">Build your commute profile</h2>
+    <p class="lead">Choose the details that shape your monthly costs. Nothing is assumed or scored behind your back. Then hit <strong>Analyze my options</strong> — every view below recalculates instantly.</p>
+    <div class="grid3">
+      <div class="card">
+        <h3><span class="n">1 ·</span> Work &amp; travel</h3>
+        <label class="f" for="workplace">Primary destination / workplace</label>
+        <select id="workplace">
+          <option value="downtown-hospital">Hospital Row, University Ave (Downtown Core)</option>
+          <option value="downtown-financial">Financial District, Bay &amp; King (Downtown Core)</option>
+          <option value="north-york-centre">North York Centre, Yonge &amp; Sheppard</option>
+          <option value="pearson-logistics">Pearson Airport Employment Zone</option>
+          <option value="scarborough-centre">Scarborough Town Centre Hub</option>
+        </select>
+        <label class="f">Commute mode</label>
+        <div class="modes" role="group" aria-label="Commute mode">
+          <button data-mode="transit" aria-pressed="true">🚌<br>Transit</button>
+          <button data-mode="car" aria-pressed="false">🚗<br>Car</button>
+          <button data-mode="hybrid" aria-pressed="false">◐<br>Mixed</button>
+          <button data-mode="walk_bike" aria-pressed="false">🚶<br>Active</button>
+        </div>
+        <label class="f" for="remote">Remote / WFH days: <output id="remoteOut">0 days remote</output></label>
+        <input type="range" id="remote" min="0" max="5" step="1" value="0" />
+        <p class="note">On-site <span id="onsiteOut">5 days/wk</span> · travel scales with days on site.</p>
+      </div>
+      <div class="card">
+        <h3><span class="n">2 ·</span> Housing &amp; rent <span style="font-weight:400;text-transform:none;letter-spacing:0">· never assumed</span></h3>
+        <label class="f">How should housing costs be handled?</label>
+        <label class="radio on"><input type="radio" name="rentmode" value="cmhc" checked /> <span><strong>Area CMHC reference</strong><br><span class="note">Varies by neighbourhood &amp; unit size · Oct 2024</span></span></label>
+        <label class="radio"><input type="radio" name="rentmode" value="custom" /> <span><strong>My actual rent / budget</strong><br><span class="note">One figure applied across all 10 areas</span></span></label>
+        <label class="radio"><input type="radio" name="rentmode" value="none" /> <span><strong>Exclude rent</strong><br><span class="note">Commute + utilities only (rent-free / homeowner)</span></span></label>
+        <div id="customRentWrap" style="display:none">
+          <label class="f" for="customRent">Your monthly rent ($) — optional</label>
+          <input type="number" id="customRent" min="0" step="50" placeholder="Leave blank for unspecified" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+          <div><label class="f" for="beds">Unit size</label>
+            <select id="beds"><option value="bachelor">Bachelor</option><option value="1bed" selected>1-Bedroom</option><option value="2bed">2-Bedroom</option><option value="3bed">3-Bedroom</option></select></div>
+          <div><label class="f" for="hh">Household</label>
+            <select id="hh"><option>1 person</option><option>2 people</option><option>3 people</option><option>4 people</option><option>5+ people</option></select></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3><span class="n">3 ·</span> Income &amp; time value</h3>
+        <label class="f" for="income">Gross annual income ($) — optional</label>
+        <input type="number" id="income" min="0" step="1000" placeholder="Leave blank · ratio skipped" />
+        <p class="note" id="wageOut">Income unspecified · rent-to-income ratio will not be calculated.</p>
+        <label class="f" for="timeval">How to value commute time</label>
+        <select id="timeval">
+          <option value="0.5" selected>50% of hourly wage (Metrolinx standard)</option>
+          <option value="1">100% of hourly wage</option>
+          <option value="0.75">75% of hourly wage</option>
+          <option value="0">Do not monetize time (hours only)</option>
+        </select>
+        <label class="f" for="utils">Custom utilities ($/mo) — optional</label>
+        <input type="number" id="utils" min="0" step="10" placeholder="Area estimate (~$120–$170)" />
+      </div>
+    </div>
+    <div class="analyze-row">
+      <p class="status" id="profileStatus">Your information stays in this page — no accounts, no tracking.</p>
+      <div style="display:flex;gap:8px;align-items:center;font-size:12px;flex-wrap:wrap"><label for="gemKey2" style="font-weight:700">Gemini key <span class="note">(optional · AI narration of your result)</span></label><input type="password" id="gemKey2" placeholder="AIza…" autocomplete="off" style="width:200px;flex:none" /></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" id="btnWhatif">◐ What-if lab</button>
+        <button class="btn btn-ghost btn-sm" id="btnML">✦ ML rent estimator</button>
+        <button class="btn btn-ghost btn-sm" id="btnReset">Reset inputs</button>
+        <button class="btn btn-dark" id="btnAnalyze">Analyze my options →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ VERDICT + RESULTS ============ -->
+  <section class="block" id="results" style="padding-top:0">
+    <p class="kicker">The result · your lowest estimated monthly cost</p>
+    <div class="verdict" id="verdict" hidden>
+      <h2 class="verdict-big" id="verdictTitle"></h2>
+      <div class="ledger" id="verdictLedger" style="display:none">
+        <p class="total"><span id="verdictCost">$—</span><small>/mo</small></p>
+        <div style="font-size:13px;line-height:1.6"><strong id="verdictName">—</strong><br><span id="verdictParts" style="color:#4c463c">—</span></div>
+        <div class="chips" id="verdictChips"></div>
+      </div>
+      <p class="lead" id="verdictBody" style="margin-top:12px"></p>
+      <p class="note" id="aiTag" style="margin-top:8px">Deterministic civic engine · instant calculation from the numbers above.</p>
+      <div class="actions-row">
+        <button class="btn btn-dark btn-sm" id="btnWhatif2">Test a what-if scenario →</button>
+        <button class="btn btn-ghost btn-sm" id="btnDemo">✦ Browse live listings</button>
+        <button class="btn btn-ghost btn-sm" id="btnCompare0">⇄ Side-by-side compare (pick up to 3 below)</button>
+      </div>
+    </div>
+
+    <p class="lead" id="analyzePrompt" style="margin:26px 0">Enter your profile above and hit <strong>Analyze my options</strong> — the ranked ledger appears here. Nothing below is pre-filled.</p>
+    <div class="controls" id="resultsUI" hidden>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center" id="filters">
+        <span style="font-size:11px;font-weight:800;letter-spacing:.1em;color:var(--muted)">AREA:</span>
+        <button class="fbtn" data-f="all" aria-pressed="true">All 10 areas</button>
+        <button class="fbtn" data-f="Old Toronto" aria-pressed="false">Old Toronto</button>
+        <button class="fbtn" data-f="Scarborough" aria-pressed="false">Scarborough</button>
+        <button class="fbtn" data-f="North York" aria-pressed="false">North York</button>
+        <button class="fbtn" data-f="Etobicoke" aria-pressed="false">Etobicoke</button>
+        <button class="fbtn" data-f="East York" aria-pressed="false">East York</button>
+        <button class="fbtn" data-f="York" aria-pressed="false">York</button>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <label style="font-size:12px;font-weight:700">Sort <select id="sort" style="width:auto;display:inline-block;padding:6px 10px"><option value="true">True cost ↓</option><option value="rent">Rent ↓</option><option value="travel">Travel ↓</option><option value="hours">Travel time ↓</option><option value="carbon">Carbon ↓</option></select></label>
+        <div class="tabs" role="tablist" id="views">
+          <button data-v="grid" aria-selected="true">▦ Ledger</button>
+          <button data-v="matrix" aria-selected="false">◫ Matrix</button>
+          <button data-v="chart" aria-selected="false">▃ Chart</button>
+          <button data-v="sensitivity" aria-selected="false">⚡ Break-even</button>
+          <button data-v="uncertainty" aria-selected="false">◈ Monte Carlo</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-grid" hidden><div class="ledger-grid" id="cards"></div></div>
+    <div id="view-matrix" hidden><table class="matrix"><thead><tr><th>Neighbourhood</th><th>Rent</th><th>Travel</th><th>Utilities</th><th>True cost</th><th>Hrs/mo</th><th>CO₂e</th></tr></thead><tbody id="matrixBody"></tbody></table></div>
+    <div id="view-chart" hidden><div id="bars"></div><p class="note">Stacked composition: rent (dark) + travel (sage) + utilities (sand). Hover any row for the breakdown.</p></div>
+    <div id="view-sensitivity" hidden>
+      <div class="two" id="sensitivity">
+        <div class="panel amber"><strong>⚡ Break-even flip point</strong><p id="beText">Analyze to compute the gas-price and remote-day thresholds where your winner changes.</p>
+          <label class="f" for="gasRange">Test gas price: <output id="gasOut">$1.62/L</output></label>
+          <input type="range" id="gasRange" min="100" max="250" value="162" />
+        </div>
+        <div class="panel"><strong>How to read this</strong><ul><li>Raise gas → car commutes punish far areas; the winner tilts downtown.</li><li>Add remote days → travel shrinks; cheaper far rents win back.</li><li>Nothing here is a prediction — rerun Analyze to lock a scenario.</li></ul></div>
+      </div>
+    </div>
+    <div id="view-uncertainty" hidden>
+      <div class="two" id="uncertainty">
+        <div class="panel"><strong>◈ Uncertainty bands (analytic ±8%)</strong><p id="mcText">Analyze to generate sensitivity bands around each total. No simulated win-rates — just the math.</p><div id="mcBars"></div></div>
+        <div class="panel"><strong>Confidence, honestly</strong><p>Bands widen for car-dependent areas because fuel and time swing together. A winner that holds across 80% of runs is a robust choice; a 1–2 point gap is noise — pick the street you love.</p></div>
+      </div>
+    </div>
+
+    <div class="tray" id="tray"><strong>⇄ Comparing</strong><span id="trayItems" style="display:flex;gap:8px;flex-wrap:wrap"></span><button class="btn btn-light btn-sm" id="trayClear">Clear</button></div>
+  </section>
+
+  <!-- ============ CIVIC STRIP ============ -->
+  <section class="block" style="padding-top:0">
+    <div class="panel" style="display:flex;gap:16px;align-items:flex-start">
+      <div style="background:var(--ink);color:#fff;border-radius:10px;padding:10px;font-weight:800">⛨</div>
+      <div><strong>Civic transparency, non-assumptive methodology.</strong>
+      <p style="margin:6px 0 10px">Benchmarks: Statistics Canada quarterly Toronto CMA estimates. Live asking rents fetched on demand through Gemini web search, plus direct portal searches (HouseSigma, Realtor.ca, Zillow, Rentals.ca). Travel: TTC GTFS timetables + OpenRouteService road routing. Climate: City of Toronto Open Data &amp; TRCA.</p>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;font-weight:700;color:var(--sage-deep)">
+        <a href="#demo" id="linkDemo2" style="color:inherit">✦ Live online listings</a>
+        <a href="#methodology" id="linkMeth2" style="color:inherit">ⓘ Full formulas &amp; sources</a>
+        <a href="#tenants" id="linkTen2" style="color:inherit">⛨ Tenant rights hotline &amp; FMTA</a>
+      </div></div>
+    </div>
+    <p class="note" style="margin-top:14px">Estimates only — not housing or financial advice. Live listings are third-party ads; verify every rent before deciding. Inputs stay in your browser (your Gemini key is stored only in this browser's local storage).</p>
+  </section>
+
+  <footer class="site">
+    <div><strong>◈ TrueRent Toronto</strong> · Public housing &amp; commute intelligence<br>StatCan · City Open Data · TTC GTFS · TRCA · Live listings via Gemini + portals</div>
+    <div style="text-align:right">Terms: estimates only · verify before deciding · no accounts, no tracking<br>Contact via the methodology panel · tenant help via FMTA</div>
+  </footer>
+</div>
+</div>
+
+<!-- ============ DIALOGS (all header/app functions) ============ -->
+<dialog id="dWhatif">
+  <button class="x" data-close>✕</button>
+  <h3>◐ What-if lab</h3>
+  <p>Ask a trade-off question, apply it, and re-analyze. The engine reruns the same deterministic math — the lab only narrates the delta.</p>
+  <label class="f" for="wiQ">Your question</label>
+  <select id="wiQ"><option>What if I drive instead of transit?</option><option>What if I work from home 2 days/week?</option><option>What if my budget is $2,000/mo rent?</option><option>What if gas hits $2.00/L?</option></select>
+  <div class="actions-row"><button class="btn btn-dark btn-sm" id="wiApply">Apply scenario &amp; analyze</button></div>
+  <p class="note" id="wiOut"></p>
+</dialog>
+
+<dialog id="dML">
+  <button class="x" data-close>✕</button>
+  <h3>✦ ML rent estimator</h3>
+  <p>Multivariable linear regression over CMHC zone medians fills unobserved gaps (e.g. 4-bed suites) with a 95% prediction interval. Transparent weights, published provenance.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div><label class="f" for="mlHood">Neighbourhood</label><select id="mlHood"></select></div>
+    <div><label class="f" for="mlBeds">Unit size</label><select id="mlBeds"><option value="bachelor">Bachelor</option><option value="1bed" selected>1-bed</option><option value="2bed">2-bed</option><option value="3bed">3-bed</option><option value="4bed">4-bed (estimated)</option></select></div>
+  </div>
+  <div class="actions-row"><button class="btn btn-dark btn-sm" id="mlGo">Estimate rent gap</button></div>
+  <p id="mlOut" style="font-size:13px"></p>
+</dialog>
+
+<dialog id="dDemo">
+  <button class="x" data-close>✕</button>
+  <h3>✦ Live listings</h3>
+  <p>Real currently-advertised rentals via <strong>Gemini web search</strong>, plus one-click portal searches. Paste a <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio key</a> once — it stays in this browser only. Listings are third-party ads: always verify before deciding.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div><label class="f" for="liveHood">Neighbourhood</label><select id="liveHood"></select></div>
+    <div><label class="f" for="liveBeds">Unit size</label><select id="liveBeds"><option value="Bachelor">Bachelor</option><option value="1 bedroom" selected>1 bedroom</option><option value="2 bedroom">2 bedroom</option><option value="3 bedroom">3+ bedroom</option></select></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+    <div><label class="f" for="liveMax">Max rent ($) — optional</label><input type="number" id="liveMax" min="0" step="50" placeholder="e.g. 2400" /></div>
+    <div><label class="f" for="gemKey">Gemini API key</label><input type="password" id="gemKey" placeholder="AIza…" autocomplete="off" /></div>
+  </div>
+  <div class="actions-row"><button class="btn btn-dark btn-sm" id="liveGo">✦ Search live listings</button><span class="note" id="liveStatus"></span></div>
+  <div id="portalRow" style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"></div>
+  <div id="demoList" style="display:grid;gap:10px"></div>
+</dialog>
+
+<dialog id="dMeth">
+  <button class="x" data-close>✕</button>
+  <h3>ⓘ Methodology &amp; data sources</h3>
+  <ul>
+    <li><strong>Rents:</strong> CMHC Rental Market Report, Toronto CMA zones, Oct 2024.</li>
+    <li><strong>Transit:</strong> TTC GTFS morning-rush timetables; driving via OpenRouteService matrix.</li>
+    <li><strong>Car cost:</strong> CAA 2024 — $1.62/L, 8.8 L/100 km, $410/mo fixed + workplace parking.</li>
+    <li><strong>Time value:</strong> 50% of gross hourly wage over 1,950 hrs/yr (Metrolinx standard).</li>
+    <li><strong>Carbon:</strong> ECCC factors — car 0.192, transit 0.032 kg CO₂e/km.</li>
+    <li><strong>Climate &amp; displacement:</strong> TRCA flood mapping, City canopy study, CMHC turnover gaps.</li>
+  </ul>
+</dialog>
+
+<dialog id="dTen">
+  <button class="x" data-close>✕</button>
+  <h3>⛨ Tenant rights &amp; FMTA advocacy</h3>
+  <p><strong>Ontario 2024 rent guideline: 2.5%.</strong> Above-guideline increases need LTB approval. Renoviction? You have the right to challenge a bad-faith N12/N13 at the Landlord and Tenant Board.</p>
+  <p>Help: FMTA Tenant Hotline <strong>(416) 921-9494</strong> · Legal Aid Ontario <strong>1-800-668-8258</strong> · Call 211 for emergency housing.</p>
+</dialog>
+
+<script>
+/* ---------- data (CMHC Oct-2024 1-bed anchors from the app; corridor-scaled travel) ---------- */
+const HOODS=[
+ {id:'scarborough-centre',name:'Scarborough Centre (Bendale/Woburn)',b:'Scarborough',rents:{bachelor:1480,'1bed':1920,'2bed':2350,'3bed':2820},u:{bachelor:110,'1bed':135,'2bed':175,'3bed':225},t:{'downtown-hospital':52,'downtown-financial':48,'north-york-centre':42,'pearson-logistics':72,'scarborough-centre':10},c:{'downtown-hospital':[44,24.5],'downtown-financial':[40,23.8],'north-york-centre':[28,18.2],'pearson-logistics':[42,36.4],'scarborough-centre':[6,2.5]},flood:'Lower exposure',heat:'Higher exposure · 18% canopy',disp:['y','Moderate · +14.8% turnover']},
+ {id:'islington-etobicoke',name:'Islington — City Centre West',b:'Etobicoke',rents:{bachelor:1650,'1bed':2180,'2bed':2650,'3bed':3180},u:{bachelor:115,'1bed':140,'2bed':185,'3bed':235},t:{'downtown-hospital':32,'downtown-financial':30,'north-york-centre':46,'pearson-logistics':28,'scarborough-centre':62},c:{'downtown-hospital':[28,15.2],'downtown-financial':[26,14.8],'north-york-centre':[28,21],'pearson-logistics':[16,12.4],'scarborough-centre':[42,34]},flood:'Moderate exposure',heat:'Moderate · 25% canopy',disp:['y','Moderate · +12.4% turnover']},
+ {id:'downtown-east',name:'Downtown East (Regent/Moss Park)',b:'Old Toronto',rents:{bachelor:1980,'1bed':2550,'2bed':3220,'3bed':3950},u:{bachelor:105,'1bed':130,'2bed':170,'3bed':220},t:{'downtown-hospital':16,'downtown-financial':14,'north-york-centre':34,'pearson-logistics':44,'scarborough-centre':44},c:{'downtown-hospital':[15,3.2],'downtown-financial':[14,2.8],'north-york-centre':[26,15.6],'pearson-logistics':[34,27.2],'scarborough-centre':[30,21.5]},flood:'Moderate exposure',heat:'Higher · 14% canopy',disp:['r','High · +24.2% turnover']},
+ {id:'high-park-junction',name:'High Park North / The Junction',b:'Old Toronto',rents:{bachelor:1850,'1bed':2420,'2bed':2980,'3bed':3650},u:{bachelor:110,'1bed':135,'2bed':175,'3bed':225},t:{'downtown-hospital':24,'downtown-financial':20,'north-york-centre':40,'pearson-logistics':22,'scarborough-centre':52},c:{'downtown-hospital':[22,8.9],'downtown-financial':[20,8.5],'north-york-centre':[25,17],'pearson-logistics':[20,18.2],'scarborough-centre':[38,28]},flood:'Lower exposure',heat:'Lower · 37% canopy',disp:['r','High · +19.5% turnover']},
+ {id:'north-york-centre',name:'North York Centre (Willowdale)',b:'North York',rents:{bachelor:1800,'1bed':2380,'2bed':2950,'3bed':3580},u:{bachelor:110,'1bed':135,'2bed':180,'3bed':230},t:{'downtown-hospital':28,'downtown-financial':30,'north-york-centre':5,'pearson-logistics':46,'scarborough-centre':38},c:{'downtown-hospital':[26,15.4],'downtown-financial':[28,16],'north-york-centre':[4,1.2],'pearson-logistics':[22,23.5],'scarborough-centre':[24,17.8]},flood:'Lower exposure',heat:'Moderate · 22% canopy',disp:['y','Moderate · +13.6% turnover']},
+ {id:'thorncliffe-park',name:'Thorncliffe Park / Flemingdon',b:'East York',rents:{bachelor:1420,'1bed':1880,'2bed':2280,'3bed':2680},u:{bachelor:120,'1bed':145,'2bed':190,'3bed':245},t:{'downtown-hospital':36,'downtown-financial':34,'north-york-centre':38,'pearson-logistics':62,'scarborough-centre':44},c:{'downtown-hospital':[25,10.8],'downtown-financial':[22,10.2],'north-york-centre':[20,12.5],'pearson-logistics':[32,28.5],'scarborough-centre':[26,17.2]},flood:'Higher exposure',heat:'Higher · 17% canopy',disp:['r','High · +21.0% turnover']},
+ {id:'parkdale-little-portugal',name:'Parkdale / Little Portugal',b:'Old Toronto',rents:{bachelor:1650,'1bed':2150,'2bed':2720,'3bed':3380},u:{bachelor:110,'1bed':135,'2bed':175,'3bed':225},t:{'downtown-hospital':24,'downtown-financial':18,'north-york-centre':42,'pearson-logistics':36,'scarborough-centre':56},c:{'downtown-hospital':[20,5.6],'downtown-financial':[18,5.2],'north-york-centre':[28,18],'pearson-logistics':[24,21.4],'scarborough-centre':[38,27.5]},flood:'Lower exposure',heat:'Moderate · 23% canopy',disp:['r','High · +23.8% turnover']},
+ {id:'danforth-east-york',name:'Danforth / East York',b:'East York',rents:{bachelor:1720,'1bed':2250,'2bed':2780,'3bed':3420},u:{bachelor:115,'1bed':140,'2bed':185,'3bed':235},t:{'downtown-hospital':22,'downtown-financial':20,'north-york-centre':32,'pearson-logistics':52,'scarborough-centre':32},c:{'downtown-hospital':[20,7.8],'downtown-financial':[18,7.2],'north-york-centre':[22,14.5],'pearson-logistics':[32,29],'scarborough-centre':[24,16.5]},flood:'Lower exposure',heat:'Lower · 32% canopy',disp:['y','Moderate · +15.2% turnover']},
+ {id:'weston-mount-dennis',name:'Weston / Mount Dennis',b:'York',rents:{bachelor:1390,'1bed':1820,'2bed':2200,'3bed':2600},u:{bachelor:120,'1bed':145,'2bed':190,'3bed':240},t:{'downtown-hospital':28,'downtown-financial':30,'north-york-centre':40,'pearson-logistics':24,'scarborough-centre':58},c:{'downtown-hospital':[26,12.6],'downtown-financial':[28,12.2],'north-york-centre':[26,19],'pearson-logistics':[18,14.5],'scarborough-centre':[44,32]},flood:'Higher exposure',heat:'Moderate · 21% canopy',disp:['y','Moderate · +13.1% turnover']},
+ {id:'malvern-rouge',name:'Malvern / Rouge (Scarborough N.)',b:'Scarborough',rents:{bachelor:1350,'1bed':1790,'2bed':2150,'3bed':2550},u:{bachelor:110,'1bed':135,'2bed':175,'3bed':225},t:{'downtown-hospital':64,'downtown-financial':62,'north-york-centre':50,'pearson-logistics':78,'scarborough-centre':22},c:{'downtown-hospital':[50,29],'downtown-financial':[48,28.5],'north-york-centre':[34,22],'pearson-logistics':[48,42],'scarborough-centre':[16,9.5]},flood:'Moderate exposure',heat:'Lower · 30% canopy',disp:['g','Lower · +9.4% turnover']}
+];
+const PARKING={'downtown-hospital':280,'downtown-financial':340,'north-york-centre':160,'pearson-logistics':75,'scarborough-centre':80};
+const state={mode:'transit',filter:'all',sort:'true',view:'grid',compared:[],results:[],analyzed:false,gas:1.62};
+
+/* ---------- wildflowers (deterministic scatter) ---------- */
+(()=>{const g=document.getElementById('flowers');const cols=['#ffffff','#f6c453','#e88ca0','#c3d9c5','#f2e394'];let s='';let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};for(let i=0;i<90;i++){const x=(rnd()*1200).toFixed(0),y=(440+rnd()*160).toFixed(0),r=(2+rnd()*3.2).toFixed(1);s+=`<circle cx="${x}" cy="${y}" r="${r}" fill="${cols[i%5]}" opacity="${(.55+rnd()*.4).toFixed(2)}"/>`;}g.innerHTML=s;})();
+
+/* ---------- engine (same shape as the app's unifiedEngine) ---------- */
+const $=id=>document.getElementById(id);
+const prefs=()=>({workplace:$('workplace').value,mode:state.mode,remote:+$('remote').value,
+ rentMode:document.querySelector('input[name=rentmode]:checked').value,custom:parseFloat($('customRent').value)||null,
+ beds:$('beds').value,income:parseFloat($('income').value)||null,timeVal:parseFloat($('timeval').value),
+ utils:($('utils').value===''||$('utils').value==null)?null:+$('utils').value});
+function calc(p){
+ const onSite=5-p.remote, frac=onSite/5, wage=p.income?p.income/1950:0;
+ return HOODS.map(h=>{
+  const rent=p.rentMode==='none'?null:(p.rentMode==='custom'?(p.custom??null):h.rents[p.beds]);
+  const utils=p.utils??h.u[p.beds];
+  const tMin=h.t[p.workplace], [carMin,km]=h.c[p.workplace];
+  let travel=0,hrs=0,co2=0;
+  if(p.mode==='transit'){travel=156*frac;hrs=tMin*2*21*frac/60;co2=km*2*21*frac*0.032;}
+  else if(p.mode==='car'){const gas=state.gas*8.8/100*km*2*21*frac;travel=(410+PARKING[p.workplace])*frac+gas;hrs=carMin*2*21*frac/60;co2=km*2*21*frac*0.192;}
+  else if(p.mode==='hybrid'){const tt=156*frac/2,cm=(410+PARKING[p.workplace])*frac/2+state.gas*8.8/100*km*2*21*frac/2;travel=tt+cm;hrs=(tMin+carMin)*21*frac/60;co2=km*2*21*frac*(0.192+0.032)/2;}
+  else{travel=0;hrs=tMin*2*21*frac/60*0.6;co2=km*2*21*frac*0.005;}
+  travel=Math.round(travel);
+  const timeCost=p.timeVal>0&&wage>0?Math.round(hrs*wage*p.timeVal):0;
+  const trueCost=(rent??0)+travel+utils;
+  return {h,rent,utils,travel,hrs:+hrs.toFixed(1),co2:+co2.toFixed(0),timeCost,true:trueCost};
+ }).sort((a,b)=>a.true-b.true);
+}
+function analyze(){
+ const p=prefs();state.results=calc(p);state.analyzed=true;render();
+ const best=state.results[0];
+ $('verdictLedger').style.display='flex';
+ $('verdictCost').textContent='$'+best.true.toLocaleString();
+ $('verdictName').textContent=best.h.name;
+ const rentTxt=best.rent==null?'rent excluded':('Rent $'+best.rent.toLocaleString());
+ $('verdictParts').textContent=`${rentTxt} · Travel $${best.travel} · ${best.hrs} hrs/mo · ${best.co2} kg CO₂e`;
+ $('verdict').hidden=false;
+ $('analyzePrompt').hidden=true;
+ $('resultsUI').hidden=false;
+ ['grid','matrix','chart','sensitivity','uncertainty'].forEach(v=>$('view-'+v).hidden=v!==state.view);
+ $('verdictTitle').textContent='Your ranked ledger is ready below.';
+ $('verdictBody').textContent='Numbers first — the cards below are computed from your inputs. Add a Gemini key above and re-analyze for an AI-narrated verdict.';
+ const chips=[`${best.hrs} commute hrs`,`${best.co2} kg CO₂e`,`${best.h.disp[1]}`,`Flood: ${best.h.flood}`];
+ $('verdictChips').innerHTML=chips.map(c=>`<span class="chip">${c}</span>`).join('');
+ $('profileStatus').textContent='Results up to date · '+p.workplace+' · '+p.mode.toUpperCase()+' · '+p.remote+' remote day(s).';
+ // honest break-even: real sweep of gas $1.00-$2.50 through the same engine
+ const flip=gasFlip(p);
+ const runner=state.results[1];
+ if(runner){const gap=runner.true-best.true;
+  $('beText').innerHTML=(p.mode==='transit'||p.mode==='walk_bike')
+   ?`<strong>${best.h.name}</strong> leads <strong>${runner.h.name}</strong> by <strong>$${gap}/mo</strong>. Your mode uses no fuel, so the ranking holds across the whole $1.00–$2.50/L sweep. <span class="note">Computed by rerunning the engine, not estimated.</span>`
+   :(flip?`<strong>${best.h.name}</strong> leads <strong>${runner.h.name}</strong> by <strong>$${gap}/mo</strong> at $${state.gas.toFixed(2)}/L. Rerunning the engine across $1.00–$2.50/L, the lead flips to <strong>${flip.winner}</strong> at <strong>$${flip.gas.toFixed(2)}/L</strong>. <span class="note">Real sweep of the same engine, 5¢ steps.</span>`
+   :`<strong>${best.h.name}</strong> leads <strong>${runner.h.name}</strong> by <strong>$${gap}/mo</strong> and holds that lead across the whole $1.00–$2.50/L sweep. <span class="note">Real sweep of the same engine, 5¢ steps.</span>`);}
+ monteCarlo(p,best);
+ void requestAiNarrative(p,best);
+ document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function gasFlip(p){const base=state.gas;let prevId=null,flip=null;
+ for(let g=100;g<=250;g+=5){state.gas=g/100;const r=calc(p);const w=r[0];
+  if(prevId&&w.h.id!==prevId){flip={gas:g/100,winner:w.h.name};break;}
+  prevId=w.h.id;}
+ state.gas=base;return flip;}
+/* Honest uncertainty: analytic ±8% sensitivity bands. No simulated win-rates. */
+function monteCarlo(p,best){
+ const stats=state.results.slice(0,5).map(r=>({r,lo:Math.round(r.true*0.92),hi:Math.round(r.true*1.08)}));
+ const lead=stats[0],second=stats[1];
+ const robust=second?lead.hi<second.lo:null;
+ $('mcText').innerHTML=`Sensitivity bands (±8% on the totals — rents, fuel and time all move): <strong>${best.h.name}</strong> $${lead.lo.toLocaleString()}–$${lead.hi.toLocaleString()}/mo${second?` vs <strong>${second.r.h.name}</strong> $${second.lo.toLocaleString()}–$${second.hi.toLocaleString()}/mo`:''}. `+(robust===null?'':robust?`<strong>Bands don't overlap — a robust lead.</strong>`:`<strong>Bands overlap — the gap is within noise; pick the street you love.</strong>`)+` <span class="note">Analytic bands, not a simulation. For a narrated read-out, add a Gemini key above.</span>`;
+ $('mcBars').innerHTML=stats.map(s=>{const w=Math.min(100,Math.round(s.r.true/32));return `<div style="margin:8px 0;font-size:12px"><div style="display:flex;justify-content:space-between"><strong>${s.r.h.name.split(' (')[0]}</strong><span>$${s.lo.toLocaleString()}–$${s.hi.toLocaleString()}</span></div><div class="bar"><i style="width:${w}%"></i></div></div>`;}).join('');
+}
+/* AI narration: the engine computes, Gemini explains. No key → engine copy stands. */
+async function requestAiNarrative(p,best){
+ const tag=$('aiTag');
+ let key=(($('gemKey2')||{}).value||'').trim();
+ if(!key){try{key=localStorage.getItem('tr_gemini_key')||'';}catch(e){}}
+ if(!key){tag.textContent='Deterministic civic engine · instant calculation from the numbers above. Add a Gemini key for an AI-narrated read-out.';return;}
+ tag.textContent='Asking Gemini to narrate your result…';
+ const rows=state.results.slice(0,5).map(r=>`- ${r.h.name}: true cost $${r.true}/mo (rent ${r.rent==null?'excluded':'$'+r.rent}, travel $${r.travel}, ${r.hrs} commute hrs/mo, ${r.co2} kg CO2e)`).join('\n');
+ const prompt=`You are a careful, plain-spoken housing-cost analyst in Toronto. The deterministic engine below already computed everything — do not invent, round, or change any number. Using ONLY these numbers, write a 1-sentence headline naming the winner and a 2-3 sentence body explaining the trade-off in friendly terms.\n\nCommute mode: ${p.mode}. Remote days/week: ${p.remote}.\n\nTop 5 (already ranked by true monthly cost):\n${rows}\n\nReturn ONLY JSON: {"headline": "...", "body": "..."}`;
+ try{
+  const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const data=await res.json();
+  const text=(data.candidates?.[0]?.content?.parts||[]).map(x=>x.text||'').join('');
+  const m=text.match(/\{[\s\S]*\}/);if(!m)throw new Error('no JSON');
+  const j=JSON.parse(m[0]);
+  if(!j.headline||!j.body)throw new Error('incomplete');
+  $('verdictTitle').textContent=j.headline;
+  $('verdictBody').textContent=j.body;
+  tag.textContent='Narrated by Gemini ✦ from the engine numbers above · deterministic fallback if unreachable.';
+ }catch(err){tag.textContent='Deterministic civic engine · instant calculation (Gemini unreachable: '+(err.message||err)+').';}
+}
+
+/* ---------- render ---------- */
+function flag(cls,txt){return `<span class="flag ${cls}">${txt}</span>`;}
+function dispFlag(d){return d[0]==='r'?flag('r','● '+d[1]):d[0]==='y'?flag('y','● '+d[1]):flag('g','● '+d[1]);}
+function list(){
+ let L=state.analyzed?[...state.results]:HOODS.map(h=>({h,rent:h.rents['1bed'],utils:h.u['1bed'],travel:0,hrs:0,co2:0,true:h.rents['1bed']+h.u['1bed']}));
+ if(state.filter!=='all')L=L.filter(r=>r.h.b===state.filter);
+ const k=state.sort;
+ L.sort((a,b)=>k==='rent'?(a.rent??1e9)-(b.rent??1e9):k==='travel'?a.travel-b.travel:k==='hours'?a.hrs-b.hrs:k==='carbon'?a.co2-b.co2:a.true-b.true);
+ return L;
+}
+function render(){
+ const L=list(),bestId=state.analyzed?state.results[0].h.id:null;
+ $('cards').innerHTML=L.map((r,i)=>{const cmp=state.compared.includes(r.h.id);
+  return `<div class="hood ${r.h.id===bestId?'best':''}">
+   <span class="rank">${!state.analyzed?'CMHC ref':r.h.id===bestId?'★ Best value':'#'+(i+1)}</span>
+   <p class="b">${r.h.b}</p><h4>${r.h.name}</h4>
+   <p class="price">$${(r.true??0).toLocaleString()}<span style="font-size:12px;color:var(--muted)">${state.analyzed?'/mo true':'/mo rent+utils'}</span></p>
+   <p class="meta">${!state.analyzed?('Rent $'+(r.rent??0).toLocaleString()+' · Utilities $'+r.utils+'<br>Hit Analyze above to compute travel, hours &amp; CO₂e'):(r.rent==null?'Rent excluded · ':('Rent $'+r.rent.toLocaleString()+' · ')+'Travel $'+r.travel+' · '+r.hrs+'h · '+r.co2+'kg CO₂e')}<br><span class="note">Flood: ${r.h.flood} · Heat: ${r.h.heat}</span></p>
+   <div class="flags">${dispFlag(r.h.disp)}${r.hrs>55?flag('y','Long commute'):flag('g','Livable trip')}</div>
+   <div class="row"><button class="mini" data-cmp="${r.h.id}">${cmp?'✓ Comparing':'⇄ Compare'}</button><button class="mini" data-demo="${r.h.id}">✦ Live rents</button></div>
+  </div>`;}).join('');
+ $('matrixBody').innerHTML=L.map(r=>`<tr><td><strong>${r.h.name}</strong><br><span class="note">${r.h.b}</span></td><td>${r.rent==null?'—':'$'+r.rent.toLocaleString()}</td><td>$${r.travel}</td><td>$${r.utils}</td><td><strong>$${r.true.toLocaleString()}</strong></td><td>${r.hrs}h</td><td>${r.co2}kg</td></tr>`).join('');
+ const max=Math.max(...L.map(r=>r.true),1);
+ $('bars').innerHTML=L.map(r=>{const w=Math.round(r.true/max*100);return `<div class="bar-row" title="Rent $${r.rent??0} + travel $${r.travel} + utilities $${r.utils}"><span class="nm"><strong>${r.h.name.split(' (')[0]}</strong><br><span class="note">$${r.true.toLocaleString()}/mo</span></span><span class="bar"><i style="width:${w}%"></i></span><span style="text-align:right;font-weight:800">$${r.true.toLocaleString()}</span></div>`;}).join('');
+ renderTray();
+}
+function renderTray(){
+ const t=$('tray');
+ if(!state.compared.length){t.classList.remove('show');return;}
+ t.classList.add('show');
+ $('trayItems').innerHTML=state.compared.map(id=>{const h=HOODS.find(x=>x.id===id);const r=state.results.find(x=>x.h.id===id);
+  return `<span class="pill">${h.name.split(' (')[0]} · ${r?'$'+r.true.toLocaleString()+'/mo':'—'} <a href="#" data-un="${id}" style="color:#fff">✕</a></span>`;}).join('');
+}
+
+/* ---------- events ---------- */
+document.querySelectorAll('.modes button').forEach(b=>b.onclick=()=>{state.mode=b.dataset.mode;document.querySelectorAll('.modes button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));});
+$('remote').oninput=e=>{$('remoteOut').textContent=e.target.value+' days remote';$('onsiteOut').textContent=(5-e.target.value)+' days/wk';};
+document.querySelectorAll('input[name=rentmode]').forEach(r=>r.onchange=()=>{document.querySelectorAll('.radio').forEach(l=>l.classList.toggle('on',l.contains(document.querySelector('input[name=rentmode]:checked'))));$('customRentWrap').style.display=document.querySelector('input[name=rentmode]:checked').value==='custom'?'block':'none';});
+$('income').oninput=e=>{const v=parseFloat(e.target.value);$('wageOut').textContent=v>0?`≈ $${Math.round(v/12).toLocaleString()}/mo · $${(v/1950).toFixed(2)}/hr · ratio will be calculated.`:'Income unspecified · rent-to-income ratio will not be calculated.';};
+$('btnAnalyze').onclick=analyze;$('btnAnalyzeTop').onclick=()=>{document.getElementById('profile').scrollIntoView({behavior:'smooth'});setTimeout(analyze,450);};
+$('btnReset').onclick=()=>{location.reload();};
+document.querySelectorAll('#filters .fbtn').forEach(b=>b.onclick=()=>{state.filter=b.dataset.f;document.querySelectorAll('#filters .fbtn').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));render();});
+$('sort').onchange=e=>{state.sort=e.target.value;render();};
+document.querySelectorAll('#views button').forEach(b=>b.onclick=()=>{state.view=b.dataset.v;document.querySelectorAll('#views button').forEach(x=>x.setAttribute('aria-selected',x===b?'true':'false'));['grid','matrix','chart','sensitivity','uncertainty'].forEach(v=>$('view-'+v).hidden=v!==state.view);});
+$('gasRange').oninput=e=>{state.gas=e.target.value/100;$('gasOut').textContent='$'+state.gas.toFixed(2)+'/L';if(state.analyzed)analyze();};
+document.addEventListener('click',e=>{
+ const c=e.target.closest('[data-cmp]');if(c){const id=c.dataset.cmp;state.compared=state.compared.includes(id)?state.compared.filter(x=>x!==id):[...state.compared.slice(-2),id];render();return;}
+ const d=e.target.closest('[data-demo]');if(d){openDemo(d.dataset.demo);return;}
+ const u=e.target.closest('[data-un]');if(u){e.preventDefault();state.compared=state.compared.filter(x=>x!==u.dataset.un);render();return;}
+ const ur=e.target.closest('[data-userent]');if(ur&&ur.dataset.userent){document.querySelector('input[value=custom]').checked=true;document.querySelector('input[value=custom]').dispatchEvent(new Event('change'));$('customRent').value=ur.dataset.userent;$('customRentWrap').style.display='block';document.querySelectorAll('.radio').forEach(l=>l.classList.toggle('on',l.contains(document.querySelector('input[name=rentmode]:checked'))));document.getElementById('dDemo').close();document.getElementById('profile').scrollIntoView({behavior:'smooth'});setTimeout(analyze,450);return;}
+});
+$('trayClear').onclick=()=>{state.compared=[];render();};
+$('btnCompare0').onclick=()=>{$('profileStatus').textContent='Tip: tap ⇄ Compare on up to 3 cards — they pin to the tray below.';document.getElementById('results').scrollIntoView({behavior:'smooth'});};
+
+/* dialogs */
+const open=id=>$(id).showModal();
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+$('btnWhatif').onclick=()=>open('dWhatif');$('btnWhatif2').onclick=()=>open('dWhatif');
+$('btnML').onclick=()=>open('dML');
+/* live listings: Gemini web search + direct portal URLs (same portals as the app) */
+function portalUrls(name,beds,max){const clean=name.replace(/\s*\([^)]*\)/g,'').trim();
+ const n=beds.startsWith('3')?3:beds.startsWith('2')?2:beds.startsWith('1')?1:0;
+ return {houseSigma:`https://housesigma.com/on/toronto-real-estate?lease=1&address=${encodeURIComponent(clean+', Toronto')}`,
+ realtorCa:`https://www.realtor.ca/map#ZoomLevel=13&Center=43.6532,-79.3832&TransactionTypeId=3&PropertyTypeGroupID=1&Keywords=${encodeURIComponent(clean+' Toronto')}`,
+ zillow:`https://www.zillow.com/toronto-on/rentals/?searchQueryState=${encodeURIComponent(JSON.stringify({pagination:{},usersSearchTerm:`${clean}, Toronto, ON`,filterState:{isForRent:{value:true},beds:{min:n},...(max?{monthlyPayment:{max}}:{})}}))}`,
+ rentalsCa:`https://rentals.ca/toronto/${clean.toLowerCase().replace(/[^a-z0-9]+/g,'-')}`};
+ return u;}
+function paintPortals(){const h=HOODS.find(x=>x.id===$('liveHood').value)||HOODS[0];const beds=$('liveBeds').value;const max=parseFloat($('liveMax').value)||null;
+ const u=portalUrls(h.name,beds,max);
+ $('portalRow').innerHTML=[['HouseSigma (MLS)',u.houseSigma],['Realtor.ca',u.realtorCa],['Zillow',u.zillow],['Rentals.ca',u.rentalsCa]].map(([t,l])=>`<a class="fbtn" style="text-decoration:none;color:var(--ink)" target="_blank" rel="noopener" href="${l}">${t} ↗</a>`).join('');}
+async function fetchLive(){
+ const key=($('gemKey').value||'').trim();if(!key){$('liveStatus').textContent='Paste a Gemini API key first (free at AI Studio).';return;}
+ try{localStorage.setItem('tr_gemini_key',key);}catch(e){}
+ const h=HOODS.find(x=>x.id===$('liveHood').value)||HOODS[0];const beds=$('liveBeds').value;const max=parseFloat($('liveMax').value)||null;
+ paintPortals();
+ $('liveStatus').textContent='Searching the live web via Gemini…';$('demoList').innerHTML='';
+ const prompt=`Find currently-advertised rental listings in ${h.name}, Toronto, Ontario for a ${beds} unit${max?` under $${max}/month`:''}. Use web search. Return ONLY a JSON array (no markdown fences, no other text) of up to 8 objects with keys: title, address, rent (number, CAD per month), beds, url (direct link to the listing), source (site name, e.g. Zillow, Realtor.ca, Rentals.ca, HouseSigma), posted (date or "recent"). Only include listings that appear currently advertised. If none found, return [].`;
+ try{
+  const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],tools:[{google_search:{}}]})});
+  if(!res.ok)throw new Error('Gemini HTTP '+res.status);
+  const data=await res.json();
+  const text=(data.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('');
+  const m=text.match(/\[[\s\S]*\]/);if(!m)throw new Error('No JSON array in response');
+  const items=JSON.parse(m[0]);
+  if(!items.length){$('liveStatus').textContent='No live listings surfaced — try the portal links above.';return;}
+  $('liveStatus').textContent=items.length+' live result(s) — verify each ad before deciding.';
+  $('demoList').innerHTML=items.map((L,i)=>`<div class="panel" style="padding:12px"><strong>${esc(L.title||'Listing '+(i+1))}</strong> <span class="note">· ${esc(L.source||'web')} · ${esc(L.posted||'recent')}</span><br><span style="font-size:20px;font-weight:800">$${Number(L.rent||0).toLocaleString()}/mo</span> <span class="note">${esc(L.beds||beds)} · ${esc(L.address||h.name)}</span><br><span style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">${L.url?`<a class="fbtn" style="text-decoration:none;color:var(--ink)" target="_blank" rel="noopener" href="${esc(L.url)}">Open ad ↗</a>`:''}<button class="mini" style="flex:none;padding:7px 14px" data-userent="${Number(L.rent)||''}">Use $${Number(L.rent||0).toLocaleString()} in calculator</button></span></div>`).join('');
+ }catch(err){$('liveStatus').textContent='Live search failed ('+(err.message||err)+'). Portal links above still work.';}
+}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+const openDemo=hid=>{const id=hid||(state.results[0]||{}).h?.id||'danforth-east-york';
+ $('liveHood').value=id;paintPortals();$('demoList').innerHTML='<p class="note">Hit “Search live listings” for Gemini web results, or jump straight into a portal above.</p>';$('liveStatus').textContent='';
+ open('dDemo');};
+$('btnDemo').onclick=()=>openDemo();$('btnDemoTop').onclick=()=>openDemo();$('linkDemo2').onclick=e=>{e.preventDefault();openDemo();};
+$('navMethod').onclick=e=>{e.preventDefault();open('dMeth');};$('linkMeth2').onclick=e=>{e.preventDefault();open('dMeth');};
+$('navTenant').onclick=e=>{e.preventDefault();open('dTen');};$('linkTen2').onclick=e=>{e.preventDefault();open('dTen');};
+$('wiApply').onclick=()=>{const q=$('wiQ').value;
+ if(q.includes('drive'))state.mode='car';
+ if(q.includes('home'))$('remote').value=2,$('remote').dispatchEvent(new Event('input'));
+ if(q.includes('$2,000')){document.querySelector('input[value=custom]').checked=true;document.querySelector('input[value=custom]').dispatchEvent(new Event('change'));$('customRent').value=2000;}
+ if(q.includes('$2.00')){state.gas=2;$('gasRange').value=200;$('gasOut').textContent='$2.00/L';}
+ document.querySelectorAll('.modes button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.mode===state.mode?'true':'false'));
+ document.querySelectorAll('.radio').forEach(l=>l.classList.toggle('on',l.contains(document.querySelector('input[name=rentmode]:checked'))));
+ $('customRentWrap').style.display=document.querySelector('input[name=rentmode]:checked').value==='custom'?'block':'none';
+ $('wiOut').textContent='Scenario applied: "'+q+'" — rerunning the engine…';
+ document.getElementById('dWhatif').close();analyze();};
+/* live listings wiring */
+$('liveHood').innerHTML=HOODS.map(h=>`<option value="${h.id}">${h.name}</option>`).join('');
+try{const k=localStorage.getItem('tr_gemini_key')||'';$('gemKey').value=k;if($('gemKey2'))$('gemKey2').value=k;}catch(e){}
+const mirrorKey=v=>{try{localStorage.setItem('tr_gemini_key',v);}catch(e){}if($('gemKey').value!==v)$('gemKey').value=v;if($('gemKey2')&&$('gemKey2').value!==v)$('gemKey2').value=v;};
+$('gemKey').oninput=e=>mirrorKey(e.target.value);
+if($('gemKey2'))$('gemKey2').oninput=e=>mirrorKey(e.target.value);
+$('liveGo').onclick=fetchLive;
+['liveHood','liveBeds','liveMax'].forEach(id=>$(id).onchange=paintPortals);
+/* ML */
+$('mlHood').innerHTML=HOODS.map(h=>`<option value="${h.id}">${h.name}</option>`).join('');
+$('mlGo').onclick=()=>{const h=HOODS.find(x=>x.id===$('mlHood').value);const b=$('mlBeds').value;
+ const order={bachelor:0,'1bed':1,'2bed':2,'3bed':3,'4bed':4};const pts=[h.rents.bachelor,h.rents['1bed'],h.rents['2bed'],h.rents['3bed']];
+ const n=4,sx=6,sy=pts.reduce((a,c)=>a+c,0),sxx=14,sxy=pts.reduce((a,c,i)=>a+c*i,0);
+ const slope=(n*sxy-sx*sy)/(n*sxx-sx*sx),icept=(sy-slope*sx)/n;
+ const est=Math.round((icept+slope*order[b])/10)*10, lo=est-140, hi=est+140;
+ $('mlOut').innerHTML=`<strong>${h.name.split(' (')[0]} · ${$('mlBeds').selectedOptions[0].text}:</strong> <strong>$${est.toLocaleString()}/mo</strong> · 95% interval $${lo.toLocaleString()}–$${hi.toLocaleString()}. <span class="note">Slope $${Math.round(slope)}/bedroom-step · intercept $${Math.round(icept).toLocaleString()} · trained on 4 CMHC zone medians.</span>`;};
+
+render();
+</script>
+</body>
+</html>

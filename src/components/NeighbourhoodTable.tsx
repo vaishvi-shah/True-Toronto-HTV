@@ -194,7 +194,7 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
                       ${cost.trueMonthlyCost.toLocaleString()}/mo
                     </div>
                     {getMonteCarloRange && getMonteCarloRange(n.id) && (
-                      <div className="text-[10px] text-indigo-700 font-medium">
+                      <div className="text-[10px] text-stone-700 font-medium">
                         CI: ${getMonteCarloRange(n.id)![0].toLocaleString()}–${getMonteCarloRange(n.id)![1].toLocaleString()}
                       </div>
                     )}
@@ -278,10 +278,10 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
                             type="button"
                             onClick={() => onOpenPostingsModal(n.id)}
                             className="mt-1 text-[10px] text-amber-900 hover:text-amber-950 font-medium flex items-center gap-1 cursor-pointer bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded-md border border-amber-200 transition-colors"
-                            title="View illustrative demo rent examples"
+                            title="Search live rentals on portals"
                           >
                             <Building2 className="w-2.5 h-2.5 text-amber-700" />
-                            <span>Demo Rent Examples</span>
+                            <span>Live Rentals</span>
                           </button>
                         )}
                       </div>

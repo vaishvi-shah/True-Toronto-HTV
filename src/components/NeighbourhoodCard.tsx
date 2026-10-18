@@ -18,7 +18,6 @@ import {
   BrainCircuit,
   Dices,
 } from 'lucide-react';
-import { DEMO_LISTINGS } from '../data/demoListings';
 import { CalculatedCost, UserPreferences } from '../types';
 import { RiskBadge } from './RiskBadge';
 
@@ -46,11 +45,9 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditingRent, setIsEditingRent] = useState(false);
-  const [visibleDemoCount, setVisibleDemoCount] = useState(6);
   const [tempRentInput, setTempRentInput] = useState<number>(b.effectiveRent ?? b.originalMarketRent);
 
   const n = b.neighbourhood;
-  const neighbourhoodDemoListings = DEMO_LISTINGS.filter((listing) => listing.neighbourhoodId === n.id);
 
   const handleSaveCustomRent = () => {
     if (onUpdateNeighbourhoodRent) {
@@ -107,10 +104,10 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
 
   return (
     <div
-      className={`bg-white rounded-2xl border transition-all duration-200 overflow-hidden shadow-xs hover:shadow-md flex flex-col ${
+      className={`bg-white rounded-xl border transition-[border-color] duration-200 overflow-hidden flex flex-col ${
         isCompared
-          ? 'border-emerald-600 ring-2 ring-emerald-500/20'
-          : 'border-stone-200 hover:border-stone-300'
+          ? 'border-stone-900 ring-1 ring-stone-900/20'
+          : 'border-stone-200 hover:border-stone-400'
       }`}
     >
       {/* Top Header */}
@@ -135,9 +132,9 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
 
           <button
             onClick={() => onToggleCompare(n.id)}
-            className={`px-2.5 py-1 rounded-xl text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer shrink-0 ${
+            className={`pressable px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition-[background-color,color] cursor-pointer shrink-0 ${
               isCompared
-                ? 'bg-emerald-700 text-white font-semibold'
+                ? 'bg-stone-900 text-white font-semibold'
                 : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200'
             }`}
           >
@@ -180,8 +177,8 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
                 : 'Rent + Commute + Utilities'}
             </div>
             {monteCarloRange && (
-              <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200/80">
-                <Dices className="w-3 h-3 text-indigo-500 shrink-0" />
+              <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-stone-700 bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200/80">
+                <Dices className="w-3 h-3 shrink-0" />
                 <span>80% CI: ${monteCarloRange[0].toLocaleString()}–${monteCarloRange[1].toLocaleString()}</span>
               </div>
             )}
@@ -200,10 +197,10 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
                     <button
                       type="button"
                       onClick={() => onOpenMlEstimator(b.neighbourhood.id)}
-                      className="text-[10px] text-purple-700 hover:text-purple-900 font-semibold flex items-center gap-0.5 cursor-pointer bg-purple-50 px-1.5 py-0.5 rounded-md border border-purple-200"
+                      className="text-[10px] text-stone-700 hover:text-stone-900 font-semibold flex items-center gap-0.5 cursor-pointer bg-stone-100 px-1.5 py-0.5 rounded-md border border-stone-300"
                       title="Estimate rent for unit gaps using Multivariable Linear Regression"
                     >
-                      <BrainCircuit className="w-2.5 h-2.5 text-purple-600" />
+                      <BrainCircuit className="w-2.5 h-2.5" />
                       <span>ML Gap</span>
                     </button>
                   )}
@@ -364,38 +361,19 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
         </div>
       </div>
 
-      <div className="border-t border-b border-stone-200 bg-amber-50/30 p-3.5">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold text-stone-900">Demo rent examples</p>
-            <p className="mt-0.5 text-[10px] text-stone-500">Illustrative prices based on this area's historical rent reference; not available units.</p>
-          </div>
-          {onOpenPostingsModal && (
-            <button type="button" onClick={() => onOpenPostingsModal(n.id)} className="shrink-0 rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100">
-              Browse all
-            </button>
-          )}
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {neighbourhoodDemoListings.slice(0, visibleDemoCount).map((listing) => (
-            <div key={listing.id} className="rounded-xl border border-amber-100 bg-white p-2.5 shadow-xs">
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[9px] font-bold uppercase tracking-wide text-amber-800">Demo</span>
-                <span className="text-[9px] text-stone-500">{listing.bedrooms === 'bachelor' ? 'Studio' : listing.bedrooms.replace('bed', ' bed')}</span>
-              </div>
-              <div className="mt-1 font-mono text-sm font-extrabold text-emerald-800">${listing.monthlyRent.toLocaleString()}<span className="ml-0.5 text-[9px] font-medium text-stone-500">/mo</span></div>
+      {onOpenPostingsModal && (
+        <div className="border-t border-b border-stone-200 bg-stone-50 p-3.5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold text-stone-900">Live rental search</p>
+              <p className="mt-0.5 text-[10px] text-stone-500">Search current availability on HouseSigma, Realtor.ca, Zillow, and Rentals.ca.</p>
             </div>
-          ))}
-        </div>
-        {neighbourhoodDemoListings.length > 6 && visibleDemoCount < neighbourhoodDemoListings.length && (
-          <div className="mt-2 flex justify-center gap-2">
-            {visibleDemoCount < 9 && (
-              <button type="button" onClick={() => setVisibleDemoCount(9)} className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-amber-900 hover:bg-amber-100">View 3 more</button>
-            )}
-            <button type="button" onClick={() => setVisibleDemoCount(neighbourhoodDemoListings.length)} className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-amber-900 hover:bg-amber-100">View all</button>
+            <button type="button" onClick={() => onOpenPostingsModal(n.id)} className="shrink-0 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-800 hover:bg-stone-100">
+              Search live
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Value of Your Time: Separated out so it never silently inflates out-of-pocket cash */}
       <div className="p-3.5 sm:p-4 bg-stone-50 border-b border-stone-200/80">

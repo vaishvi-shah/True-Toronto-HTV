@@ -1,0 +1,733 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { gsap } from 'gsap';
+import {
+  ArrowLeft,
+  ArrowRight,
+  BarChart3,
+  Building2,
+  Compass,
+  Dices,
+  Filter,
+  ArrowUpDown,
+  LayoutGrid,
+  Map as MapIcon,
+  ShieldCheck,
+  BrainCircuit,
+  Table as TableIcon,
+  Zap,
+} from 'lucide-react';
+import { HousingStep, IncomeStep, Overture, ReviewStep, WorkStep } from './steps';
+import { KeyFindingBanner } from '../components/KeyFindingBanner';
+import { ResultsLedger } from '../components/ResultsLedger';
+import { NeighbourhoodTable } from '../components/NeighbourhoodTable';
+import { CostBarChart } from '../components/CostBarChart';
+import { ComparisonDrawer } from '../components/ComparisonDrawer';
+import { AiWhatIfExplorer } from '../components/AiWhatIfExplorer';
+import { HowWeCalculatedModal } from '../components/HowWeCalculatedModal';
+import { TenantResourcesModal } from '../components/TenantResourcesModal';
+import { LivePostingsModal } from '../components/LivePostingsModal';
+import { SensitivityExplorer } from '../components/SensitivityExplorer';
+import { MonteCarloUncertaintyPanel } from '../components/MonteCarloUncertaintyPanel';
+import { MlRentGapEstimatorModal } from '../components/MlRentGapEstimatorModal';
+import { NeighbourhoodExplorer } from '../components/NeighbourhoodExplorer';
+import { AnalysisNeighbourhoodMap } from '../components/AnalysisNeighbourhoodMap';
+import { calculateNeighbourhoodCosts } from '../services/calculator';
+import { runMonteCarloSimulation } from '../services/monteCarloSimulation';
+import { CalculatedCost, UserPreferences } from '../types';
+import './journey.css';
+
+type Stage = 'overture' | 'work' | 'housing' | 'income' | 'review' | 'processing' | 'results';
+
+const STAGE_META: Array<{ id: Stage; label: string; action: string }> = [
+  { id: 'overture', label: 'Overture', action: 'Begin' },
+  { id: 'work', label: 'Work & travel', action: 'Continue' },
+  { id: 'housing', label: 'Housing & rent', action: 'Continue' },
+  { id: 'income', label: 'Income & time', action: 'Continue' },
+  { id: 'review', label: 'Review', action: 'Analyze my options' },
+  { id: 'processing', label: 'Analysis', action: '' },
+  { id: 'results', label: 'Results', action: '' },
+];
+
+const CLEAN_PREFS: UserPreferences = {
+  workplaceId: 'downtown-hospital',
+  currentNeighbourhoodId: '',
+  currentMonthlyRent: null,
+  currentUtilitiesMonthly: null,
+  currentCommuteMode: 'transit',
+  currentBedrooms: '1bed',
+  annualIncome: 55000,
+  householdMembers: 1,
+  bedrooms: '1bed',
+  commuteMode: 'transit',
+  hybridRemoteDaysPerWeek: 0,
+  timeValuationRate: 0.5,
+  timeValuationType: 'percent_of_wage',
+  rentMode: 'cmhc_benchmark',
+  customFixedRent: null,
+  customNeighbourhoodRents: {},
+};
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+interface AiError {
+  status: number | string;
+  code: string;
+  message: string;
+}
+
+interface AiExplanation {
+  headline: string;
+  body: string;
+  cheapestRentNeighbourhood?: string;
+  cheapestTrueNeighbourhood?: string;
+  cheapestTrueMonthlyCost?: number;
+  cheapestTrueRent?: number | null;
+  monthlyDifference?: number;
+  timeDifferenceHours?: number;
+  breakEvenNarrative?: string;
+  monteCarloInsight?: string;
+  tenantRightsNotice?: string;
+  isAiGenerated?: boolean;
+}
+
+export const Journey: React.FC = () => {
+  const reduceMotion = useMemo(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    []
+  );
+  const [stage, setStage] = useState<Stage>('overture');
+  const [prefs, setPrefs] = useState<UserPreferences>(CLEAN_PREFS);
+  const [analyzed, setAnalyzed] = useState<UserPreferences | null>(null);
+  const [aiExplanation, setAiExplanation] = useState<AiExplanation | null>(null);
+  const [aiError, setAiError] = useState<AiError | null>(null);
+  const [isLoadingAi, setIsLoadingAi] = useState(false);
+  const [phaseIdx, setPhaseIdx] = useState(0);
+  const [viewMode, setViewMode] = useState<'grid' | 'table' | 'chart' | 'sensitivity' | 'uncertainty' | 'atlas'>('grid');
+  const [borough, setBorough] = useState('all');
+  const [sortBy, setSortBy] = useState<'trueCost' | 'rent' | 'transport' | 'utilities' | 'commuteTime' | 'carbon'>('trueCost');
+  const [comparedIds, setComparedIds] = useState<string[]>([]);
+  const [isMethodologyOpen, setIsMethodologyOpen] = useState(false);
+  const [isTenantOpen, setIsTenantOpen] = useState(false);
+  const [isWhatIfOpen, setIsWhatIfOpen] = useState(false);
+  const [isPostingsOpen, setIsPostingsOpen] = useState(false);
+  const [postingsId, setPostingsId] = useState<string | null>(null);
+  const [isMlOpen, setIsMlOpen] = useState(false);
+  const [mlId, setMlId] = useState<string | null>(null);
+
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
+  const dirRef = useRef<1 | -1>(1);
+  const navBusy = useRef(false);
+  const runToken = useRef(0);
+  const liveRef = useRef<HTMLDivElement>(null);
+
+  const stageIdx = STAGE_META.findIndex((s) => s.id === stage);
+  const patch = useCallback(
+    (p: Partial<UserPreferences>) => setPrefs((prev) => ({ ...prev, ...p })),
+    []
+  );
+
+  /* ---------- scene transitions ---------- */
+  const go = useCallback(
+    (to: Stage) => {
+      if (navBusy.current || to === stage) return;
+      const fromIdx = STAGE_META.findIndex((s) => s.id === stage);
+      const toIdx = STAGE_META.findIndex((s) => s.id === to);
+      dirRef.current = toIdx >= fromIdx ? 1 : -1;
+      const scene = sceneRef.current;
+      if (!scene || reduceMotion) {
+        setStage(to);
+        return;
+      }
+      navBusy.current = true;
+      gsap.to(scene, {
+        autoAlpha: 0,
+        x: -26 * dirRef.current,
+        duration: 0.28,
+        ease: 'power3.in',
+        onComplete: () => {
+          setStage(to);
+          navBusy.current = false;
+        },
+      });
+    },
+    [stage, reduceMotion]
+  );
+
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (liveRef.current) liveRef.current.textContent = `Stage ${stageIdx + 1} of ${STAGE_META.length}: ${STAGE_META[stageIdx].label}`;
+    const heading = scene?.querySelector('h1, h2');
+    if (heading instanceof HTMLElement) heading.focus({ preventScroll: true });
+    if (!scene || reduceMotion) return;
+    gsap.fromTo(
+      scene,
+      { autoAlpha: 0, x: 30 * dirRef.current },
+      { autoAlpha: 1, x: 0, duration: 0.55, ease: 'power4.out' }
+    );
+    const items = scene.querySelectorAll('[data-scene-item]');
+    if (items.length) {
+      gsap.fromTo(
+        items,
+        { y: 26, autoAlpha: 0 },
+        { y: 0, autoAlpha: 1, duration: 0.6, ease: 'power4.out', stagger: 0.07, delay: 0.08 }
+      );
+    }
+    if (progressRef.current) {
+      gsap.to(progressRef.current, {
+        scaleX: stageIdx / (STAGE_META.length - 1),
+        duration: 0.6,
+        ease: 'power3.out',
+      });
+    }
+  }, [stage, stageIdx, reduceMotion]);
+
+  /* ---------- derived results ---------- */
+  const results: CalculatedCost[] = useMemo(
+    () => (analyzed ? calculateNeighbourhoodCosts(analyzed) : []),
+    [analyzed]
+  );
+  const currentLivingCost = useMemo(() => {
+    if (!analyzed?.currentNeighbourhoodId || analyzed.currentMonthlyRent == null || analyzed.currentMonthlyRent < 0) return null;
+    const profile: UserPreferences = {
+      ...analyzed,
+      bedrooms: analyzed.currentBedrooms || analyzed.bedrooms,
+      commuteMode: analyzed.currentCommuteMode || analyzed.commuteMode,
+      rentMode: 'cmhc_benchmark',
+      customFixedRent: null,
+      customNeighbourhoodRents: {
+        ...(analyzed.customNeighbourhoodRents || {}),
+        [analyzed.currentNeighbourhoodId]: analyzed.currentMonthlyRent,
+      },
+      customUtilitiesMonthly: analyzed.currentUtilitiesMonthly ?? null,
+    };
+    return calculateNeighbourhoodCosts(profile).find((i) => i.neighbourhood.id === analyzed.currentNeighbourhoodId) || null;
+  }, [analyzed]);
+  const mcSim = useMemo(() => (analyzed ? runMonteCarloSimulation(analyzed, 1500) : null), [analyzed]);
+  const filtered = useMemo(() => {
+    const list = [...results];
+    if (borough !== 'all') list.filter((i) => i.neighbourhood.borough === borough);
+    const out = borough === 'all' ? list : list.filter((i) => i.neighbourhood.borough === borough);
+    const key = sortBy;
+    out.sort((a, b) =>
+      key === 'rent' ? (a.effectiveRent ?? 0) - (b.effectiveRent ?? 0)
+      : key === 'transport' ? a.commuteBreakdown.totalMonthlyCommuteCost - b.commuteBreakdown.totalMonthlyCommuteCost
+      : key === 'utilities' ? a.utilitiesCost - b.utilitiesCost
+      : key === 'commuteTime' ? a.monthlyCommuteHours - b.monthlyCommuteHours
+      : key === 'carbon' ? a.carbonFootprintKg.total - b.carbonFootprintKg.total
+      : a.trueMonthlyCost - b.trueMonthlyCost
+    );
+    return out;
+  }, [results, borough, sortBy]);
+  const compared = useMemo(() => results.filter((i) => comparedIds.includes(i.neighbourhood.id)), [results, comparedIds]);
+
+  const toggleCompare = useCallback((id: string) => {
+    setComparedIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= 3) return prev;
+      return [...prev, id];
+    });
+  }, []);
+  const updateRent = useCallback((id: string, rent: number | null) => {
+    setPrefs((prev) => {
+      const next = { ...(prev.customNeighbourhoodRents || {}) };
+      if (rent === null || rent <= 0) delete next[id];
+      else next[id] = rent;
+      return { ...prev, customNeighbourhoodRents: next };
+    });
+  }, []);
+  const openPostings = useCallback(
+    (id?: string) => {
+      setPostingsId(id || results[0]?.neighbourhood.id || null);
+      setIsPostingsOpen(true);
+    },
+    [results]
+  );
+
+  /* ---------- honest processing: each phase is a real operation ---------- */
+  const runAnalysis = useCallback(async () => {
+    const token = ++runToken.current;
+    const dwell = reduceMotion ? 0 : 620;
+    const snapshot: UserPreferences = {
+      ...prefs,
+      customNeighbourhoodRents: { ...prefs.customNeighbourhoodRents },
+      routeEstimates: undefined,
+    };
+    setPhaseIdx(0);
+    setStage('processing');
+    // Phase 1 · routes (real network call, TTC fallback on failure)
+    setPhaseIdx(1);
+    try {
+      const res = await fetch('/api/routes/driving', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workplaceId: snapshot.workplaceId }),
+      });
+      if (token !== runToken.current) return;
+      if (res.ok) {
+        const data = await res.json();
+        snapshot.routeEstimates = data.estimates;
+      }
+    } catch {
+      /* published estimates stand in */
+    }
+    if (dwell) await delay(dwell);
+    if (token !== runToken.current) return;
+    // Phase 2 · engine
+    setPhaseIdx(2);
+    calculateNeighbourhoodCosts(snapshot);
+    setAnalyzed(snapshot);
+    setBorough('all');
+    if (dwell) await delay(dwell);
+    if (token !== runToken.current) return;
+    // Phase 3 · explain (live Gemini call; failures surface the Gemini
+    // error code in the verdict — never silent placeholder narration)
+    setPhaseIdx(3);
+    setIsLoadingAi(true);
+    try {
+      const res = await fetch('/api/gemini/explain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferences: snapshot }),
+      });
+      if (token !== runToken.current) return;
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        setAiExplanation(data);
+        setAiError(null);
+      } else {
+        setAiExplanation(null);
+        setAiError(
+          data?.error ?? {
+            status: res.status,
+            code: `HTTP_${res.status}`,
+            message: 'Gemini narration request failed',
+          }
+        );
+      }
+    } catch (err) {
+      if (token === runToken.current) {
+        setAiExplanation(null);
+        setAiError({
+          status: 0,
+          code: 'NETWORK_ERROR',
+          message: err instanceof Error ? err.message : 'Could not reach the analysis server',
+        });
+      }
+    } finally {
+      if (token === runToken.current) setIsLoadingAi(false);
+    }
+    if (dwell) await delay(dwell);
+    if (token !== runToken.current) return;
+    setPhaseIdx(4);
+    if (dwell) await delay(Math.round(dwell * 0.7));
+    if (token !== runToken.current) return;
+    setStage('results');
+  }, [prefs, reduceMotion]);
+
+  const primaryAction = () => {
+    if (stage === 'overture') go('work');
+    else if (stage === 'work') go('housing');
+    else if (stage === 'housing') go('income');
+    else if (stage === 'income') go('review');
+    else if (stage === 'review') void runAnalysis();
+  };
+  const goBack = () => {
+    if (stage === 'work') go('overture');
+    else if (stage === 'housing') go('work');
+    else if (stage === 'income') go('housing');
+    else if (stage === 'review') go('income');
+    else if (stage === 'results') go('review');
+  };
+
+  const showChrome = stage !== 'overture' && stage !== 'processing';
+  const meta = STAGE_META[stageIdx];
+
+  return (
+    <div className={`journey${stage === 'overture' ? ' is-overture' : ''}${stage === 'processing' ? ' is-processing' : ''}`}>
+      <div ref={liveRef} className="j-sr" aria-live="polite" />
+      {/* top bar */}
+      <header className="j-topbar">
+        <span className="j-brand">
+          <Compass aria-hidden="true" /> TrueRent <em>Toronto</em>
+        </span>
+        {showChrome && (
+          <div className="j-progress" role="group" aria-label="Journey progress">
+            <span className="j-progress-label">
+              Stage {String(stageIdx).padStart(2, '0')} · {meta.label}
+            </span>
+            <span className="j-progress-track" aria-hidden="true">
+              <span ref={progressRef} className="j-progress-fill" />
+            </span>
+            <span className="j-progress-segs" aria-hidden="true">
+              {STAGE_META.map((s, i) => (
+                <i key={s.id} className={i < stageIdx ? 'is-done' : i === stageIdx ? 'is-now' : ''} />
+              ))}
+            </span>
+          </div>
+        )}
+        <nav className="j-top-actions" aria-label="Resources">
+          <button type="button" onClick={() => setIsMethodologyOpen(true)}>Method</button>
+          <button type="button" onClick={() => setIsTenantOpen(true)}>Tenants</button>
+        </nav>
+      </header>
+
+      {/* scene */}
+      <main className="j-stage" ref={sceneRef}>
+        {stage === 'overture' && <Overture onBegin={() => go('work')} />}
+        {stage === 'work' && <WorkStep prefs={prefs} onChange={patch} />}
+        {stage === 'housing' && <HousingStep prefs={prefs} onChange={patch} />}
+        {stage === 'income' && <IncomeStep prefs={prefs} onChange={patch} />}
+        {stage === 'review' && (
+          <ReviewStep
+            prefs={prefs}
+            onChange={patch}
+            onEdit={(s) => go(s)}
+          />
+        )}
+        {stage === 'processing' && <ProcessingScene phaseIdx={phaseIdx} reduceMotion={reduceMotion} />}
+        {stage === 'results' && analyzed && (
+          <ResultsScene
+            results={results}
+            filtered={filtered}
+            preferences={analyzed}
+            currentLivingCost={currentLivingCost}
+            aiExplanation={aiExplanation}
+            aiError={aiError}
+            isLoadingAi={isLoadingAi}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            borough={borough}
+            setBorough={setBorough}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            comparedIds={comparedIds}
+            onToggleCompare={toggleCompare}
+            onUpdateRent={updateRent}
+            onOpenPostings={openPostings}
+            onOpenMl={(id) => { setMlId(id); setIsMlOpen(true); }}
+            onOpenMlGlobal={() => { setMlId(null); setIsMlOpen(true); }}
+            onOpenWhatIf={() => setIsWhatIfOpen(true)}
+            onRefreshAi={() => {
+              setIsLoadingAi(true);
+              fetch('/api/gemini/explain', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ preferences: analyzed }),
+              })
+                .then(async (r) => {
+                  const d = await r.json().catch(() => null);
+                  if (r.ok) {
+                    setAiExplanation(d);
+                    setAiError(null);
+                  } else {
+                    setAiExplanation(null);
+                    setAiError(
+                      d?.error ?? {
+                        status: r.status,
+                        code: `HTTP_${r.status}`,
+                        message: 'Gemini narration request failed',
+                      }
+                    );
+                  }
+                })
+                .catch((err) => {
+                  setAiExplanation(null);
+                  setAiError({
+                    status: 0,
+                    code: 'NETWORK_ERROR',
+                    message: err instanceof Error ? err.message : 'Could not reach the analysis server',
+                  });
+                })
+                .finally(() => setIsLoadingAi(false));
+            }}
+            onOpenMethodology={() => setIsMethodologyOpen(true)}
+            onOpenTenants={() => setIsTenantOpen(true)}
+            onAdjust={() => go('review')}
+            onRestart={() => { setAnalyzed(null); setAiExplanation(null); setAiError(null); setComparedIds([]); setViewMode('grid'); setBorough('all'); go('overture'); }}
+            getMcRange={(id) => mcSim?.neighbourhoodStats[id]?.confidenceInterval80}
+          />
+        )}
+      </main>
+
+      {/* nav chrome */}
+      {showChrome && stage !== 'results' && (
+        <footer className="j-nav">
+          <button type="button" className="j-btn-ghost" onClick={goBack}>
+            <ArrowLeft aria-hidden="true" /> Back
+          </button>
+          <button type="button" className="j-btn-primary" onClick={primaryAction} data-magnetic>
+            {meta.action} <ArrowRight aria-hidden="true" />
+          </button>
+        </footer>
+      )}
+      {stage === 'results' && (
+        <ComparisonDrawer
+          comparedCosts={compared}
+          preferences={prefs}
+          onRemove={toggleCompare}
+          onClear={() => setComparedIds([])}
+          onOpenPostingsModal={openPostings}
+        />
+      )}
+
+      <AiWhatIfExplorer
+        isOpen={isWhatIfOpen}
+        onClose={() => setIsWhatIfOpen(false)}
+        currentPreferences={prefs}
+        onApplyScenario={(p) => patch(p)}
+      />
+      <LivePostingsModal
+        isOpen={isPostingsOpen}
+        onClose={() => setIsPostingsOpen(false)}
+        preferences={prefs}
+        selectedNeighbourhoodId={postingsId}
+        onApplyNeighbourhoodRent={updateRent}
+      />
+      <HowWeCalculatedModal isOpen={isMethodologyOpen} onClose={() => setIsMethodologyOpen(false)} />
+      <TenantResourcesModal isOpen={isTenantOpen} onClose={() => setIsTenantOpen(false)} />
+      <MlRentGapEstimatorModal
+        isOpen={isMlOpen}
+        onClose={() => setIsMlOpen(false)}
+        onApplyNeighbourhoodRent={updateRent}
+        defaultNeighbourhoodId={mlId || undefined}
+        defaultBedrooms={prefs.bedrooms}
+      />
+    </div>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* Processing scene — every phase names a real operation                */
+/* ------------------------------------------------------------------ */
+
+const PHASES = [
+  { id: 'receive', label: 'Your information is in', sub: 'Profile sealed — nothing leaves your browser except the AI summary request.' },
+  { id: 'routes', label: 'Routing your commute', sub: 'Live road distances via OpenRouteService — published TTC timetables stand by.' },
+  { id: 'engine', label: 'Calculating true costs', sub: 'Rent + travel + utilities across all 10 neighbourhoods.' },
+  { id: 'narrate', label: 'Writing your summary', sub: 'Live Gemini narration — the verdict shows the Gemini error code if it fails.' },
+  { id: 'ready', label: 'Ledger complete', sub: 'Opening your personal ranking.' },
+];
+
+const ProcessingScene: React.FC<{ phaseIdx: number; reduceMotion: boolean }> = ({ phaseIdx, reduceMotion }) => {
+  const barRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!barRef.current || reduceMotion) return;
+    gsap.to(barRef.current, { scaleX: Math.min(1, phaseIdx / (PHASES.length - 1)), duration: 0.5, ease: 'power3.out' });
+  }, [phaseIdx, reduceMotion]);
+  return (
+    <section className="j-process" aria-label="Analyzing your information" aria-busy="true">
+      <p className="j-stage-kicker" data-scene-item>Stage 05 — Analysis</p>
+      <h2 className="j-process-title" data-scene-item tabIndex={-1}>
+        Analyzing your information.
+      </h2>
+      <div className="j-process-track" data-scene-item aria-hidden="true">
+        <div
+          ref={barRef}
+          className="j-process-fill"
+          style={reduceMotion ? { transform: `scaleX(${Math.min(1, phaseIdx / (PHASES.length - 1))})` } : undefined}
+        />
+      </div>
+      <ol className="j-phases" data-scene-item>
+        {PHASES.map((p, i) => (
+          <li key={p.id} className={i < phaseIdx ? 'is-done' : i === phaseIdx ? 'is-now' : ''} aria-current={i === phaseIdx ? 'step' : undefined}>
+            <span className="j-phase-mark" aria-hidden="true">{i < phaseIdx ? '✓' : `0${i + 1}`}</span>
+            <span>
+              <strong>{p.label}</strong>
+              <small>{p.sub}</small>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <p className="j-sr" role="status">{PHASES[Math.min(phaseIdx, PHASES.length - 1)].label}</p>
+    </section>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* Results scene — the full ledger, recomposed as a final act           */
+/* ------------------------------------------------------------------ */
+
+interface ResultsSceneProps {
+  results: CalculatedCost[];
+  filtered: CalculatedCost[];
+  preferences: UserPreferences;
+  currentLivingCost: CalculatedCost | null;
+  aiExplanation: AiExplanation | null;
+  aiError: AiError | null;
+  isLoadingAi: boolean;
+  viewMode: 'grid' | 'table' | 'chart' | 'sensitivity' | 'uncertainty' | 'atlas';
+  setViewMode: (v: 'grid' | 'table' | 'chart' | 'sensitivity' | 'uncertainty' | 'atlas') => void;
+  borough: string;
+  setBorough: (b: string) => void;
+  sortBy: 'trueCost' | 'rent' | 'transport' | 'utilities' | 'commuteTime' | 'carbon';
+  setSortBy: (s: 'trueCost' | 'rent' | 'transport' | 'utilities' | 'commuteTime' | 'carbon') => void;
+  comparedIds: string[];
+  onToggleCompare: (id: string) => void;
+  onUpdateRent: (id: string, rent: number | null) => void;
+  onOpenPostings: (id?: string) => void;
+  onOpenMl: (id: string) => void;
+  onOpenMlGlobal: () => void;
+  onOpenWhatIf: () => void;
+  onRefreshAi: () => void;
+  onOpenMethodology: () => void;
+  onOpenTenants: () => void;
+  onAdjust: () => void;
+  onRestart: () => void;
+  getMcRange: (id: string) => [number, number] | undefined;
+}
+
+const ResultsScene: React.FC<ResultsSceneProps> = (props) => {
+  const {
+    results, filtered, preferences, currentLivingCost, aiExplanation, aiError, isLoadingAi,
+    viewMode, setViewMode, borough, setBorough, sortBy, setSortBy,
+    comparedIds, onToggleCompare, onUpdateRent, onOpenPostings, onOpenMl,
+  } = props;
+  return (
+    <div className="j-results">
+      <p className="j-stage-kicker" data-scene-item>Stage 06 — Your ledger</p>
+      <div data-scene-item>
+        <KeyFindingBanner
+          results={results}
+          preferences={preferences}
+          currentLivingCost={currentLivingCost}
+          aiExplanation={aiExplanation}
+          aiError={aiError}
+          isLoadingAi={isLoadingAi}
+          onRefreshAi={props.onRefreshAi}
+          onOpenWhatIf={props.onOpenWhatIf}
+          onOpenSensitivity={() => setViewMode('sensitivity')}
+          onOpenMonteCarlo={() => setViewMode('uncertainty')}
+        />
+      </div>
+      <div data-scene-item>
+        <AnalysisNeighbourhoodMap results={results} preferences={preferences} />
+      </div>
+      <div className="j-result-tools" data-scene-item>
+        <div className="j-filters" role="group" aria-label="Filter by area">
+          <span className="j-tools-label"><Filter aria-hidden="true" /> Area</span>
+          {[
+            { id: 'all', label: 'All 10' },
+            { id: 'Old Toronto', label: 'Old Toronto' },
+            { id: 'Scarborough', label: 'Scarborough' },
+            { id: 'North York', label: 'North York' },
+            { id: 'Etobicoke', label: 'Etobicoke' },
+            { id: 'East York', label: 'East York' },
+            { id: 'York', label: 'York' },
+          ].map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              aria-pressed={borough === b.id}
+              onClick={() => setBorough(b.id)}
+              className={`j-chip${borough === b.id ? ' is-active' : ''}`}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+        <div className="j-sortviews">
+          <label className="j-sort">
+            <ArrowUpDown aria-hidden="true" /> Sort
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
+              <option value="trueCost">True cost</option>
+              <option value="rent">Rent</option>
+              <option value="transport">Travel</option>
+              <option value="utilities">Utilities</option>
+              <option value="commuteTime">Travel time</option>
+              <option value="carbon">Carbon</option>
+            </select>
+          </label>
+          <div className="j-views" role="tablist" aria-label="Result views">
+            {(
+              [
+                ['grid', 'Ledger', LayoutGrid],
+                ['table', 'Matrix', TableIcon],
+                ['chart', 'Chart', BarChart3],
+                ['sensitivity', 'Break-even', Zap],
+                ['uncertainty', 'Bands', Dices],
+                ['atlas', 'Atlas', MapIcon],
+              ] as const
+            ).map(([v, label, Icon]) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={viewMode === v}
+                onClick={() => setViewMode(v)}
+                className={`j-view${viewMode === v ? ' is-active' : ''}`}
+              >
+                <Icon aria-hidden="true" />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div data-scene-item>
+        {viewMode === 'grid' && (
+          <ResultsLedger
+            results={filtered}
+            preferences={preferences}
+            comparedIds={comparedIds}
+            onToggleCompare={onToggleCompare}
+            onUpdateNeighbourhoodRent={onUpdateRent}
+            onOpenPostingsModal={onOpenPostings}
+            onOpenMlEstimator={onOpenMl}
+            getMonteCarloRange={props.getMcRange}
+          />
+        )}
+        {viewMode === 'table' && (
+          <NeighbourhoodTable
+            results={filtered}
+            preferences={preferences}
+            comparedIds={comparedIds}
+            onToggleCompare={onToggleCompare}
+            onUpdateNeighbourhoodRent={onUpdateRent}
+            onOpenPostingsModal={onOpenPostings}
+            getMonteCarloRange={props.getMcRange}
+          />
+        )}
+        {viewMode === 'chart' && <CostBarChart results={filtered} maxDisplay={10} />}
+        {viewMode === 'sensitivity' && (
+          <SensitivityExplorer preferences={preferences} results={results} onApplyPreference={() => {}} />
+        )}
+        {viewMode === 'uncertainty' && (
+          <MonteCarloUncertaintyPanel preferences={preferences} results={results} />
+        )}
+        {viewMode === 'atlas' && (
+          <NeighbourhoodExplorer
+            results={results}
+            preferences={preferences}
+            comparedIds={comparedIds}
+            onToggleCompare={onToggleCompare}
+          />
+        )}
+      </div>
+      <div className="j-result-actions" data-scene-item>
+        <button type="button" className="j-btn-primary" onClick={props.onOpenWhatIf}>Test a what-if</button>
+        <button type="button" className="j-btn-ghost" onClick={() => onOpenPostings()}>
+          <Building2 aria-hidden="true" /> Live rentals
+        </button>
+        <button type="button" className="j-btn-ghost" onClick={props.onOpenMlGlobal}>
+          <BrainCircuit aria-hidden="true" /> ML estimator
+        </button>
+        <button type="button" className="j-btn-ghost" onClick={props.onAdjust}>Adjust answers</button>
+        <button type="button" className="j-btn-ghost" onClick={props.onRestart}>Start over</button>
+      </div>
+      <section className="j-civic" data-scene-item>
+        <ShieldCheck aria-hidden="true" />
+        <p>
+          Rents: Statistics Canada quarterly estimates. Live availability via portal search —
+          no bundled listings. Travel: TTC GTFS + OpenRouteService. Climate: City Open Data &amp; TRCA.
+        </p>
+        <div>
+          <button type="button" onClick={props.onOpenMethodology}>Formulas &amp; sources</button>
+          <button type="button" onClick={props.onOpenTenants}>Tenant rights &amp; FMTA</button>
+        </div>
+      </section>
+    </div>
+  );
+};
