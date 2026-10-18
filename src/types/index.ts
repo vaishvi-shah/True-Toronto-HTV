@@ -41,7 +41,8 @@ export interface WorkplaceLocation {
   district: string;
   address: string;
   description: string;
-  parkingCostMonthly: number;
+  parkingCostMonthly: number | null;
+  transitEstimateAvailable?: boolean;
 }
 
 export interface NeighbourhoodData {

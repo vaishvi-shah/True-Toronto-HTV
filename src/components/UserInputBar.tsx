@@ -124,8 +124,15 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
                     </option>
                   ))}
                 </select>
-                <p className="mt-1 text-[11px] text-stone-500 truncate" title={selectedWorkplace.description}>
-                  {selectedWorkplace.address} &bull; {selectedWorkplace.parkingCostMonthly > 0 ? `$${selectedWorkplace.parkingCostMonthly}/mo parking` : 'Free parking'}
+                <p className="mt-1 text-[11px] text-stone-500" title={selectedWorkplace.description}>
+                  {selectedWorkplace.address} &bull; {selectedWorkplace.parkingCostMonthly == null
+                    ? 'Parking cost not estimated (excluded)'
+                    : selectedWorkplace.parkingCostMonthly > 0
+                      ? `$${selectedWorkplace.parkingCostMonthly}/mo parking`
+                      : 'Free parking'}
+                  {selectedWorkplace.transitEstimateAvailable === false && (
+                    <> &bull; Transit uses a baseline estimate; driving uses OpenRouteService</>
+                  )}
                 </p>
               </div>
 

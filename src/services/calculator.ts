@@ -170,7 +170,7 @@ export function calculateNeighbourhoodCosts(
       const fuelCost =
         fuelLiters * CALCULATION_ASSUMPTIONS.gasPricePerLiterCad;
       const vehicleOperating = CALCULATION_ASSUMPTIONS.carFixedMonthlyCost;
-      const workplaceParking = workplace.parkingCostMonthly;
+      const workplaceParking = workplace.parkingCostMonthly ?? 0;
 
       const monthlyCommuteHours = (oneWayMinutes * monthlyOneWayTrips) / 60;
       const totalCost = fuelCost + vehicleOperating + workplaceParking;
@@ -204,7 +204,7 @@ export function calculateNeighbourhoodCosts(
         fuelLiters * CALCULATION_ASSUMPTIONS.gasPricePerLiterCad;
       const vehicleOperating =
         CALCULATION_ASSUMPTIONS.carFixedMonthlyCost * 0.75;
-      const workplaceParking = Math.round(workplace.parkingCostMonthly * 0.5);
+      const workplaceParking = Math.round((workplace.parkingCostMonthly ?? 0) * 0.5);
 
       const monthlyCommuteHours = (oneWayMinutes * monthlyOneWayTrips) / 60;
       const totalCost =

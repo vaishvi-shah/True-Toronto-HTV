@@ -123,9 +123,14 @@ export const WorkStep: React.FC<StepProps> = ({ prefs, onChange }) => {
         </select>
         <p className="j-hint">
           {workplace.address} &middot;{' '}
-          {workplace.parkingCostMonthly > 0
-            ? `$${workplace.parkingCostMonthly}/mo parking`
-            : 'Free parking'}
+          {workplace.parkingCostMonthly == null
+            ? 'Parking cost not estimated (excluded)'
+            : workplace.parkingCostMonthly > 0
+              ? `$${workplace.parkingCostMonthly}/mo parking`
+              : 'Free parking'}
+          {workplace.transitEstimateAvailable === false && (
+            <> &middot; Transit uses a baseline estimate; driving uses OpenRouteService</>
+          )}
         </p>
       </div>
       <div data-scene-item>
