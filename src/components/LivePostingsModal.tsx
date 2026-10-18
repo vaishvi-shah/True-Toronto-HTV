@@ -89,7 +89,7 @@ export const LivePostingsModal: React.FC<LivePostingsModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-stone-500 mt-1">
-                No bundled listings here — search current availability directly on the rental platforms, then apply a rent you found to rerun your comparison.
+                Search rental platforms for current availability, then enter a rent you find to update your comparison.
               </p>
             </div>
           </div>
@@ -185,7 +185,7 @@ export const LivePostingsModal: React.FC<LivePostingsModalProps> = ({
           <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
             <h3 className="text-xs font-bold text-emerald-950">Found a rent? Apply it to your comparison</h3>
             <p className="mt-1 text-[11px] text-stone-600">
-              Enter the asking rent from a live ad{currentNeighbourhood ? ` for ${currentNeighbourhood.name}` : ''} and it becomes that area's custom rent in the ledger.
+              Enter the asking rent from a current listing{currentNeighbourhood ? ` in ${currentNeighbourhood.name}` : ''} to update that area's cost comparison.
             </p>
             <div className="mt-2.5 flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">

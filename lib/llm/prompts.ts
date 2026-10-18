@@ -1,4 +1,4 @@
-import { Breakdown, Profile } from '../types';
+import type { Breakdown, Profile } from '../types';
 
 export const SYSTEM_DIRECTIVE = `You are the plain-language civic explainer for "True Cost of Home (Toronto)", an open civic tool helping Toronto renters understand the real total cost of housing (Rent + Transit/Car + Utilities + Commute Time).
 

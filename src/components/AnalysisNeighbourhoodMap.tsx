@@ -220,7 +220,7 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
         </div>
 
         <div className="bg-stone-50/70 px-5 py-4 sm:px-7">
-          <p className="text-[11px] leading-relaxed text-stone-500">No bundled listings here — use the portal searches above for current availability in {selected.neighbourhood.name}. Found a rent you like? Enter it on the area card to rerun your comparison.</p>
+          <p className="text-[11px] leading-relaxed text-stone-500">No current listings are available for {selected.neighbourhood.name}. Search rental platforms for current availability, then enter a rent on the area card to update your comparison.</p>
         </div>
       </section>}
     </section>

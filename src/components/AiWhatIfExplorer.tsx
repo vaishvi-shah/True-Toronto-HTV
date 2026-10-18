@@ -37,6 +37,28 @@ interface WhatIfResponse {
   activePatch: Partial<UserPreferences>;
 }
 
+function buildScenarioFallback(result: WhatIfResponse): string {
+  const money = Math.abs(result.costDifference).toLocaleString();
+  const hours = Math.abs(result.hoursDifference).toLocaleString();
+  const carbon = Math.abs(result.carbonDifference).toLocaleString();
+  const costText = result.costDifference < 0
+    ? `Estimated monthly costs decrease by $${money}.`
+    : result.costDifference > 0
+      ? `Estimated monthly costs increase by $${money}.`
+      : 'Estimated monthly costs remain unchanged.';
+  const travelText = result.hoursDifference < 0
+    ? `Monthly commute time decreases by ${hours} hours.`
+    : result.hoursDifference > 0
+      ? `Monthly commute time increases by ${hours} hours.`
+      : 'Monthly commute time remains unchanged.';
+  const emissionsText = result.carbonDifference < 0
+    ? `Monthly emissions decrease by ${carbon} kg.`
+    : result.carbonDifference > 0
+      ? `Monthly emissions increase by ${carbon} kg.`
+      : 'Monthly emissions remain unchanged.';
+  return `${costText} ${travelText} ${emissionsText}`;
+}
+
 export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
   isOpen,
   onClose,
@@ -73,8 +95,7 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
 
       const data = await response.json().catch(() => null);
       if (!response.ok) {
-        // Live Gemini failed: keep the real engine deltas, but show the
-        // Gemini error code instead of placeholder narration.
+        // Preserve any calculated scenario values and keep the message generic.
         setWhatIfError(
           data?.error ?? {
             status: response.status,
@@ -144,10 +165,10 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-stone-900 text-base">
-                AI What-If Scenario Explorer
+                Scenario Explorer
               </h3>
               <p className="text-xs text-stone-500">
-                Calculator reruns deterministic math &bull; Gemini 3.8 Flash explains the outcome
+                Compare how changes to your commute, schedule, or housing may affect estimated costs.
               </p>
             </div>
           </div>
@@ -190,7 +211,7 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
           <form onSubmit={handleCustomSubmit} className="relative">
             <input
               type="text"
-              placeholder="Or ask your own: e.g. What if I stop driving to work?"
+              placeholder="Describe a change: e.g. What if I switch to transit?"
               value={customQuestion}
               onChange={(e) => setCustomQuestion(e.target.value)}
               className="w-full bg-stone-50 border border-stone-300 rounded-xl px-4 py-2.5 pr-10 text-xs text-stone-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
@@ -209,28 +230,22 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
             <div className="p-6 rounded-xl bg-amber-50/40 border border-amber-200 text-center space-y-2">
               <RotateCw className="w-6 h-6 animate-spin text-amber-600 mx-auto" />
               <p className="text-xs font-semibold text-amber-900">
-                Calculator rerunning math & Gemini drafting explanation...
+                Recalculating costs and preparing your summary...
               </p>
               <p className="text-[11px] text-amber-700">
-                Using stored CMHC rental rates, TTC fares, and TRCA models.
+                Using published rent, transit, and neighbourhood data.
               </p>
             </div>
           )}
 
-          {/* Gemini error — surfaced with its code, never placeholder copy */}
           {whatIfError && !loading && (
             <div
-              role="alert"
-              className="p-4 rounded-xl bg-rose-50 border border-rose-300 text-xs text-rose-950 leading-relaxed"
+              role="status"
+              className="p-3 rounded-xl bg-stone-100 border border-stone-200 text-xs text-stone-700 leading-relaxed"
             >
-              <strong>
-                Gemini error {String(whatIfError.status)} ({whatIfError.code})
-              </strong>
-              : {whatIfError.message}
-              <span className="block mt-1 text-rose-900/80">
-                The engine deltas below are computed locally and still stand — only the AI
-                narration is missing. Set GEMINI_API_KEY in .env.local and restart the server.
-              </span>
+              {result
+                ? 'A personalized summary is temporarily unavailable. Showing the results from your scenario.'
+                : 'This scenario could not be completed. Please try again shortly.'}
             </div>
           )}
 
@@ -243,11 +258,7 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
                   {result.scenarioTitle}
                 </span>
                 <span className="text-[10px] text-stone-400">
-                  {whatIfError
-                    ? `Gemini error ${String(whatIfError.status)} · ${whatIfError.code}`
-                    : result.isAiGenerated
-                      ? 'Gemini 3.8 Flash'
-                      : 'Deterministic Engine'}
+                  {result.isAiGenerated ? 'Personalized summary' : 'Calculated summary'}
                 </span>
               </div>
 
@@ -255,7 +266,7 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="p-2.5 rounded-xl bg-stone-800/80 border border-stone-700">
                   <span className="block text-[10px] uppercase font-semibold text-stone-400">
-                    Monthly True Cost
+                    Monthly Cost Change
                   </span>
                   <span
                     className={`text-sm font-extrabold font-mono ${
@@ -269,7 +280,7 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
 
                 <div className="p-2.5 rounded-xl bg-stone-800/80 border border-stone-700">
                   <span className="block text-[10px] uppercase font-semibold text-stone-400">
-                    Monthly Travel Time
+                    Commute Time Change
                   </span>
                   <span
                     className={`text-sm font-extrabold font-mono ${
@@ -283,7 +294,7 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
 
                 <div className="p-2.5 rounded-xl bg-stone-800/80 border border-stone-700">
                   <span className="block text-[10px] uppercase font-semibold text-stone-400">
-                    Monthly Carbon
+                    Emissions Change
                   </span>
                   <span
                     className={`text-sm font-extrabold font-mono ${
@@ -296,29 +307,32 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
                 </div>
               </div>
 
+              {!result.isAiGenerated && (
+                <p role="status" className="text-[11px] text-stone-400">
+                  Personalized narration is temporarily unavailable. This summary uses calculated scenario results.
+                </p>
+              )}
+
               {/* Best Neighbourhood Shift */}
               <div className="p-3 rounded-xl bg-stone-800/50 border border-stone-700 text-xs flex items-center justify-between">
                 <div>
-                  <span className="text-stone-400 block text-[10px]">Best Value Option:</span>
+                  <span className="text-stone-400 block text-[10px]">Current lowest-cost area:</span>
                   <span className="font-semibold text-stone-300">
                     {result.oldCheapestName}
                   </span>
                 </div>
                 <ArrowRight className="w-4 h-4 text-amber-400" />
                 <div className="text-right">
-                  <span className="text-emerald-400 block text-[10px]">New Best Option:</span>
+                  <span className="text-emerald-400 block text-[10px]">Scenario lowest-cost area:</span>
                   <span className="font-bold text-white">
                     {result.newCheapestName}
                   </span>
                 </div>
               </div>
 
-              {/* Plain Language Explanation — Gemini narration only; never fallback copy */}
-              {!whatIfError && (
-                <p className="text-xs text-stone-300 leading-relaxed">
-                  {result.summary}
-                </p>
-              )}
+              <p className="text-xs text-stone-300 leading-relaxed">
+                {result.summary?.trim() || buildScenarioFallback(result)}
+              </p>
 
               {/* Action: Apply to Dashboard */}
               <button
@@ -328,7 +342,7 @@ export const AiWhatIfExplorer: React.FC<AiWhatIfExplorerProps> = ({
                 }}
                 className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>Apply this scenario to main dashboard</span>
+                <span>Apply this scenario</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>

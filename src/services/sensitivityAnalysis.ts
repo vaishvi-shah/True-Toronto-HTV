@@ -1,6 +1,6 @@
-import { CalculatedCost, CommuteMode, UserPreferences } from '../types';
-import { calculateNeighbourhoodCosts } from './calculator';
-import { NEIGHBOURHOODS } from '../data/neighbourhoods';
+import type { CalculatedCost, CommuteMode, UserPreferences } from '../types';
+import { calculateNeighbourhoodCosts } from './calculator.js';
+import { NEIGHBOURHOODS } from '../data/neighbourhoods.js';
 
 export interface CrossoverPoint {
   parameter: 'commuteDays' | 'wageFactor' | 'rentSpread';

@@ -1,7 +1,7 @@
-import { SYSTEM_DIRECTIVE } from '../../lib/llm/prompts';
-import { CALCULATION_ASSUMPTIONS } from '../data/neighbourhoods';
-import { CalculatedCost, UserPreferences } from '../types';
-import { calculateNeighbourhoodCosts } from './calculator';
+import { SYSTEM_DIRECTIVE } from '../../lib/llm/prompts.js';
+import { CALCULATION_ASSUMPTIONS } from '../data/neighbourhoods.js';
+import type { CalculatedCost, UserPreferences } from '../types';
+import { calculateNeighbourhoodCosts } from './calculator.js';
 
 /**
  * Single source of truth for all server-side explanations.
@@ -33,6 +33,14 @@ const WORKPLACE_ALIASES: Record<string, string> = {
   'pearson-logistics': 'pearson-logistics',
   'north-york-centre': 'north-york-centre',
   'scarborough-centre': 'scarborough-centre',
+  'downtown-east': 'downtown-east',
+  'high-park-junction': 'high-park-junction',
+  'thorncliffe-park': 'thorncliffe-park',
+  'parkdale-little-portugal': 'parkdale-little-portugal',
+  'danforth-east-york': 'danforth-east-york',
+  'weston-mount-dennis': 'weston-mount-dennis',
+  'malvern-rouge': 'malvern-rouge',
+  'islington-etobicoke': 'islington-etobicoke',
 };
 
 function toNumber(value: unknown, fallback: number): number {

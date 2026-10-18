@@ -1,7 +1,7 @@
 // Vercel serverless function side-effect shim.
 // Imported by every function so any Node runtime polyfill side effects
 // run once per cold start.
-import './vercel-polyfills';
+import './vercel-polyfills.js';
 // Named exports required by Vercel Node runtime's module loader for this file.
 export const _apiPolyfill = './vercel-polyfills';
 export { _apiPolyfill as default };

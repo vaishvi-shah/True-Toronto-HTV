@@ -74,7 +74,7 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
             <h2 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight flex items-center gap-2">
               <span>Your Circumstances &amp; Financial Information</span>
               <span className="text-[11px] font-normal px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
-                User-Defined &bull; No Presets
+                Personalized cost comparison
               </span>
             </h2>
             <p className="text-xs text-stone-500 mt-0.5">
@@ -124,8 +124,15 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
                     </option>
                   ))}
                 </select>
-                <p className="mt-1 text-[11px] text-stone-500 truncate" title={selectedWorkplace.description}>
-                  {selectedWorkplace.address} &bull; {selectedWorkplace.parkingCostMonthly > 0 ? `$${selectedWorkplace.parkingCostMonthly}/mo parking` : 'Free parking'}
+                <p className="mt-1 text-[11px] text-stone-500" title={selectedWorkplace.description}>
+                  {selectedWorkplace.address} &bull; {selectedWorkplace.parkingCostMonthly == null
+                    ? 'Parking cost not estimated (excluded)'
+                    : selectedWorkplace.parkingCostMonthly > 0
+                      ? `$${selectedWorkplace.parkingCostMonthly}/mo parking`
+                      : 'Free parking'}
+                  {selectedWorkplace.transitEstimateAvailable === false && (
+                    <> &bull; Transit uses a baseline estimate; driving uses OpenRouteService</>
+                  )}
                 </p>
               </div>
 

@@ -2,16 +2,40 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 import { GoogleGenAI } from '@google/genai';
-import { calculateNeighbourhoodCosts, normalizeToUserPreferences } from '../src/services/calculator';
-import { SYSTEM_DIRECTIVE } from '../lib/llm/prompts';
+import { calculateNeighbourhoodCosts } from '../../src/services/calculator.js';
+import { normalizeToUserPreferences } from '../../src/services/unifiedEngine.js';
+import { SYSTEM_DIRECTIVE } from '../../lib/llm/prompts.js';
+import { generateWithGeminiFallback, getGeminiStatus } from '../../lib/llm/geminiFallback.js';
 
 const apiKey = process.env.GEMINI_API_KEY || '';
 const ai = new GoogleGenAI({
   apiKey,
-  httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
+  httpOptions: { headers: { 'User-Agent': 'aistudio-build' }, retryOptions: { attempts: 1 } },
 });
 
 export const config = { runtime: 'nodejs' };
+
+function buildCalculatedScenarioSummary(costDifference: number, hoursDifference: number, carbonDifference: number) {
+  const cost = Math.abs(costDifference).toLocaleString();
+  const hours = Math.abs(hoursDifference).toLocaleString();
+  const carbon = Math.abs(carbonDifference).toLocaleString();
+  const costSentence = costDifference < 0
+    ? `Estimated monthly costs decrease by $${cost}.`
+    : costDifference > 0
+      ? `Estimated monthly costs increase by $${cost}.`
+      : 'Estimated monthly costs remain unchanged.';
+  const travelSentence = hoursDifference < 0
+    ? `Monthly commute time decreases by ${hours} hours.`
+    : hoursDifference > 0
+      ? `Monthly commute time increases by ${hours} hours.`
+      : 'Monthly commute time remains unchanged.';
+  const emissionsSentence = carbonDifference < 0
+    ? `Monthly emissions decrease by ${carbon} kg.`
+    : carbonDifference > 0
+      ? `Monthly emissions increase by ${carbon} kg.`
+      : 'Monthly emissions remain unchanged.';
+  return `${costSentence} ${travelSentence} ${emissionsSentence}`;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -72,11 +96,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   };
 
   if (apiKey == null || apiKey.trim() === '') {
-    return res.status(503).json({
+    console.warn('[api/gemini/what-if] Gemini unavailable; returning calculated fallback');
+    return res.json({
       ...engineDeltas,
-      summary: '',
+      summary: buildCalculatedScenarioSummary(costDifference, hoursDifference, carbonDifference),
       isAiGenerated: false,
-      error: { status: 503, code: 'GEMINI_KEY_MISSING', message: 'GEMINI_API_KEY is not set for this deployment. Add it in Vercel project Environment Variables and redeploy.' },
     });
   }
 
@@ -108,44 +132,47 @@ Respond with JSON:
   "summary": "2-3 short, friendly, precise sentences explaining the financial and quality-of-life impact using only the numbers above. Never invent numbers."
 }`;
 
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Gemini API timeout')), 10_000),
-    );
-
-    const geminiPromise = ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemini-3.8-flash', // runtime pick; hardcoded if unset
-      contents: prompt,
-      config: { systemInstruction: SYSTEM_DIRECTIVE, responseMimeType: 'application/json' },
+    let timedOut = false;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        timedOut = true;
+        reject(new Error('Gemini API timeout'));
+      }, 10_000);
     });
 
-    const response = await Promise.race([geminiPromise, timeoutPromise]);
+    const model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+    const { response, model: successfulModel, attempts } = await Promise.race([
+      generateWithGeminiFallback(model, (candidate, signal) => ai.models.generateContent({
+        model: candidate,
+        contents: prompt,
+        config: { systemInstruction: SYSTEM_DIRECTIVE, responseMimeType: 'application/json', abortSignal: signal },
+      }), () => !timedOut),
+      timeoutPromise,
+    ]).finally(() => {
+      if (timeoutId) clearTimeout(timeoutId);
+    });
     const parsed =
       typeof response.text === 'string' && response.text.trim().length > 0
         ? JSON.parse(response.text.trim())
         : {};
 
+    console.info('[api/gemini/what-if] Gemini response received', { model: successfulModel, attempts });
     return res.json({
       ...parsed,
       ...engineDeltas,
       isAiGenerated: true,
     });
   } catch (error) {
-    const e = error as Record<string, unknown>;
-    const rawStatus = typeof e.status === 'number' ? e.status : typeof e.statusCode === 'number' ? e.statusCode : 502;
-    const status = rawStatus >= 400 && rawStatus < 600 ? rawStatus : 502;
-    const code = typeof e.code === 'string' || typeof e.code === 'number' ? String(e.code) : `GEMINI_HTTP_${status}`;
-    const message = typeof e.message === 'string' && e.message ? e.      message:
-        status === 503
-          ? 'Set GEMINI_API_KEY in Vercel Environment Variables and redeploy.'
-          : 'Gemini what-if request failed';
+    console.warn('[api/gemini/what-if] narration unavailable; returning calculated fallback', {
+      status: getGeminiStatus(error),
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+    });
 
-    console.warn('Gemini what-if error:', error instanceof Error ? error.message : error);
-
-    return res.status(502).json({
+    return res.json({
       ...engineDeltas,
-      summary: '',
+      summary: buildCalculatedScenarioSummary(costDifference, hoursDifference, carbonDifference),
       isAiGenerated: false,
-      error: { status, code, message },
     });
   }
 }

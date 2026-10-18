@@ -75,14 +75,14 @@ export function MonteCarloUncertaintyPanel({
               <Dices className="w-5 h-5" />
             </span>
             <h3 className="text-lg font-bold text-stone-900">
-              Monte Carlo Uncertainty Bands
+              Estimated Cost Range
             </h3>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-100 text-stone-700 border border-stone-200">
-              {simulation.iterations.toLocaleString()} Simulations ({simulation.runtimeMs}ms)
+              {simulation.iterations.toLocaleString()} comparisons
             </span>
           </div>
           <p className="text-xs text-stone-600 mt-1 max-w-2xl leading-relaxed">
-            Real life has transit delays and rent variances. Instead of hiding input uncertainty, we sample rents (±12%), TTC travel times (±20%), and utilities (±15%) 2,000 times to calculate honest 80% confidence intervals and pairwise win probabilities.
+            Rent, travel times, and utility costs can vary. We repeat the comparison using a range of assumptions to show how those changes may affect estimated costs.
           </p>
         </div>
 
@@ -92,7 +92,7 @@ export function MonteCarloUncertaintyPanel({
           className="pressable self-start md:self-auto px-3 py-1.5 rounded-lg border border-stone-300 text-xs font-semibold text-stone-700 hover:bg-stone-100 transition-[background-color] cursor-pointer flex items-center gap-1.5"
         >
           <Dices className="w-3.5 h-3.5" />
-          Re-run 2,000 Trials
+          Refresh estimate range
         </button>
       </div>
 
@@ -104,10 +104,10 @@ export function MonteCarloUncertaintyPanel({
           </div>
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-stone-700">
-              Winner Stability Across Uncertainty
+              How often this area ranks first
             </span>
             <p className="text-sm font-bold text-stone-900 mt-0.5">
-              {results[0]?.neighbourhood.name.split(' (')[0]} wins #{1} in {simulation.winnerStabilityPercent}% of simulated market trials.
+              {results[0]?.neighbourhood.name.split(' (')[0]} has the lowest estimated cost in {simulation.winnerStabilityPercent}% of comparisons.
             </p>
             <p className="text-xs text-stone-600 mt-0.5">
               {simulation.primaryInsight}
@@ -117,7 +117,7 @@ export function MonteCarloUncertaintyPanel({
 
         <div className="flex items-center gap-2 self-end md:self-auto shrink-0 bg-white px-3 py-1.5 rounded-lg border border-stone-200 text-xs font-semibold text-stone-800">
           <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          Honest Indicators &bull; 80% Confidence Interval
+          Estimated middle 80% range
         </div>
       </div>
 
@@ -125,7 +125,7 @@ export function MonteCarloUncertaintyPanel({
       <div className="mt-6 p-4 rounded-xl bg-stone-50 border border-stone-200">
         <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700 mb-3 flex items-center gap-1.5">
           <Percent className="w-3.5 h-3.5" />
-          Interactive Pairwise Win Probability Calculator
+          Compare Two Areas
         </h4>
 
         <div className="flex flex-wrap items-center gap-3">
