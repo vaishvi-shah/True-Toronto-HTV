@@ -79,7 +79,7 @@ async function loadAreaPlaces(areaId: string) {
     signal: AbortSignal.timeout(5000),
   });
   if (!response.ok) {
-    const detail = (await response.text()).slice(0, 240);
+    const detail = (await response.text()).slice(0, 1800);
     throw new Error(`OpenPOIService returned HTTP ${response.status}: ${detail}`);
   }
   const payload = await response.json() as { features?: PlaceFeature[] };
