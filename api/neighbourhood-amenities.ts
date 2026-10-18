@@ -7,13 +7,6 @@ export const config = { runtime: 'nodejs' };
 
 const RADIUS_METRES = 1500;
 const POI_ENDPOINT = 'https://api.heigit.org/openpoiservice/v0/pois';
-const POI_CATEGORY_IDS = [
-  518, 451, 474, 475, // supermarkets and grocery shops
-  208, 370, 192, 191, 396, 393, 456, 502, // everyday services
-  588, 587, 604, 597, 605, 607, 608, 595, // transit
-  280, 283, 282, 288, 271, 292, 272, 279, // parks, play and sports
-  133, 363, 131, 299, 134, 132, // libraries and culture
-];
 
 type PlaceFeature = {
   geometry?: { type?: string; coordinates?: [number, number] };
@@ -72,7 +65,6 @@ async function loadAreaPlaces(areaId: string) {
     body: JSON.stringify({
       request: 'pois',
       geometry: { geojson: { type: 'Point', coordinates: point }, buffer: RADIUS_METRES },
-      filters: { category_ids: POI_CATEGORY_IDS },
       limit: 500,
       sortby: 'distance',
     }),
