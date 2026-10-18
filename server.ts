@@ -73,7 +73,7 @@ app.post('/api/compare', (req: Request, res: Response) => {
 /**
  * Route: POST /api/explain & POST /api/gemini/explain
  * Explains calculation results in plain language without calculating new math.
- * Enriched with deterministic break-even flip points and Monte Carlo confidence.
+ * Includes a computed estimate range for the result view.
  */
 const handleExplain = async (req: Request, res: Response) => {
   const raw = req.body.profile || req.body.preferences;
@@ -85,30 +85,26 @@ const handleExplain = async (req: Request, res: Response) => {
   const preferences: UserPreferences = normalizeToUserPreferences(raw);
   const results = calculateNeighbourhoodCosts(preferences);
 
-  // Compute deterministic sensitivity & Monte Carlo simulation
-  let sensitivityResult;
+  // Compute the estimate range used by the result view.
   let monteCarloResult;
   try {
-    sensitivityResult = analyzeSensitivity(preferences);
     monteCarloResult = runMonteCarloSimulation(preferences, 1000);
   } catch (err) {
-    console.warn('Sensitivity/Monte Carlo computation error:', err);
+    console.warn('Estimate range computation error:', err);
   }
 
-  const sensitivityNarrative = sensitivityResult?.primaryBreakEvenNarrative || '';
   const monteCarloInsight = monteCarloResult?.primaryInsight || '';
-  const fallback = buildUnifiedFallback(preferences, results, sensitivityNarrative, monteCarloInsight);
+  const fallback = buildUnifiedFallback(preferences, results, monteCarloInsight);
 
   if (!apiKey) {
     return res.json({
       ...fallback,
-      sensitivity: sensitivityResult,
       monteCarlo: monteCarloResult,
     });
   }
 
   try {
-    const prompt = buildUnifiedExplainPrompt(preferences, results, sensitivityNarrative, monteCarloInsight);
+    const prompt = buildUnifiedExplainPrompt(preferences, results, monteCarloInsight);
 
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('Gemini API timeout')), 6000)
@@ -127,9 +123,7 @@ const handleExplain = async (req: Request, res: Response) => {
     const parsed = JSON.parse(response.text || '{}');
     return res.json({
       ...parsed,
-      breakEvenNarrative: parsed.breakEvenNarrative || sensitivityNarrative,
       monteCarloInsight: parsed.monteCarloInsight || monteCarloInsight,
-      sensitivity: sensitivityResult,
       monteCarlo: monteCarloResult,
       isAiGenerated: true,
     });
@@ -137,7 +131,6 @@ const handleExplain = async (req: Request, res: Response) => {
     console.warn('Gemini explain error or timeout, falling back:', error);
     return res.json({
       ...fallback,
-      sensitivity: sensitivityResult,
       monteCarlo: monteCarloResult,
     });
   }

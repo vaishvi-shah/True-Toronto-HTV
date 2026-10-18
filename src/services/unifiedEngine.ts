@@ -112,7 +112,6 @@ export interface UnifiedFallback {
   cheapestTrueRent: number | null;
   monthlyDifference: number;
   timeDifferenceHours: number;
-  breakEvenNarrative: string;
   monteCarloInsight: string;
   tenantRightsNotice: string;
   isAiGenerated: boolean;
@@ -125,7 +124,6 @@ export interface UnifiedFallback {
 export function buildUnifiedFallback(
   preferences: UserPreferences,
   results: CalculatedCost[],
-  sensitivityNarrative = '',
   monteCarloInsight = ''
 ): UnifiedFallback {
   const cheapestTrue = results[0];
@@ -169,7 +167,6 @@ export function buildUnifiedFallback(
     cheapestTrueRent: cheapestTrue.effectiveRent,
     monthlyDifference: Math.abs(netSavings),
     timeDifferenceHours: Math.abs(hoursGap),
-    breakEvenNarrative: sensitivityNarrative || '',
     monteCarloInsight: monteCarloInsight || '',
     tenantRightsNotice:
       "Tenant reminder: Market rents shown represent new vacancies (turnover rates from CMHC). Existing Ontario tenants under rent control are protected by the provincial annual guideline cap (2.5% in 2024/2025). Units first occupied after Nov 15, 2018 have no statutory rent cap upon renewal. For legal advice, consult the Federation of Metro Tenants' Associations (FMTA) or the Landlord and Tenant Board (LTB).",
@@ -184,7 +181,6 @@ export function buildUnifiedFallback(
 export function buildUnifiedExplainPrompt(
   preferences: UserPreferences,
   results: CalculatedCost[],
-  sensitivityNarrative = '',
   monteCarloInsight = ''
 ): string {
   const cheapestTrue = results[0];
@@ -222,21 +218,20 @@ DETERMINISTIC RESULTS (computed by the single shared calculator):
 Cheapest Sticker Rent Option: ${cheapestRent.neighbourhood.name} (Rent: $${cheapestRent.effectiveRent}/mo, True Cost: $${cheapestRent.trueMonthlyCost}/mo, Travel: ${cheapestRent.monthlyCommuteHours}h)
 Cheapest True Monthly Cost Option: ${cheapestTrue.neighbourhood.name} (Rent: $${cheapestTrue.effectiveRent}/mo, True Cost: $${cheapestTrue.trueMonthlyCost}/mo, Travel: ${cheapestTrue.monthlyCommuteHours}h)
 
-${sensitivityNarrative ? `DETERMINISTIC SENSITIVITY & BREAK-EVEN FLIP POINTS:\n- ${sensitivityNarrative}\n` : ''}${monteCarloInsight ? `MONTE CARLO UNCERTAINTY SIMULATION:\n- ${monteCarloInsight}\n` : ''}
+${monteCarloInsight ? `SIMULATED ESTIMATE VARIATION:\n- ${monteCarloInsight}\n` : ''}
 TOP NEIGHBOURHOODS SUMMARY:
 ${JSON.stringify(top, null, 2)}
 
 Respond with JSON matching this structure:
 {
   "headline": "A concise 1-sentence finding about rent vs true monthly cost and ranking fragility",
-  "body": "2 short paragraphs explaining the trade-offs, commute math, and break-even flip points in plain, empathetic Canadian English. Never invent numbers.",
+  "body": "A short explanation of the calculated costs and commute trade-offs in plain Canadian English. Never invent numbers or claim probabilities.",
   "cheapestRentNeighbourhood": "${cheapestRent.neighbourhood.name}",
   "cheapestTrueNeighbourhood": "${cheapestTrue.neighbourhood.name}",
   "monthlyDifference": ${monthlyDifference},
   "timeDifferenceHours": ${timeDifferenceHours},
   "cheapestTrueMonthlyCost": ${cheapestTrue.trueMonthlyCost},
   "cheapestTrueRent": ${cheapestTrue.effectiveRent},
-  "breakEvenNarrative": "${(sensitivityNarrative || '').replace(/"/g, "'")}",
   "monteCarloInsight": "${(monteCarloInsight || '').replace(/"/g, "'")}",
   "tenantRightsNotice": "Standard reminder directing renters to FMTA or LTB"
 }`;

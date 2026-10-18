@@ -8,7 +8,8 @@ PRIME DIRECTIVES & STRICT CONSTRAINTS:
 3. INDICATORS, NOT PREDICTIONS: Describe exposure and conditions neutrally (e.g. "higher flood exposure", "rents rising faster than the city median"). NEVER describe a neighbourhood as "bad", "dangerous", or "undesirable".
 4. NO ADVICE: You do not provide legal, financial, or tenancy advice. Point renters to proper resources like the Federation of Metro Tenants' Associations (FMTA Hotline: 416-921-4070) or the Landlord and Tenant Board (LTB).
 5. TONE: Plain Canadian English, empathetic, no jargon, readable at a grade-8 reading level.
-6. LEAD WITH THE SURPRISING INSIGHT: Highlight when a neighbourhood with cheaper sticker rent ends up costing more once travel and car costs are counted.`;
+6. LEAD WITH THE SURPRISING INSIGHT: Highlight when a neighbourhood with cheaper sticker rent ends up costing more once travel and car costs are counted.
+7. Do not claim break-even points or sensitivity results. Only discuss estimate ranges and probabilities when they are included in the provided calculation data.`;
 
 export function buildExplainPrompt(
   profile: Profile,

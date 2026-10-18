@@ -3,13 +3,11 @@ import {
   LayoutGrid,
   Table as TableIcon,
   BarChart3,
-  Filter,
   ArrowUpDown,
   ShieldCheck,
   Info,
-  Compass,
   Building2,
-  Zap,
+  Compass,
   Dices,
   BrainCircuit,
 } from 'lucide-react';
@@ -24,10 +22,8 @@ import { AiWhatIfExplorer } from './components/AiWhatIfExplorer';
 import { HowWeCalculatedModal } from './components/HowWeCalculatedModal';
 import { TenantResourcesModal } from './components/TenantResourcesModal';
 import { LivePostingsModal } from './components/LivePostingsModal';
-import { SensitivityExplorer } from './components/SensitivityExplorer';
 import { MonteCarloUncertaintyPanel } from './components/MonteCarloUncertaintyPanel';
 import { MlRentGapEstimatorModal } from './components/MlRentGapEstimatorModal';
-import { NeighbourhoodExplorer } from './components/NeighbourhoodExplorer';
 import { AnalysisNeighbourhoodMap } from './components/AnalysisNeighbourhoodMap';
 import { initCinematic } from './motion/cinematic';
 import { calculateNeighbourhoodCosts } from './services/calculator';
@@ -63,11 +59,9 @@ export default function App() {
     initCinematic();
   }, []);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [activePage, setActivePage] = useState<'analysis' | 'explore'>('analysis');
-
-  // View state: grid | table | chart | sensitivity | uncertainty
-  const [viewMode, setViewMode] = useState<'grid' | 'table' | 'chart' | 'sensitivity' | 'uncertainty'>('grid');
-  const [selectedBorough, setSelectedBorough] = useState<string>('all');
+  // The neighbourhood map is shown once above the results; the estimate range
+  // view remains available because it displays the computed simulation.
+  const [viewMode, setViewMode] = useState<'grid' | 'table' | 'chart' | 'uncertainty'>('grid');
   const [sortBy, setSortBy] = useState<'trueCost' | 'rent' | 'transport' | 'utilities' | 'commuteTime' | 'carbon'>('trueCost');
 
   // Comparison State
@@ -92,7 +86,6 @@ export default function App() {
     cheapestTrueRent?: number | null;
     monthlyDifference?: number;
     timeDifferenceHours?: number;
-    breakEvenNarrative?: string;
     monteCarloInsight?: string;
     tenantRightsNotice?: string;
     isAiGenerated?: boolean;
@@ -163,8 +156,6 @@ export default function App() {
     } catch (error) {
       console.warn('Using published commute estimates because live road routing is unavailable.');
     }
-    const recommendedArea = calculateNeighbourhoodCosts(snapshot)[0]?.neighbourhood;
-    setSelectedBorough(recommendedArea ? `area:${recommendedArea.id}` : 'all');
     setAnalyzedPreferences(snapshot);
     setAiExplanation(null);
     void fetchAiExplanation(snapshot);
@@ -234,16 +225,9 @@ export default function App() {
     });
   };
 
-  // Filter & sort results
+  // Sort results
   const filteredResults = useMemo(() => {
     let list = [...calculatedResults];
-
-    if (selectedBorough.startsWith('area:')) {
-      const areaId = selectedBorough.slice('area:'.length);
-      list = list.filter((item) => item.neighbourhood.id === areaId);
-    } else if (selectedBorough !== 'all') {
-      list = list.filter((item) => item.neighbourhood.borough === selectedBorough);
-    }
 
     if (sortBy === 'rent') {
       list.sort((a, b) => (a.effectiveRent ?? 0) - (b.effectiveRent ?? 0));
@@ -260,7 +244,7 @@ export default function App() {
     }
 
     return list;
-  }, [calculatedResults, selectedBorough, sortBy]);
+  }, [calculatedResults, sortBy]);
 
   const comparedCosts = useMemo(() => {
     return calculatedResults.filter((item) =>
@@ -284,16 +268,8 @@ export default function App() {
         onResetPreferences={handleResetPreferences}
       />
 
-      <nav className="border-b border-stone-200 bg-white px-4 py-2.5 sm:px-6" aria-label="Main pages">
-        <div className="mx-auto flex max-w-7xl items-center gap-2">
-          <button type="button" onClick={() => setActivePage('analysis')} className={`rounded-lg px-3.5 py-2 text-xs font-semibold transition-colors ${activePage === 'analysis' ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'}`}>Analysis</button>
-          <button type="button" onClick={() => setActivePage('explore')} className={`rounded-lg px-3.5 py-2 text-xs font-semibold transition-colors ${activePage === 'explore' ? 'bg-emerald-700 text-white' : 'text-stone-600 hover:bg-stone-100'}`}>Explore neighbourhood map</button>
-          {activePage === 'explore' && analyzedPreferences && <span className="ml-auto text-[11px] text-stone-500">Using your latest analyzed inputs</span>}
-        </div>
-      </nav>
-
       {/* User Circumstances & Financial Configurator */}
-      {activePage === 'analysis' && <UserInputBar
+      <UserInputBar
         preferences={preferences}
         onChange={handlePreferenceChange}
         onAnalyze={handleAnalyze}
@@ -301,29 +277,11 @@ export default function App() {
         hasAnalyzed={!!analyzedPreferences}
         hasUnanalyzedChanges={JSON.stringify(preferences) !== JSON.stringify(analyzedPreferences)}
         onOpenMethodology={() => setIsMethodologyOpen(true)}
-      />}
+      />
 
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full">
-        {activePage === 'explore' ? (
-          analyzedPreferences ? (
-            <NeighbourhoodExplorer
-              results={calculatedResults}
-              preferences={analyzedPreferences}
-              comparedIds={comparedIds}
-              onToggleCompare={handleToggleCompare}
-            />
-          ) : (
-            <section className="mx-auto my-16 max-w-xl rounded-xl border border-stone-200 bg-stone-100 p-8 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-stone-900 text-white"><Compass className="h-6 w-6" /></div>
-              <h1 className="text-xl font-bold text-stone-900">Start with your cost and commute details</h1>
-              <p className="mt-2 text-sm leading-6 text-stone-600">Analyze your options first. Then the map will show the estimated rent, transportation, utilities, and commute costs for every neighbourhood.</p>
-              <button type="button" onClick={() => setActivePage('analysis')} className="mt-5 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800">Go to analysis</button>
-            </section>
-          )
-        ) : (
-        <>
-        {/* Key Finding Banner (True cost vs sticker rent insight with break-even & Monte Carlo) */}
+        {/* Key Finding Banner (calculated cost comparison) */}
         {!analyzedPreferences ? (
           <section className="mb-6 border border-[#1b1712]/20 bg-white/60 p-8 text-center" data-reveal="fade-up">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center bg-[#1b1712] text-[#f4f1e8]"><BrainCircuit className="h-6 w-6" /></div>
@@ -344,7 +302,6 @@ export default function App() {
           isLoadingAi={isLoadingAi}
           onRefreshAi={() => fetchAiExplanation(analyzedPreferences)}
           onOpenWhatIf={() => setIsWhatIfOpen(true)}
-          onOpenSensitivity={() => setViewMode('sensitivity')}
           onOpenMonteCarlo={() => setViewMode('uncertainty')}
         />
 
@@ -353,46 +310,8 @@ export default function App() {
           preferences={analyzedPreferences}
         />
 
-        {/* View Controls & Filter Options */}
+        {/* Sort and view controls */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-stone-200">
-          {/* Borough Filters */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-wider text-stone-500 mr-1 flex items-center gap-1">
-              <Filter className="w-3.5 h-3.5" />
-              Area:
-            </span>
-            {[
-              { id: 'all', label: 'All 10 Areas' },
-              { id: 'Old Toronto', label: 'Old Toronto' },
-              { id: 'Scarborough', label: 'Scarborough' },
-              { id: 'North York', label: 'North York' },
-              { id: 'Etobicoke', label: 'Etobicoke' },
-              { id: 'East York', label: 'East York' },
-              { id: 'York', label: 'York' },
-            ].map((b) => (
-              <button
-                key={b.id}
-                onClick={() => setSelectedBorough(b.id)}
-                className={`px-3 py-1 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
-                  selectedBorough === b.id
-                    ? 'bg-stone-900 text-white font-semibold shadow-xs'
-                    : 'bg-white hover:bg-stone-100 text-stone-700 border border-stone-200'
-                }`}
-              >
-                {b.label}
-              </button>
-            ))}
-            {calculatedResults[0] && (
-              <button
-                onClick={() => setSelectedBorough(`area:${calculatedResults[0].neighbourhood.id}`)}
-                className={`px-3 py-1 rounded-xl text-xs font-medium transition-colors cursor-pointer ${selectedBorough === `area:${calculatedResults[0].neighbourhood.id}` ? 'bg-emerald-800 text-white font-semibold shadow-xs' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200'}`}
-                title="Show only the recommended neighbourhood"
-              >
-                Recommended: {calculatedResults[0].neighbourhood.name}
-              </button>
-            )}
-          </div>
-
           {/* Sort & View Mode Controls */}
           <div className="flex min-w-0 flex-wrap items-center gap-3">
             <div className="flex items-center gap-1.5 text-xs text-stone-600">
@@ -413,7 +332,7 @@ export default function App() {
               </select>
             </div>
 
-            {/* View Mode Switcher: Cards vs Table vs Stacked Chart vs Sensitivity vs Uncertainty */}
+            {/* View Mode Switcher: comparison, table, chart, or computed estimate range */}
             <div className="flex max-w-full items-center overflow-x-auto bg-stone-200/80 p-0.5 rounded-xl border border-stone-300 shadow-2xs">
               <button
                 onClick={() => setViewMode('grid')}
@@ -452,43 +371,23 @@ export default function App() {
                 <span className="hidden xl:inline text-[11px]">Chart</span>
               </button>
               <button
-                onClick={() => setViewMode('sensitivity')}
-                className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-                  viewMode === 'sensitivity'
-                    ? 'bg-amber-500 text-white shadow-xs font-bold'
-                    : 'text-amber-800 hover:text-amber-950'
-                }`}
-                title="Sensitivity & Break-Even Analysis (Parameter Sweeps)"
-              >
-                <Zap className="w-4 h-4" />
-                <span className="text-[11px]">Break-Even</span>
-              </button>
-              <button
                 onClick={() => setViewMode('uncertainty')}
                 className={`p-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1 ${
                   viewMode === 'uncertainty'
                     ? 'bg-stone-900 text-white font-bold'
                     : 'text-stone-700 hover:text-stone-900'
                 }`}
-                title="Monte Carlo Uncertainty Bands (2,000 Simulations)"
+                title="View the calculated estimate range"
               >
                 <Dices className="w-4 h-4" />
-                <span className="text-[11px]">Monte Carlo</span>
+                <span className="text-[11px]">Estimate range</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* Results Container */}
-        {viewMode === 'sensitivity' ? (
-          <div className="mb-16">
-            <SensitivityExplorer
-              preferences={analyzedPreferences}
-              results={calculatedResults}
-              onApplyPreference={handlePreferenceChange}
-            />
-          </div>
-        ) : viewMode === 'uncertainty' ? (
+        {viewMode === 'uncertainty' ? (
           <div className="mb-16">
             <MonteCarloUncertaintyPanel
               preferences={analyzedPreferences}
@@ -574,18 +473,16 @@ export default function App() {
         </section>
         </>
         )}
-        </>
-        )}
       </main>
 
       {/* Floating Bottom Comparison Drawer (when neighbourhoods are selected) */}
-      {activePage === 'analysis' && <ComparisonDrawer
+      <ComparisonDrawer
         comparedCosts={comparedCosts}
         preferences={preferences}
         onRemove={handleToggleCompare}
         onClear={() => setComparedIds([])}
         onOpenPostingsModal={handleOpenPostingsModal}
-      />}
+      />
 
       {/* AI What-If Scenario Modal */}
       <AiWhatIfExplorer

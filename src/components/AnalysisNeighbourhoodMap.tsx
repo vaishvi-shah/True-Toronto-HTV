@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { divIcon } from 'leaflet';
-import { Activity, Bus, ExternalLink, Footprints, Home, MapPin, Plus, Search, ShoppingBasket, SlidersHorizontal, Trees } from 'lucide-react';
-import { MapContainer, Marker, TileLayer, Tooltip } from 'react-leaflet';
+import { Activity, Briefcase, Bus, ExternalLink, Footprints, Home, MapPin, Plus, Search, ShoppingBasket, SlidersHorizontal, Trees } from 'lucide-react';
+import { MapContainer, Marker, Popup, TileLayer, Tooltip } from 'react-leaflet';
 import { CalculatedCost, UserPreferences, BedroomType } from '../types';
-import { AREA_ROUTING_COORDINATES } from '../data/routingCoordinates';
+import { AREA_ROUTING_COORDINATES, WORKPLACE_ROUTING_COORDINATES } from '../data/routingCoordinates';
+import { NEIGHBOURHOODS, WORKPLACES } from '../data/neighbourhoods';
 import { DEMO_LISTINGS } from '../data/demoListings';
 import { buildPlatformSearchUrls } from '../data/listings';
 import { areaPinName } from '../services/mapAccessibility';
@@ -37,6 +38,24 @@ function areaIcon(rank: number, selected: boolean, accessibleName: string) {
     html: `<div style="width:34px;height:34px;border-radius:50% 50% 50% 8px;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;background:${selected ? '#1c1917' : '#ffffff'};border:2px solid #1c1917"><span aria-hidden="true" style="transform:rotate(45deg);font-size:13px;line-height:1;font-weight:800;font-family:system-ui,sans-serif;color:${selected ? '#ffffff' : '#1c1917'}">${rank}</span><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;">${accessibleName}</span></div>`,
     iconSize: [34, 34],
     iconAnchor: [17, 34],
+  });
+}
+
+function workplaceIcon() {
+  return divIcon({
+    className: 'workplace-map-marker',
+    html: '<div style="width:34px;height:42px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 1px 3px #0008)"><svg viewBox="0 0 32 42" width="34" height="42" aria-hidden="true"><path d="M16 1C7.7 1 1 7.7 1 16c0 10.2 15 25 15 25s15-14.8 15-25C31 7.7 24.3 1 16 1Z" fill="#dc2626" stroke="white" stroke-width="2"/><circle cx="16" cy="16" r="5" fill="white"/></svg></div>',
+    iconSize: [34, 42],
+    iconAnchor: [17, 41],
+  });
+}
+
+function currentHomeIcon() {
+  return divIcon({
+    className: 'current-home-map-marker',
+    html: '<div style="width:38px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 1px 6px #0008;color:#fff"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/><path d="M3 10h18"/></svg></div>',
+    iconSize: [38, 38],
+    iconAnchor: [19, 38],
   });
 }
 
@@ -74,6 +93,10 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
   }, []);
 
   const selected = results.find((item) => item.neighbourhood.id === selectedId) || null;
+  const workplace = WORKPLACES.find((item) => item.id === preferences.workplaceId);
+  const workplacePoint = workplace ? WORKPLACE_ROUTING_COORDINATES[workplace.id] : undefined;
+  const currentHome = NEIGHBOURHOODS.find((item) => item.id === preferences.currentNeighbourhoodId);
+  const currentHomePoint = currentHome ? AREA_ROUTING_COORDINATES[currentHome.id] : undefined;
   const orderedResults = useMemo(() => [...results].sort((a, b) => {
     if (priority === 'rent') return (a.effectiveRent ?? Number.MAX_SAFE_INTEGER) - (b.effectiveRent ?? Number.MAX_SAFE_INTEGER);
     if (priority === 'commute') return a.monthlyCommuteHours - b.monthlyCommuteHours;
@@ -132,6 +155,14 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
       <div className="relative">
         <MapContainer center={[43.7001, -79.4163]} zoom={10} scrollWheelZoom className="h-[58vh] min-h-[390px] w-full">
           <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={19} />
+          {workplace && workplacePoint && <Marker position={[workplacePoint[1], workplacePoint[0]]} icon={workplaceIcon()} zIndexOffset={1000} title={`Workplace: ${workplace.name}`}>
+            <Tooltip direction="top" offset={[0, -36]} permanent>Work</Tooltip>
+            <Popup><strong>Workplace</strong><br />{workplace.name}<br /><span>{workplace.address}</span></Popup>
+          </Marker>}
+          {currentHome && currentHomePoint && <Marker position={[currentHomePoint[1], currentHomePoint[0]]} icon={currentHomeIcon()} zIndexOffset={1100} title={`Current home: ${currentHome.name}`}>
+            <Tooltip direction="top" offset={[0, -20]} permanent>Current home</Tooltip>
+            <Popup><strong>Current home</strong><br />{currentHome.name}</Popup>
+          </Marker>}
           {results.map((item, index) => {
             const point = AREA_ROUTING_COORDINATES[item.neighbourhood.id];
             const nearby = amenitiesByArea[item.neighbourhood.id];
@@ -161,7 +192,7 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
             </Marker>;
           })}
         </MapContainer>
-        <div className="pointer-events-none absolute bottom-4 left-4 bg-[#1b1712] px-3 py-2 text-[10px] font-semibold text-[#f4f1e8]"><span className="font-bold">10 neighbourhoods</span> · select a pin to explore</div>
+        <div className="pointer-events-none absolute bottom-4 left-4 flex flex-wrap gap-x-3 gap-y-1 bg-[#1b1712] px-3 py-2 text-[10px] font-semibold text-[#f4f1e8]"><span className="font-bold">10 neighbourhoods</span><span className="inline-flex items-center gap-1"><Briefcase className="h-3 w-3 text-red-400" aria-hidden="true" /> Work</span>{currentHome && <span className="inline-flex items-center gap-1"><Home className="h-3 w-3 text-blue-300" aria-hidden="true" /> Current home</span>}<span className="border-l border-white/30 pl-2">Select a pin to explore</span></div>
       </div>
       <div className="border-t border-[#1b1712]/15 px-4 py-4 sm:px-6">
         <div className="mb-1 flex items-baseline justify-between gap-2"><span className="dateline text-stone-500">Areas ranked by {priority === 'cost' ? 'monthly cost' : priority === 'rent' ? 'rent' : priority === 'commute' ? 'commute time' : priority}</span><span className="text-[11px] text-stone-500">Select a rank to open the area</span></div>

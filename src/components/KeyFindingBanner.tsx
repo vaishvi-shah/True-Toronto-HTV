@@ -5,7 +5,6 @@ import {
   Lightbulb,
   AlertCircle,
   ArrowRight,
-  Zap,
   Dices,
 } from 'lucide-react';
 import { CalculatedCost, UserPreferences } from '../types';
@@ -23,14 +22,12 @@ interface KeyFindingBannerProps {
     monthlyDifference?: number;
     timeDifferenceHours?: number;
     tenantRightsNotice?: string;
-    breakEvenNarrative?: string;
     monteCarloInsight?: string;
     isAiGenerated?: boolean;
   } | null;
   isLoadingAi: boolean;
   onRefreshAi: () => void;
   onOpenWhatIf: () => void;
-  onOpenSensitivity?: () => void;
   onOpenMonteCarlo?: () => void;
 }
 
@@ -42,7 +39,6 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
   isLoadingAi,
   onRefreshAi,
   onOpenWhatIf,
-  onOpenSensitivity,
   onOpenMonteCarlo,
 }) => {
   if (!results.length) return null;
@@ -183,49 +179,27 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
           )}
         </div>
 
-        {/* Break-even tipping point & Monte Carlo uncertainty */}
-        {(explanation?.breakEvenNarrative || explanation?.monteCarloInsight) && (
+        {/* Computed estimate variation with a working destination view */}
+        {explanation?.monteCarloInsight && (
           <div className="mt-4 grid gap-2.5 lg:grid-cols-2">
-            {explanation.breakEvenNarrative && (
-              <div className="flex flex-col gap-2 border border-amber-700/40 bg-amber-50 p-3 text-xs sm:flex-row sm:items-center sm:justify-between">
-                <p className="flex items-start gap-2 text-amber-950">
-                  <Zap className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-                  <span>
-                    <strong>Break-even flip point:</strong> &ldquo;{explanation.breakEvenNarrative}&rdquo;
-                  </span>
-                </p>
-                {onOpenSensitivity && (
-                  <button
-                    type="button"
-                    onClick={onOpenSensitivity}
-                    className="flex shrink-0 cursor-pointer items-center gap-1 text-[11px] font-bold text-amber-900 hover:underline"
-                  >
-                    Explore sensitivity curves <ArrowRight className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            )}
-
-            {explanation.monteCarloInsight && (
-              <div className="flex flex-col gap-2 border border-[#1b1712]/25 bg-white/60 p-3 text-xs sm:flex-row sm:items-center sm:justify-between">
-                <p className="flex items-start gap-2 text-stone-700">
-                  <Dices className="mt-0.5 h-4 w-4 shrink-0 text-stone-500" />
-                  <span>
-                    <strong className="text-[#1b1712]">Monte Carlo uncertainty:</strong>{' '}
-                    {explanation.monteCarloInsight}
-                  </span>
-                </p>
-                {onOpenMonteCarlo && (
-                  <button
-                    type="button"
-                    onClick={onOpenMonteCarlo}
-                    className="pressable flex shrink-0 cursor-pointer items-center gap-1 text-[11px] font-bold text-[#1b1712] hover:underline"
-                  >
-                    View uncertainty bands <ArrowRight className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            )}
+            <div className="flex flex-col gap-2 border border-[#1b1712]/25 bg-white/60 p-3 text-xs sm:flex-row sm:items-center sm:justify-between">
+              <p className="flex items-start gap-2 text-stone-700">
+                <Dices className="mt-0.5 h-4 w-4 shrink-0 text-stone-500" />
+                <span>
+                  <strong className="text-[#1b1712]">Estimated cost variation:</strong>{' '}
+                  {explanation.monteCarloInsight}
+                </span>
+              </p>
+              {onOpenMonteCarlo && (
+                <button
+                  type="button"
+                  onClick={onOpenMonteCarlo}
+                  className="pressable flex shrink-0 cursor-pointer items-center gap-1 text-[11px] font-bold text-[#1b1712] hover:underline"
+                >
+                  View estimate range <ArrowRight className="h-3 w-3" />
+                </button>
+              )}
+            </div>
           </div>
         )}
 
