@@ -201,12 +201,12 @@ export const HousingStep: React.FC<StepProps> = ({ prefs, onChange }) => {
     <Question
       index="02 — Housing & rent"
       title="How should housing be counted?"
-      lede="Use a neighbourhood rent estimate, enter your rent, or exclude housing costs from the comparison."
+      lede="Use the historical area rent reference, enter a rent you verified, or exclude housing costs."
     >
       <div data-scene-item role="radiogroup" aria-label="Rent handling">
         {(
           [
-            ['cmhc_benchmark', 'Neighbourhood rent estimate', 'Based on CMHC data and unit size · Oct 2024'],
+            ['cmhc_benchmark', 'Historical area rent reference', 'CMHC survey-zone average by bedroom · Oct 2024; not a current listing'],
             ['user_entered', 'My actual rent', 'One figure applied across all 10 areas'],
             ['no_rent', 'Exclude rent', 'Commute + utilities only'],
           ] as Array<[RentMode, string, string]>
@@ -455,7 +455,7 @@ export const ReviewStep: React.FC<
         : 'Rent not entered'
       : (prefs.rentMode || 'cmhc_benchmark') === 'no_rent'
       ? 'Rent excluded · commute and utilities only'
-      : 'Neighbourhood rent estimate · CMHC, Oct 2024';
+      : 'Historical CMHC area rent reference · Oct 2024';
   const rows: Array<[string, string, 'work' | 'housing' | 'income']> = [
     ['Destination', `${workplace.shortName} · ${5 - prefs.hybridRemoteDaysPerWeek}d/wk on-site`, 'work'],
     ['Travel', `${prefs.commuteMode.replace('_', ' / ')} · ${prefs.hybridRemoteDaysPerWeek} remote day(s)`, 'work'],

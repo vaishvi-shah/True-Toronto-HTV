@@ -25,7 +25,6 @@ interface NeighbourhoodTableProps {
   onToggleCompare: (id: string) => void;
   onUpdateNeighbourhoodRent?: (id: string, rent: number | null) => void;
   onOpenPostingsModal?: (id: string) => void;
-  getMonteCarloRange?: (id: string) => [number, number] | undefined;
 }
 
 type SortField =
@@ -44,7 +43,6 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
   onToggleCompare,
   onUpdateNeighbourhoodRent,
   onOpenPostingsModal,
-  getMonteCarloRange,
 }) => {
   const [editingRentId, setEditingRentId] = useState<string | null>(null);
   const [editRentValue, setEditRentValue] = useState<number>(0);
@@ -193,11 +191,6 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
                     <div className="text-sm font-bold text-stone-900">
                       ${cost.trueMonthlyCost.toLocaleString()}/mo
                     </div>
-                    {getMonteCarloRange && getMonteCarloRange(n.id) && (
-                      <div className="text-[10px] text-stone-700 font-medium">
-                        CI: ${getMonteCarloRange(n.id)![0].toLocaleString()}–${getMonteCarloRange(n.id)![1].toLocaleString()}
-                      </div>
-                    )}
                   </td>
 
                   {/* Rent (Editable) */}
@@ -350,18 +343,6 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
                         }`}
                         title={`Heat: ${n.heatRisk.level}`}
                       />
-                      <span
-                        className={`text-[10px] font-mono px-1 py-0.5 rounded-sm ${
-                          n.displacementFlag.level === 'red'
-                            ? 'bg-rose-100 text-rose-800'
-                            : n.displacementFlag.level === 'yellow'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-emerald-100 text-emerald-800'
-                        }`}
-                        title={n.displacementFlag.details}
-                      >
-                        +{n.displacementFlag.turnoverGapPercent}% gap
-                      </span>
                     </div>
                   </td>
 

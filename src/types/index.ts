@@ -139,7 +139,7 @@ export interface CommuteBreakdown {
 export interface CalculatedCost {
   neighbourhood: NeighbourhoodData;
   stickerRent: number; // effective rent used in direct calculation (0 if no rent/unspecified)
-  originalMarketRent: number; // CMHC median reference
+  originalMarketRent: number; // Historical CMHC survey-zone reference by bedroom type
   isCustomRent: boolean;
   rentStatus: 'user_entered' | 'cmhc_benchmark' | 'no_rent' | 'unspecified';
   rentLabel: string;

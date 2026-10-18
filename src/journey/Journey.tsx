@@ -6,15 +6,10 @@ import {
   BarChart3,
   Building2,
   Compass,
-  Dices,
-  Filter,
   ArrowUpDown,
   LayoutGrid,
-  Map as MapIcon,
   ShieldCheck,
-  BrainCircuit,
   Table as TableIcon,
-  Zap,
 } from 'lucide-react';
 import { HousingStep, IncomeStep, Overture, ReviewStep, WorkStep } from './steps';
 import { KeyFindingBanner } from '../components/KeyFindingBanner';
@@ -26,13 +21,8 @@ import { AiWhatIfExplorer } from '../components/AiWhatIfExplorer';
 import { HowWeCalculatedModal } from '../components/HowWeCalculatedModal';
 import { TenantResourcesModal } from '../components/TenantResourcesModal';
 import { LivePostingsModal } from '../components/LivePostingsModal';
-import { SensitivityExplorer } from '../components/SensitivityExplorer';
-import { MonteCarloUncertaintyPanel } from '../components/MonteCarloUncertaintyPanel';
-import { MlRentGapEstimatorModal } from '../components/MlRentGapEstimatorModal';
-import { NeighbourhoodExplorer } from '../components/NeighbourhoodExplorer';
 import { AnalysisNeighbourhoodMap } from '../components/AnalysisNeighbourhoodMap';
 import { calculateNeighbourhoodCosts } from '../services/calculator';
-import { runMonteCarloSimulation } from '../services/monteCarloSimulation';
 import { CalculatedCost, UserPreferences } from '../types';
 import './journey.css';
 
@@ -84,8 +74,6 @@ interface AiExplanation {
   cheapestTrueRent?: number | null;
   monthlyDifference?: number;
   timeDifferenceHours?: number;
-  breakEvenNarrative?: string;
-  monteCarloInsight?: string;
   tenantRightsNotice?: string;
   isAiGenerated?: boolean;
 }
@@ -104,8 +92,7 @@ export const Journey: React.FC = () => {
   const [aiError, setAiError] = useState<AiError | null>(null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [phaseIdx, setPhaseIdx] = useState(0);
-  const [viewMode, setViewMode] = useState<'grid' | 'table' | 'chart' | 'sensitivity' | 'uncertainty' | 'atlas'>('grid');
-  const [borough, setBorough] = useState('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'table' | 'chart'>('grid');
   const [sortBy, setSortBy] = useState<'trueCost' | 'rent' | 'transport' | 'utilities' | 'commuteTime' | 'carbon'>('trueCost');
   const [comparedIds, setComparedIds] = useState<string[]>([]);
   const [isMethodologyOpen, setIsMethodologyOpen] = useState(false);
@@ -113,8 +100,6 @@ export const Journey: React.FC = () => {
   const [isWhatIfOpen, setIsWhatIfOpen] = useState(false);
   const [isPostingsOpen, setIsPostingsOpen] = useState(false);
   const [postingsId, setPostingsId] = useState<string | null>(null);
-  const [isMlOpen, setIsMlOpen] = useState(false);
-  const [mlId, setMlId] = useState<string | null>(null);
 
   const sceneRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -205,11 +190,9 @@ export const Journey: React.FC = () => {
     };
     return calculateNeighbourhoodCosts(profile).find((i) => i.neighbourhood.id === analyzed.currentNeighbourhoodId) || null;
   }, [analyzed]);
-  const mcSim = useMemo(() => (analyzed ? runMonteCarloSimulation(analyzed, 1500) : null), [analyzed]);
   const filtered = useMemo(() => {
     const list = [...results];
-    if (borough !== 'all') list.filter((i) => i.neighbourhood.borough === borough);
-    const out = borough === 'all' ? list : list.filter((i) => i.neighbourhood.borough === borough);
+    const out = list;
     const key = sortBy;
     out.sort((a, b) =>
       key === 'rent' ? (a.effectiveRent ?? 0) - (b.effectiveRent ?? 0)
@@ -220,7 +203,7 @@ export const Journey: React.FC = () => {
       : a.trueMonthlyCost - b.trueMonthlyCost
     );
     return out;
-  }, [results, borough, sortBy]);
+  }, [results, sortBy]);
   const compared = useMemo(() => results.filter((i) => comparedIds.includes(i.neighbourhood.id)), [results, comparedIds]);
 
   const toggleCompare = useCallback((id: string) => {
@@ -279,7 +262,6 @@ export const Journey: React.FC = () => {
     setPhaseIdx(2);
     calculateNeighbourhoodCosts(snapshot);
     setAnalyzed(snapshot);
-    setBorough('all');
     if (dwell) await delay(dwell);
     if (token !== runToken.current) return;
     // Phase 3 · explain (live Gemini call; the API returns a calculated
@@ -399,16 +381,12 @@ export const Journey: React.FC = () => {
             isLoadingAi={isLoadingAi}
             viewMode={viewMode}
             setViewMode={setViewMode}
-            borough={borough}
-            setBorough={setBorough}
             sortBy={sortBy}
             setSortBy={setSortBy}
             comparedIds={comparedIds}
             onToggleCompare={toggleCompare}
             onUpdateRent={updateRent}
             onOpenPostings={openPostings}
-            onOpenMl={(id) => { setMlId(id); setIsMlOpen(true); }}
-            onOpenMlGlobal={() => { setMlId(null); setIsMlOpen(true); }}
             onOpenWhatIf={() => setIsWhatIfOpen(true)}
             onRefreshAi={() => {
               setIsLoadingAi(true);
@@ -446,8 +424,7 @@ export const Journey: React.FC = () => {
             onOpenMethodology={() => setIsMethodologyOpen(true)}
             onOpenTenants={() => setIsTenantOpen(true)}
             onAdjust={() => go('review')}
-            onRestart={() => { setAnalyzed(null); setAiExplanation(null); setAiError(null); setComparedIds([]); setViewMode('grid'); setBorough('all'); go('overture'); }}
-            getMcRange={(id) => mcSim?.neighbourhoodStats[id]?.confidenceInterval80}
+            onRestart={() => { setAnalyzed(null); setAiExplanation(null); setAiError(null); setComparedIds([]); setViewMode('grid'); go('overture'); }}
           />
         )}
       </main>
@@ -488,13 +465,6 @@ export const Journey: React.FC = () => {
       />
       <HowWeCalculatedModal isOpen={isMethodologyOpen} onClose={() => setIsMethodologyOpen(false)} />
       <TenantResourcesModal isOpen={isTenantOpen} onClose={() => setIsTenantOpen(false)} />
-      <MlRentGapEstimatorModal
-        isOpen={isMlOpen}
-        onClose={() => setIsMlOpen(false)}
-        onApplyNeighbourhoodRent={updateRent}
-        defaultNeighbourhoodId={mlId || undefined}
-        defaultBedrooms={prefs.bedrooms}
-      />
     </div>
   );
 };
@@ -558,32 +528,27 @@ interface ResultsSceneProps {
   aiExplanation: AiExplanation | null;
   aiError: AiError | null;
   isLoadingAi: boolean;
-  viewMode: 'grid' | 'table' | 'chart' | 'sensitivity' | 'uncertainty' | 'atlas';
-  setViewMode: (v: 'grid' | 'table' | 'chart' | 'sensitivity' | 'uncertainty' | 'atlas') => void;
-  borough: string;
-  setBorough: (b: string) => void;
+  viewMode: 'grid' | 'table' | 'chart';
+  setViewMode: (v: 'grid' | 'table' | 'chart') => void;
   sortBy: 'trueCost' | 'rent' | 'transport' | 'utilities' | 'commuteTime' | 'carbon';
   setSortBy: (s: 'trueCost' | 'rent' | 'transport' | 'utilities' | 'commuteTime' | 'carbon') => void;
   comparedIds: string[];
   onToggleCompare: (id: string) => void;
   onUpdateRent: (id: string, rent: number | null) => void;
   onOpenPostings: (id?: string) => void;
-  onOpenMl: (id: string) => void;
-  onOpenMlGlobal: () => void;
   onOpenWhatIf: () => void;
   onRefreshAi: () => void;
   onOpenMethodology: () => void;
   onOpenTenants: () => void;
   onAdjust: () => void;
   onRestart: () => void;
-  getMcRange: (id: string) => [number, number] | undefined;
 }
 
 const ResultsScene: React.FC<ResultsSceneProps> = (props) => {
   const {
     results, filtered, preferences, currentLivingCost, aiExplanation, aiError, isLoadingAi,
-    viewMode, setViewMode, borough, setBorough, sortBy, setSortBy,
-    comparedIds, onToggleCompare, onUpdateRent, onOpenPostings, onOpenMl,
+    viewMode, setViewMode, sortBy, setSortBy,
+    comparedIds, onToggleCompare, onUpdateRent, onOpenPostings,
   } = props;
   return (
     <div className="j-results">
@@ -598,36 +563,12 @@ const ResultsScene: React.FC<ResultsSceneProps> = (props) => {
           isLoadingAi={isLoadingAi}
           onRefreshAi={props.onRefreshAi}
           onOpenWhatIf={props.onOpenWhatIf}
-          onOpenSensitivity={() => setViewMode('sensitivity')}
-          onOpenMonteCarlo={() => setViewMode('uncertainty')}
         />
       </div>
       <div data-scene-item>
         <AnalysisNeighbourhoodMap results={results} preferences={preferences} />
       </div>
       <div className="j-result-tools" data-scene-item>
-        <div className="j-filters" role="group" aria-label="Filter by area">
-          <span className="j-tools-label"><Filter aria-hidden="true" /> Area</span>
-          {[
-            { id: 'all', label: 'All 10' },
-            { id: 'Old Toronto', label: 'Old Toronto' },
-            { id: 'Scarborough', label: 'Scarborough' },
-            { id: 'North York', label: 'North York' },
-            { id: 'Etobicoke', label: 'Etobicoke' },
-            { id: 'East York', label: 'East York' },
-            { id: 'York', label: 'York' },
-          ].map((b) => (
-            <button
-              key={b.id}
-              type="button"
-              aria-pressed={borough === b.id}
-              onClick={() => setBorough(b.id)}
-              className={`j-chip${borough === b.id ? ' is-active' : ''}`}
-            >
-              {b.label}
-            </button>
-          ))}
-        </div>
         <div className="j-sortviews">
           <label className="j-sort">
             <ArrowUpDown aria-hidden="true" /> Sort
@@ -646,9 +587,6 @@ const ResultsScene: React.FC<ResultsSceneProps> = (props) => {
                 ['grid', 'Cost comparison', LayoutGrid],
                 ['table', 'Table', TableIcon],
                 ['chart', 'Chart', BarChart3],
-                ['sensitivity', 'Break-even', Zap],
-                ['uncertainty', 'Estimate range', Dices],
-                ['atlas', 'Map', MapIcon],
               ] as const
             ).map(([v, label, Icon]) => (
               <button
@@ -675,8 +613,6 @@ const ResultsScene: React.FC<ResultsSceneProps> = (props) => {
             onToggleCompare={onToggleCompare}
             onUpdateNeighbourhoodRent={onUpdateRent}
             onOpenPostingsModal={onOpenPostings}
-            onOpenMlEstimator={onOpenMl}
-            getMonteCarloRange={props.getMcRange}
           />
         )}
         {viewMode === 'table' && (
@@ -687,32 +623,14 @@ const ResultsScene: React.FC<ResultsSceneProps> = (props) => {
             onToggleCompare={onToggleCompare}
             onUpdateNeighbourhoodRent={onUpdateRent}
             onOpenPostingsModal={onOpenPostings}
-            getMonteCarloRange={props.getMcRange}
           />
         )}
         {viewMode === 'chart' && <CostBarChart results={filtered} maxDisplay={10} />}
-        {viewMode === 'sensitivity' && (
-          <SensitivityExplorer preferences={preferences} results={results} onApplyPreference={() => {}} />
-        )}
-        {viewMode === 'uncertainty' && (
-          <MonteCarloUncertaintyPanel preferences={preferences} results={results} />
-        )}
-        {viewMode === 'atlas' && (
-          <NeighbourhoodExplorer
-            results={results}
-            preferences={preferences}
-            comparedIds={comparedIds}
-            onToggleCompare={onToggleCompare}
-          />
-        )}
       </div>
       <div className="j-result-actions" data-scene-item>
         <button type="button" className="j-btn-primary" onClick={props.onOpenWhatIf}>Explore a scenario</button>
         <button type="button" className="j-btn-ghost" onClick={() => onOpenPostings()}>
           <Building2 aria-hidden="true" /> Rental listings
-        </button>
-        <button type="button" className="j-btn-ghost" onClick={props.onOpenMlGlobal}>
-          <BrainCircuit aria-hidden="true" /> Rent estimate tool
         </button>
         <button type="button" className="j-btn-ghost" onClick={props.onAdjust}>Adjust answers</button>
         <button type="button" className="j-btn-ghost" onClick={props.onRestart}>Start over</button>
@@ -720,8 +638,7 @@ const ResultsScene: React.FC<ResultsSceneProps> = (props) => {
       <section className="j-civic" data-scene-item>
         <ShieldCheck aria-hidden="true" />
         <p>
-          Rent estimates use Statistics Canada data. Commute estimates use TTC schedules and road routes.
-          Climate information comes from Toronto and conservation authority data.
+          Rent references use CMHC survey-zone data from October 2024. Commute figures combine route estimates and stored baselines; they are not live transit itineraries. Utilities are planning estimates.
         </p>
         <div>
           <button type="button" onClick={props.onOpenMethodology}>Formulas &amp; sources</button>

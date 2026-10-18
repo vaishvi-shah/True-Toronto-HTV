@@ -5,8 +5,6 @@ import {
   Lightbulb,
   AlertCircle,
   ArrowRight,
-  Zap,
-  Dices,
 } from 'lucide-react';
 import { CalculatedCost, UserPreferences } from '../types';
 import { isExplanationConsistent } from '../services/explanationTrust';
@@ -23,8 +21,6 @@ interface KeyFindingBannerProps {
     monthlyDifference?: number;
     timeDifferenceHours?: number;
     tenantRightsNotice?: string;
-    breakEvenNarrative?: string;
-    monteCarloInsight?: string;
     isAiGenerated?: boolean;
   } | null;
   aiError?: {
@@ -35,8 +31,6 @@ interface KeyFindingBannerProps {
   isLoadingAi: boolean;
   onRefreshAi: () => void;
   onOpenWhatIf: () => void;
-  onOpenSensitivity?: () => void;
-  onOpenMonteCarlo?: () => void;
 }
 
 export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
@@ -48,8 +42,6 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
   isLoadingAi,
   onRefreshAi,
   onOpenWhatIf,
-  onOpenSensitivity,
-  onOpenMonteCarlo,
 }) => {
   if (!results.length) return null;
 
@@ -126,7 +118,7 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
               : isRentUnspecified
               ? `${cheapestTrueItem.neighbourhood.name} provides the lowest transit + utilities overhead at $${cheapestTrueItem.trueMonthlyCost}/mo.`
               : isDivergent
-              ? `${cheapestTrueItem.neighbourhood.name} is $${netMonthlySavings}/mo cheaper overall than ${cheapestRentItem.neighbourhood.name}, despite higher asking rent.`
+              ? `${cheapestTrueItem.neighbourhood.name} is $${netMonthlySavings}/mo lower in estimated monthly costs than ${cheapestRentItem.neighbourhood.name}, with a higher rent figure.`
               : `${cheapestTrueItem.neighbourhood.name} has the lowest estimated monthly total at $${cheapestTrueItem.trueMonthlyCost}/mo.`)}
         </h2>
 
@@ -188,60 +180,14 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
                 (isRentExcluded
                   ? `With housing expenses excluded, your primary costs are travel ($${cheapestTrueItem.commuteBreakdown.totalMonthlyCommuteCost}/mo) and utilities ($${cheapestTrueItem.utilitiesCost}/mo). Living in ${cheapestTrueItem.neighbourhood.name} gives you a ${cheapestTrueItem.commuteBreakdown.monthlyCommuteHours} hour monthly commute to your destination.`
                   : isRentUnspecified
-                  ? `Because no rent was entered, true costs currently tally transit ($${cheapestTrueItem.commuteBreakdown.totalMonthlyCommuteCost}/mo) and utilities ($${cheapestTrueItem.utilitiesCost}/mo). You can enter your specific rent or choose CMHC survey medians in the inputs above to include housing.`
+              ? `Because no rent was entered, this comparison includes transportation ($${cheapestTrueItem.commuteBreakdown.totalMonthlyCommuteCost}/mo) and utilities ($${cheapestTrueItem.utilitiesCost}/mo). Enter a rent or use the historical area reference to include housing.`
                   : isDivergent
-                  ? `${cheapestRentItem.neighbourhood.name} has the lowest advertised rent ($${cheapestRentItem.stickerRent}/mo), but its commute costs ($${cheapestRentItem.commuteBreakdown.totalMonthlyCommuteCost}/mo) push total out-of-pocket expenses to $${cheapestRentItem.trueMonthlyCost}. By contrast, ${cheapestTrueItem.neighbourhood.name} costs $${rentDelta}/mo more in rent but saves $${commuteDelta}/mo on travel, saving you $${netMonthlySavings} net each month.`
+                  ? `${cheapestRentItem.neighbourhood.name} has the lowest rent figure ($${cheapestRentItem.stickerRent}/mo), but its commute costs ($${cheapestRentItem.commuteBreakdown.totalMonthlyCommuteCost}/mo) bring its estimated monthly total to $${cheapestRentItem.trueMonthlyCost}. ${cheapestTrueItem.neighbourhood.name} costs $${rentDelta}/mo more in rent but saves $${commuteDelta}/mo on travel, for an estimated net difference of $${netMonthlySavings}/mo.`
                   : `${cheapestTrueItem.neighbourhood.name} minimizes your monthly costs ($${cheapestTrueItem.trueMonthlyCost}/mo total) with commute travel of ${cheapestTrueItem.commuteBreakdown.monthlyCommuteHours} hours per month.`)}
               </p>
             </>
           )}
         </div>
-
-        {/* Break-even point and estimated cost variation */}
-        {(explanation?.breakEvenNarrative || explanation?.monteCarloInsight) && (
-          <div className="mt-4 grid gap-2.5 lg:grid-cols-2">
-            {explanation.breakEvenNarrative && (
-              <div className="flex flex-col gap-2 border border-amber-700/40 bg-amber-50 p-3 text-xs sm:flex-row sm:items-center sm:justify-between">
-                <p className="flex items-start gap-2 text-amber-950">
-                  <Zap className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-                  <span>
-                    <strong>Break-even point:</strong> &ldquo;{explanation.breakEvenNarrative}&rdquo;
-                  </span>
-                </p>
-                {onOpenSensitivity && (
-                  <button
-                    type="button"
-                    onClick={onOpenSensitivity}
-                    className="flex shrink-0 cursor-pointer items-center gap-1 text-[11px] font-bold text-amber-900 hover:underline"
-                  >
-                    Explore sensitivity curves <ArrowRight className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            )}
-
-            {explanation.monteCarloInsight && (
-              <div className="flex flex-col gap-2 border border-[#1b1712]/25 bg-white/60 p-3 text-xs sm:flex-row sm:items-center sm:justify-between">
-                <p className="flex items-start gap-2 text-stone-700">
-                  <Dices className="mt-0.5 h-4 w-4 shrink-0 text-stone-500" />
-                  <span>
-                    <strong className="text-[#1b1712]">Estimated cost variation:</strong>{' '}
-                    {explanation.monteCarloInsight}
-                  </span>
-                </p>
-                {onOpenMonteCarlo && (
-                  <button
-                    type="button"
-                    onClick={onOpenMonteCarlo}
-                    className="pressable flex shrink-0 cursor-pointer items-center gap-1 text-[11px] font-bold text-[#1b1712] hover:underline"
-                  >
-                    View estimate range <ArrowRight className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Current-home comparison */}
         {currentLivingCost && (

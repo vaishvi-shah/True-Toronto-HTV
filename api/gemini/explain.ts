@@ -7,8 +7,6 @@ import {
   normalizeToUserPreferences,
 } from '../../src/services/unifiedEngine.js';
 import { calculateNeighbourhoodCosts } from '../../src/services/calculator.js';
-import { analyzeSensitivity } from '../../src/services/sensitivityAnalysis.js';
-import { runMonteCarloSimulation } from '../../src/services/monteCarloSimulation.js';
 import { SYSTEM_DIRECTIVE } from '../../lib/llm/prompts.js';
 import { generateWithGeminiFallback, getGeminiStatus } from '../../lib/llm/geminiFallback.js';
 
@@ -58,8 +56,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   let calculatedResults: ReturnType<typeof calculateNeighbourhoodCosts> = [];
-  let sensitivityResult: { primaryBreakEvenNarrative?: string } | null = null;
-  let monteCarloResult: { primaryInsight?: string } | null = null;
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body ?? {});
     const raw = body.profile || body.preferences;
@@ -74,36 +70,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const results = calculateNeighbourhoodCosts(preferences);
     calculatedResults = results;
 
-    try {
-      sensitivityResult = analyzeSensitivity(preferences);
-      monteCarloResult = runMonteCarloSimulation(preferences, 1000);
-    } catch (err) {
-      // Keep narrating the engine deltas even if the diagnostics step throws.
-      console.warn('Sensitivity/Monte Carlo computation error:', err);
-    }
-
-    const sensitivityNarrative = sensitivityResult?.primaryBreakEvenNarrative || '';
-    const monteCarloInsight = monteCarloResult?.primaryInsight || '';
     console.info('[api/gemini/explain] local analysis complete', {
       resultCount: results.length,
-      sensitivityReady: Boolean(sensitivityResult),
-      monteCarloReady: Boolean(monteCarloResult),
     });
-    const prompt = buildUnifiedExplainPrompt(
-      preferences as any,
-      results as any,
-      sensitivityNarrative,
-      monteCarloInsight,
-    );
+    const prompt = buildUnifiedExplainPrompt(preferences as any, results as any);
 
     if (!apiKey.trim()) {
       console.warn('[api/gemini/explain] Gemini unavailable; returning calculated fallback');
       return res.json({
         ...buildCalculatedFallback(results),
-        breakEvenNarrative: sensitivityNarrative,
-        monteCarloInsight,
-        sensitivity: sensitivityResult,
-        monteCarlo: monteCarloResult,
       });
     }
 
@@ -140,10 +115,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.json({
       ...parsed,
-      breakEvenNarrative: parsed.breakEvenNarrative || sensitivityNarrative,
-      monteCarloInsight: parsed.monteCarloInsight || (monteCarloInsight as any),
-      sensitivity: sensitivityResult,
-      monteCarlo: monteCarloResult,
       isAiGenerated: true,
     });
   } catch (error) {
@@ -158,10 +129,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const fallback = buildCalculatedFallback(calculatedResults);
     return res.json({
       ...fallback,
-      breakEvenNarrative: sensitivityResult?.primaryBreakEvenNarrative || '',
-      monteCarloInsight: monteCarloResult?.primaryInsight || '',
-      sensitivity: sensitivityResult,
-      monteCarlo: monteCarloResult,
     });
   }
 }

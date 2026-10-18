@@ -132,8 +132,8 @@ export const CALCULATION_ASSUMPTIONS = {
   // Commute assumptions
   workdaysPerMonth: 21,
   commuteTripsPerDay: 2,
-  ttcAdultMonthlyPass: 156.00, // Official TTC Monthly Pass (2024/2025)
-  prestoAdultSingleFare: 3.30, // Official PRESTO single ride
+  ttcAdultFareCapTrips: 47, // TTC adult fare cap, effective Aug 31, 2026
+  prestoAdultSingleFare: 3.30, // TTC adult PRESTO fare; eligible fares count toward the 47-trip monthly cap
   // Vehicle assumptions (Source: Canadian Automobile Association CAA Driving Costs 2024 & StatCan)
   gasPricePerLiterCad: 1.62, // GTA average regular unleaded ($/L)
   fuelConsumptionLPer100Km: 8.8, // Average compact/midsize urban car
@@ -142,14 +142,8 @@ export const CALCULATION_ASSUMPTIONS = {
   standardWorkHoursPerYear: 1950, // 37.5 hours/week * 52 weeks
   defaultTimeValuationRatio: 0.50, // 50% of gross hourly wage
   // Carbon intensity metrics (Source: Environment and Climate Change Canada & National Inventory Report)
-  carEmissionsKgCo2ePerKm: 0.192, // Gasoline passenger car (ECCC average)
-  transitEmissionsKgCo2ePerKm: 0.032, // TTC blended electric subway, streetcar & hybrid bus
-  homeEnergyEmissionsMonthlyKg: {
-    bachelor: 110,
-    '1bed': 145,
-    '2bed': 210,
-    '3bed': 285,
-  },
+  carEmissionsKgCo2ePerKm: 0.203, // 8.8 L/100 km × 2.307 kg CO2/L gasoline (NRCan / ECCC)
+  transitEmissionsKgCo2ePerKm: 0.020, // Toronto transit network average: ~20 g CO2e/passenger-km (City of Toronto TTC study)
 };
 
 export const NEIGHBOURHOODS: NeighbourhoodData[] = [

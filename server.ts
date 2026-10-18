@@ -99,7 +99,6 @@ function geminiErrorDetail(error: unknown): { status: number; code: string; mess
 /**
  * Route: POST /api/explain & POST /api/gemini/explain
  * Explains calculation results in plain language without calculating new math.
- * Enriched with deterministic break-even flip points and Monte Carlo confidence.
  */
 const handleExplain = async (req: Request, res: Response) => {
   const raw = req.body.profile || req.body.preferences;
@@ -111,22 +110,8 @@ const handleExplain = async (req: Request, res: Response) => {
   const preferences: UserPreferences = normalizeToUserPreferences(raw);
   const results = calculateNeighbourhoodCosts(preferences);
 
-  // Compute deterministic sensitivity & Monte Carlo simulation
-  let sensitivityResult;
-  let monteCarloResult;
-  try {
-    sensitivityResult = analyzeSensitivity(preferences);
-    monteCarloResult = runMonteCarloSimulation(preferences, 1000);
-  } catch (err) {
-    console.warn('Sensitivity/Monte Carlo computation error:', err);
-  }
-
-  const sensitivityNarrative = sensitivityResult?.primaryBreakEvenNarrative || '';
-  const monteCarloInsight = monteCarloResult?.primaryInsight || '';
-
   // No silent placeholder narration: without a key the client must show the
-  // error (with its code) instead of fallback copy. Engine numbers
-  // (sensitivity / Monte Carlo) are real local math, so they still ship.
+  // error (with its code) instead of fallback copy.
   if (!apiKey) {
     return res.status(503).json({
       error: {
@@ -135,13 +120,11 @@ const handleExplain = async (req: Request, res: Response) => {
         message:
           'GEMINI_API_KEY is not set on the server. Add it to .env.local and restart the server.',
       },
-      sensitivity: sensitivityResult,
-      monteCarlo: monteCarloResult,
     });
   }
 
   try {
-    const prompt = buildUnifiedExplainPrompt(preferences, results, sensitivityNarrative, monteCarloInsight);
+    const prompt = buildUnifiedExplainPrompt(preferences, results);
 
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('Gemini API timeout')), 6000)
@@ -160,20 +143,12 @@ const handleExplain = async (req: Request, res: Response) => {
     const parsed = JSON.parse(response.text || '{}');
     return res.json({
       ...parsed,
-      breakEvenNarrative: parsed.breakEvenNarrative || sensitivityNarrative,
-      monteCarloInsight: parsed.monteCarloInsight || monteCarloInsight,
-      sensitivity: sensitivityResult,
-      monteCarlo: monteCarloResult,
       isAiGenerated: true,
     });
   } catch (error) {
     const detail = geminiErrorDetail(error);
     console.warn('Gemini explain error or timeout:', error);
-    return res.status(detail.status).json({
-      error: detail,
-      sensitivity: sensitivityResult,
-      monteCarlo: monteCarloResult,
-    });
+    return res.status(detail.status).json({ error: detail });
   }
 };
 

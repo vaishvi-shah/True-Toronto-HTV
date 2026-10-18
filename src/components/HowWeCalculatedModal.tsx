@@ -7,11 +7,7 @@ import {
   Clock,
   Droplets,
   Flame,
-  ShieldCheck,
-  CheckCircle2,
-  ExternalLink,
 } from 'lucide-react';
-import { CALCULATION_ASSUMPTIONS } from '../data/neighbourhoods';
 
 interface HowWeCalculatedModalProps {
   isOpen: boolean;
@@ -35,10 +31,10 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-stone-900 text-base">
-                How We Calculated This (100% Transparent Methodology)
+                How the Comparison Works
               </h3>
               <p className="text-xs text-stone-500">
-                Every formula, open dataset source, and baseline assumption explained
+                Data sources, assumptions, and known limitations
               </p>
             </div>
           </div>
@@ -59,7 +55,7 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
               Public Data Sources Directory
             </h4>
             <p className="text-xs text-stone-300 mb-3">
-              All numbers in TrueRent Toronto are retrieved from free, verified Canadian public sector and open data portals. Nothing is invented or dynamically estimated:
+              The comparison combines user-entered values, historical housing references, route calculations, and assumptions. Figures are not all live data; the notes below identify estimates and gaps.
             </p>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[11px] border-collapse">
@@ -73,34 +69,34 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
                 </thead>
                 <tbody className="divide-y divide-stone-800/60 text-stone-300">
                   <tr>
-                    <td className="py-1.5 pr-2 font-medium text-emerald-300">Market Asking Rents</td>
+                    <td className="py-1.5 pr-2 font-medium text-emerald-300">Historical Rent Reference</td>
                     <td className="py-1.5 pr-2">Rental Market Survey (RMS) Zone Tables</td>
                     <td className="py-1.5 pr-2">Canada Mortgage &amp; Housing Corp (CMHC)</td>
                     <td className="py-1.5 font-mono text-stone-400">Oct 2024</td>
                   </tr>
                   <tr>
                     <td className="py-1.5 pr-2 font-medium text-emerald-300">Area Rent References</td>
-                    <td className="py-1.5 pr-2">Neighbourhood-specific CMHC zone rent figures by bedroom size</td>
+                    <td className="py-1.5 pr-2">Historical CMHC zone averages mapped approximately to app neighbourhoods, by bedroom size</td>
                     <td className="py-1.5 pr-2">CMHC Rental Market Report (source noted on each area card)</td>
                     <td className="py-1.5 font-mono text-stone-400">Oct 2024</td>
                   </tr>
                   <tr>
                     <td className="py-1.5 pr-2 font-medium text-emerald-300">Public Transit Fares</td>
-                    <td className="py-1.5 pr-2">Official Fare Schedule ($156/mo pass, $3.30 single)</td>
+                    <td className="py-1.5 pr-2">$3.30 adult PRESTO fare; monthly cap after 47 eligible paid trips</td>
                     <td className="py-1.5 pr-2">Toronto Transit Commission (TTC)</td>
-                    <td className="py-1.5 font-mono text-stone-400">2024/2025</td>
+                    <td className="py-1.5 font-mono text-stone-400">Fare $3.30; cap since Aug 2026</td>
                   </tr>
                   <tr>
                     <td className="py-1.5 pr-2 font-medium text-emerald-300">Vehicle Driving Costs</td>
-                    <td className="py-1.5 pr-2">Driving Costs Survey ($410/mo ins/maint + $1.62/L fuel)</td>
-                    <td className="py-1.5 pr-2">Canadian Automobile Assoc (CAA) / StatCan</td>
-                    <td className="py-1.5 font-mono text-stone-400">2024</td>
+                    <td className="py-1.5 pr-2">Assumed $1.62/L fuel, 8.8 L/100 km, and $410 monthly vehicle-cost allowance; not live prices</td>
+                    <td className="py-1.5 pr-2">App assumptions</td>
+                    <td className="py-1.5 font-mono text-stone-400">Fuel price date not recorded</td>
                   </tr>
                   <tr>
                     <td className="py-1.5 pr-2 font-medium text-emerald-300">Commute Travel Times</td>
-                    <td className="py-1.5 pr-2">TTC / regional schedule estimates; times above 120 minutes are rejected</td>
-                    <td className="py-1.5 pr-2">TTC &amp; Metrolinx (UP / GO Transit)</td>
-                    <td className="py-1.5 font-mono text-stone-400">2024/2025</td>
+                    <td className="py-1.5 pr-2">Stored area-to-destination estimates; some destinations use a generic baseline</td>
+                    <td className="py-1.5 pr-2">App estimates; not live transit itineraries</td>
+                    <td className="py-1.5 font-mono text-stone-400">Not consistently dated</td>
                   </tr>
                   <tr>
                     <td className="py-1.5 pr-2 font-medium text-emerald-300">Car Route Distance &amp; Time</td>
@@ -110,15 +106,21 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
                   </tr>
                   <tr>
                     <td className="py-1.5 pr-2 font-medium text-emerald-300">Commute Time Value</td>
-                    <td className="py-1.5 pr-2">Economic Appraisal Standard (50% hourly wage)</td>
-                    <td className="py-1.5 pr-2">Transport Canada / Metrolinx</td>
-                    <td className="py-1.5 font-mono text-stone-400">2023 Guideline</td>
+                    <td className="py-1.5 pr-2">User-selected share of gross hourly wage (50% default)</td>
+                    <td className="py-1.5 pr-2">App setting; 1,950 work hours/year</td>
+                    <td className="py-1.5 font-mono text-stone-400">User adjustable</td>
                   </tr>
                   <tr>
                     <td className="py-1.5 pr-2 font-medium text-emerald-300">Residential Utilities</td>
-                    <td className="py-1.5 pr-2">Electricity, Gas &amp; Municipal Water Benchmarks</td>
-                    <td className="py-1.5 pr-2">City of Toronto / Ontario Energy Board</td>
-                    <td className="py-1.5 font-mono text-stone-400">2024</td>
+                    <td className="py-1.5 pr-2">Static planning estimates by neighbourhood and bedroom count; detailed source/sample metadata is not stored</td>
+                    <td className="py-1.5 pr-2">App estimate; user can enter a bill</td>
+                    <td className="py-1.5 font-mono text-stone-400">Not consistently dated</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5 pr-2 font-medium text-emerald-300">Commute Emissions</td>
+                    <td className="py-1.5 pr-2">Gasoline factor and Toronto transit network average; estimates are not measured</td>
+                    <td className="py-1.5 pr-2">NRCan / City of Toronto TTC analysis</td>
+                    <td className="py-1.5 font-mono text-stone-400">NRCan 2024 guide / City study</td>
                   </tr>
                   <tr>
                     <td className="py-1.5 pr-2 font-medium text-emerald-300">Riverine Flood Risk</td>
@@ -133,23 +135,17 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
                     <td className="py-1.5 font-mono text-stone-400">2023/2024</td>
                   </tr>
                   <tr>
-                    <td className="py-1.5 pr-2 font-medium text-emerald-300">Displacement Risk</td>
-                    <td className="py-1.5 pr-2">Turnover Gap Metric (Vacant vs Occupied Rent Spread)</td>
-                    <td className="py-1.5 pr-2">CMHC Rental Market Report</td>
-                    <td className="py-1.5 font-mono text-stone-400">Oct 2024</td>
-                  </tr>
-                  <tr>
                     <td className="py-1.5 pr-2 font-medium text-emerald-300">Live Rental Search</td>
-                    <td className="py-1.5 pr-2">Search links to HouseSigma, Realtor.ca, Zillow, and Rentals.ca; listings are not stored in the app</td>
+                    <td className="py-1.5 pr-2">External search links only; this app does not retrieve or store listings</td>
                     <td className="py-1.5 pr-2">Linked portals; verify every ad</td>
-                    <td className="py-1.5 font-mono text-stone-400">Oct 2024</td>
+                    <td className="py-1.5 font-mono text-stone-400">External search; listing date not stored</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
             <div className="mt-3 p-2.5 rounded-lg bg-stone-800 text-[11px] text-emerald-200 border border-emerald-500/20">
-              <strong>Rent data note:</strong> Neighbourhood rent estimates use October 2024 CMHC figures and may differ from current asking rents. Use the rental search links for current availability.
+              <strong>Rent data note:</strong> The neighbourhood references are historical CMHC survey-zone averages by bedroom type (October 2024), not current asking listings. The app does not have per-area sample counts. See the <a className="underline" href="https://assets.cmhc-schl.gc.ca/sites/cmhc/professional/housing-markets-data-and-research/market-reports/rental-market-report/fall-2024/rental-market-report-fall-2024-en.pdf" target="_blank" rel="noreferrer">CMHC Fall 2024 Rental Market Report</a>. Enter a verified rent for a current comparison; listing portals are external links.
             </div>
           </div>
 
@@ -160,17 +156,17 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
               1. The True Monthly Cost Formula
             </h4>
             <div className="bg-white p-3 rounded-lg border border-emerald-200 font-mono text-xs text-emerald-950 font-semibold mb-2">
-              True Monthly Cost = Sticker Rent + Monthly Commute Expenses + Utilities
+              Estimated Monthly Total = Rent + Monthly Commute Expenses + Utilities
             </div>
             <ul className="list-disc list-inside space-y-1 text-stone-600">
               <li>
-                <strong>Sticker Rent:</strong> Historical CMHC rent reference for the selected neighbourhood zone and bedroom count (October 2024). These area-specific figures distinguish neighbourhoods, but are not current asking rents or a promise of what a particular unit costs.
+                <strong>Housing:</strong> The preset uses a historical CMHC survey-zone average for the selected bedroom count (October 2024). It is an area-level reference, not a current listing or a price for a specific home. The source sample size is not available in the app. Enter a current rent for a more relevant estimate.
               </li>
               <li>
-                <strong>Monthly Commute Expenses:</strong> TTC fares use the schedule shown above. For driving, OpenRouteService road distance from an approximate area centre is converted to fuel using 8.8 L/100 km and the configured $1.62/L gasoline assumption, then adds the $410/mo insurance and maintenance baseline and workplace parking. Driving times are route estimates without live traffic; results over 120 minutes fall back to the saved estimate. TTC times use published schedule estimates, not live trip planning.
+                <strong>Monthly Commute Expenses:</strong> TTC fare estimates use the schedule above and assume two paid one-way trips on each on-site workday. Driving uses the OpenRouteService road distance from representative points when available, the 8.8 L/100 km and $1.62/L assumptions, a $410 monthly vehicle-cost allowance, and known workplace parking. Mixed mode assumes half the trips are transit and half driving. Active travel is $0 in direct travel expense; equipment and maintenance are excluded. Walking/cycling routes are unavailable, so their time is a capped baseline. Driving times are estimates without live traffic; stored commute times are not live TTC itineraries. Unknown parking is excluded.
               </li>
               <li>
-                <strong>Utilities:</strong> Standardized electricity, space heating natural gas, and municipal water estimates based on City of Toronto Energy Benchmarking data scaled by bedroom count.
+                <strong>Utilities:</strong> Static planning estimates by neighbourhood and bedroom count. The app does not store verifiable sample or source details for these values; enter your actual monthly bill when available.
               </li>
             </ul>
           </div>
@@ -185,10 +181,10 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
               Why is this number kept separate? In standard economics, long commutes have a real human and opportunity cost. However, if an app silently adds your travel time into your rent calculation, it misrepresents your actual bank account out-of-pocket expenses.
             </p>
             <div className="bg-white p-3 rounded-lg border border-amber-200 font-mono text-xs text-amber-950 font-semibold mb-2">
-              Time Cost = Monthly Commute Hours &times; (Annual Income &divide; 2,080 hrs) &times; 50%
+              Time Cost = Monthly Commute Hours &times; (Annual Income &divide; 1,950 hrs) &times; Your selected wage percentage
             </div>
             <p className="text-stone-600 text-[11px]">
-              We adopt Transport Canada and Metrolinx standard economic appraisal guidelines: personal commute travel time is valued at <strong>50% of gross hourly wage</strong>.
+              This is shown separately from out-of-pocket expenses. The default is 50% of gross hourly income; you can adjust or turn off the time valuation in your inputs.
             </p>
           </div>
 
@@ -196,10 +192,10 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
           <div className="p-4 rounded-xl bg-sky-50/50 border border-sky-200/80">
             <h4 className="font-bold text-stone-900 text-sm mb-2 flex items-center gap-1.5">
               <Droplets className="w-4 h-4 text-sky-700" />
-              3. Climate Risk: Flood and Heat Exposure Badges
+              3. Flood and Heat Exposure Indicators
             </h4>
             <p className="mb-2 text-stone-700">
-              Honest civic language rule: The app describes objective geographic exposure (e.g. &ldquo;higher flood exposure&rdquo;); it never labels an entire neighbourhood as &ldquo;bad&rdquo; or &ldquo;dangerous.&rdquo;
+              These are dated, area-level context indicators, not assessments of a specific property. Results depend on approximate representative locations and the source datasets listed on each neighbourhood card.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
               <div className="bg-white p-3 rounded-lg border border-sky-200">
@@ -224,78 +220,30 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
             </div>
           </div>
 
-          {/* Section 4: Displacement Flag */}
-          <div className="p-4 rounded-xl bg-rose-50/50 border border-rose-200/80">
-            <h4 className="font-bold text-stone-900 text-sm mb-2 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-rose-700" />
-              4. The Displacement Flag
-            </h4>
-            <p className="text-stone-700 mb-2">
-              The green, yellow, or red signal indicates whether market rents in the neighbourhood are escalating quickly on tenant turnover, meaning existing renters face steep market leaps if displaced.
-            </p>
-            <ul className="space-y-1 text-[11px] text-stone-600">
-              <li>
-                <strong className="text-emerald-700">&bull; Green (Stable):</strong> CMHC turnover rent gap &lt; 8%. Rents on newly leased units remain close to sitting tenant averages.
-              </li>
-              <li>
-                <strong className="text-amber-700">&bull; Yellow (Moderate):</strong> CMHC turnover rent gap 8% to 16%. Steady upward rent adjustments.
-              </li>
-              <li>
-                <strong className="text-rose-700">&bull; Red (High):</strong> CMHC turnover rent gap &gt; 16%. Rapid escalation, frequent renovictions, or intensive transit station redevelopment.
-              </li>
-            </ul>
-            <p className="text-[11px] text-stone-500 mt-2 italic">
-              Important: This flag describes existing market conditions and does not attempt to predict individual eviction outcomes.
-            </p>
-          </div>
-
           {/* Section 5: Carbon Footprint */}
           <div className="p-4 rounded-xl bg-stone-100 border border-stone-200">
             <h4 className="font-bold text-stone-900 text-sm mb-1">
-              5. Commute and Home Energy Carbon Footprint
+              Estimated Monthly Transportation Emissions
             </h4>
             <p className="text-[11px] text-stone-600">
-              Calculated using Environment and Climate Change Canada (ECCC) National Inventory factors: 0.192 kg CO₂e/km for passenger cars; 0.032 kg CO₂e/passenger-km for TTC blended electric rail/streetcar/bus; and Ontario electricity/natural gas heating averages by unit size.
+              This is an estimate, not a measurement. For driving, monthly emissions = round-trip road distance × on-site days × assumed fuel use (8.8 L/100 km) × 2.307 kg CO₂e per litre of gasoline. The factor is from <a className="underline" href="https://www.canada.ca/en/environment-climate-change/services/climate-change/pricing-pollution-how-it-will-work/output-based-pricing-system/federal-greenhouse-gas-offset-system/emission-factors-reference-values.html" target="_blank" rel="noreferrer">Environment and Climate Change Canada</a>. Transit uses a Toronto network-average factor of about 20 g CO₂e per passenger-km from a <a className="underline" href="https://www.toronto.ca/legdocs/mmis/2025/ttc/bgrd/backgroundfile-255187.pdf" target="_blank" rel="noreferrer">City of Toronto TTC analysis</a>, applied to the available road-distance proxy because the app has no transit routing service. Active travel is shown as zero operational emissions; equipment and lifecycle emissions are excluded. Home energy emissions are not included because the app has no validated household energy data.
             </p>
           </div>
 
-          {/* Section 6: Missing Data Principle */}
+          {/* Missing data */}
           <div className="p-4 rounded-xl bg-stone-50 border border-stone-300">
             <h4 className="font-bold text-stone-900 text-sm mb-1">
-              6. How Missing Data Is Handled
+              Missing Data
             </h4>
             <p className="text-[11px] text-stone-600">
-              When source data is unavailable for a neighbourhood or sensor area, we mark it as <strong>&ldquo;no data&rdquo;</strong>. We do not fill these gaps with invented values.
+              The app labels missing destination-specific commute information when it falls back to a generic baseline. Historical rent and utility estimates are shown with their date/source limitations; user-entered values can replace them. Not every input is live or independently verified.
             </p>
           </div>
 
-          {/* Section 7: Sensitivity & Break-Even Analysis */}
-          <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200">
-            <h4 className="font-bold text-stone-900 text-sm mb-1 text-amber-900 flex items-center gap-1.5">
-              <span>7. How Changes Affect the Results</span>
-            </h4>
-            <p className="text-[11px] text-stone-700 leading-relaxed">
-              Neighbourhood rankings can change when assumptions change. We recalculate costs for different on-site schedules (0 to 22 days per month) and commute-time values (0% to 120% of hourly income) to identify when another neighbourhood becomes the lowest-cost option.
-            </p>
-          </div>
-
-          {/* Section 8: Estimated cost ranges */}
           <div className="p-4 rounded-xl bg-stone-100 border border-stone-200">
-            <h4 className="font-bold text-stone-900 text-sm mb-1 flex items-center gap-1.5">
-              <span>8. Estimated Cost Ranges (2,000 Comparisons)</span>
-            </h4>
+            <h4 className="font-bold text-stone-900 text-sm mb-1">7. Commute and data limitations</h4>
             <p className="text-[11px] text-stone-700 leading-relaxed">
-              Rent, transit times, and utility costs can vary. We repeat the comparison 2,000 times while varying rent (&plusmn;12%), TTC travel times (&plusmn;20%), and utilities (&plusmn;15%). The resulting middle 80% range shows how these changes may affect estimated costs; pairwise comparisons show how often one area costs less than another.
-            </p>
-          </div>
-
-          {/* Section 9: Rent estimates where survey data is missing */}
-          <div className="p-4 rounded-xl bg-stone-100 border border-stone-200">
-            <h4 className="font-bold text-stone-900 text-sm mb-1 flex items-center gap-1.5">
-              <span>9. Rent Estimates for Missing Unit Types</span>
-            </h4>
-            <p className="text-[11px] text-stone-700 leading-relaxed">
-              When public survey data is unavailable for a unit type, such as a four-bedroom suite, a statistical model estimates rent using 68 Toronto data points. The model fit score is R&sup2; = 0.89, and each estimate includes a 95% prediction range. The estimate accounts for unit size, travel distance, and access to rapid transit.
+              OpenRouteService supplies driving routes from representative neighbourhood points when available; saved road estimates are used otherwise. Commute times are stored estimates rather than live traffic or transit itineraries. Some workplaces do not have a destination-specific transit estimate, so the comparison flags when a generic baseline is used. Unknown parking is excluded. TTC cost assumes two paid one-way trips per on-site workday and applies the $3.30 fare and 47-trip monthly cap. Housing, utilities, fuel, and saved commute figures may be stale; check their stated dates and assumptions before relying on them.
             </p>
           </div>
         </div>

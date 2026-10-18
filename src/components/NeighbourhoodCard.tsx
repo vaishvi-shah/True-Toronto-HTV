@@ -15,8 +15,6 @@ import {
   RotateCcw,
   Database,
   ChevronRight,
-  BrainCircuit,
-  Dices,
 } from 'lucide-react';
 import { CalculatedCost, UserPreferences } from '../types';
 import { RiskBadge } from './RiskBadge';
@@ -29,8 +27,6 @@ interface NeighbourhoodCardProps {
   onSelectForDetails?: (id: string) => void;
   onUpdateNeighbourhoodRent?: (id: string, rent: number | null) => void;
   onOpenPostingsModal?: (id: string) => void;
-  onOpenMlEstimator?: (id: string) => void;
-  monteCarloRange?: [number, number];
 }
 
 export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
@@ -40,8 +36,6 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
   onToggleCompare,
   onUpdateNeighbourhoodRent,
   onOpenPostingsModal,
-  onOpenMlEstimator,
-  monteCarloRange,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditingRent, setIsEditingRent] = useState(false);
@@ -83,13 +77,14 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
       </span>
     );
 
+  const hasDestinationEstimate = Boolean(n.commutes[preferences.workplaceId]);
   const commuteDetail = {
     ...(n.commutes[preferences.workplaceId] || {
-      transitMinutes: 45,
+      transitMinutes: 40,
       transitTransfers: 1,
-      transitRouteDescription: 'Standard TTC route',
-      carMinutes: 35,
-      carDistanceKm: 18,
+      transitRouteDescription: 'Generic commute baseline (destination route unavailable)',
+      carMinutes: 30,
+      carDistanceKm: 15,
     }),
     ...(preferences.routeEstimates?.[n.id] || {}),
   };
@@ -97,7 +92,9 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
     ? commuteDetail.carMinutes
     : preferences.commuteMode === 'hybrid'
     ? Math.round((commuteDetail.transitMinutes + commuteDetail.carMinutes) / 2)
-    : commuteDetail.transitMinutes;
+    : preferences.commuteMode === 'walk_bike'
+      ? Math.min(commuteDetail.transitMinutes, 25)
+      : commuteDetail.transitMinutes;
 
   const isRentUnspecified = b.rentStatus === 'unspecified';
   const isRentFree = b.rentStatus === 'no_rent';
@@ -176,12 +173,6 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
                 ? 'Commute + Utilities (rent unspecified)'
                 : 'Rent + Commute + Utilities'}
             </div>
-            {monteCarloRange && (
-              <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-stone-700 bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200/80">
-                <Dices className="w-3 h-3 shrink-0" />
-                <span>80% CI: ${monteCarloRange[0].toLocaleString()}–${monteCarloRange[1].toLocaleString()}</span>
-              </div>
-            )}
           </div>
 
           {/* Housing / Rent Section */}
@@ -193,18 +184,6 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
                 </span>
 
                 <div className="flex items-center gap-1">
-                  {onOpenMlEstimator && !isRentFree && (
-                    <button
-                      type="button"
-                      onClick={() => onOpenMlEstimator(b.neighbourhood.id)}
-                      className="text-[10px] text-stone-700 hover:text-stone-900 font-semibold flex items-center gap-0.5 cursor-pointer bg-stone-100 px-1.5 py-0.5 rounded-md border border-stone-300"
-                      title="Estimate rent when survey data is unavailable"
-                    >
-                      <BrainCircuit className="w-2.5 h-2.5" />
-                      <span>Estimate rent</span>
-                    </button>
-                  )}
-
                   {!isEditingRent && onUpdateNeighbourhoodRent && !isRentFree && (
                     <button
                       type="button"
@@ -408,22 +387,30 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
           <span className="font-medium text-stone-800">
             {preferences.commuteMode === 'car'
               ? `${commuteDetail.carMinutes} mins (${commuteDetail.carDistanceKm} km each way)`
+            : preferences.commuteMode === 'walk_bike'
+              ? `~${Math.min(commuteDetail.transitMinutes, 25)} min baseline`
               : `${commuteDetail.transitMinutes} mins (${commuteDetail.transitTransfers} transfer)`}
           </span>
         </div>
         <p className="text-[10px] text-stone-500">
           {preferences.commuteMode === 'car'
             ? preferences.routeEstimates?.[n.id]
-              ? 'OpenRouteService road estimate from area centre; no live traffic. Trips over 2 hours are rejected.'
-              : 'Area road-distance estimate; ORS unavailable, so saved route data is used.'
-            : 'TTC / regional scheduled travel-time estimate; not a live trip planner. Estimates are limited to 2 hours.'}
+              ? 'OpenRouteService road estimate from an approximate area centre; no live traffic.'
+              : hasDestinationEstimate
+                ? 'Saved area-to-workplace road estimate; no live traffic.'
+                : 'No destination-specific route is available; a generic baseline is shown.'
+            : preferences.commuteMode === 'walk_bike'
+              ? 'Walking and cycling routes are unavailable; travel time is a capped baseline, not a route estimate.'
+              : hasDestinationEstimate
+                ? 'Stored transit-time estimate; not a live trip planner.'
+                : 'No destination-specific transit estimate is available; a generic baseline is shown.'}
         </p>
 
         {/* Carbon Footprint */}
-        <div className="flex items-center justify-between text-xs text-stone-600 pt-1 border-t border-stone-100">
+        <div className="flex items-center justify-between text-xs text-stone-600 pt-1 border-t border-stone-100" title="Estimated monthly commute operational emissions. Home energy and active-travel lifecycle emissions are excluded; see methodology for factors and assumptions.">
           <span className="flex items-center gap-1 text-emerald-800 font-medium">
             <Leaf className="w-3.5 h-3.5 text-emerald-600" />
-            Carbon Footprint:
+            Estimated commute emissions:
           </span>
           <span className="font-mono text-stone-700">
             <strong>{b.carbonFootprintKg.total}</strong> kg CO₂e / mo
@@ -431,10 +418,10 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
         </div>
       </div>
 
-      {/* Climate Risk Badges & Displacement Flag */}
+      {/* Climate exposure indicators */}
       <div className="p-4 sm:p-5 space-y-2 flex-1">
         <div className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider">
-          Climate Exposure &amp; Tenant Displacement
+          Climate Exposure
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
@@ -453,13 +440,6 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
           />
         </div>
 
-        <RiskBadge
-            type="displacement"
-            level={n.displacementFlag.level}
-            label={n.displacementFlag.label}
-            details={n.displacementFlag.details}
-            subValue={n.displacementFlag.turnoverGapPercent}
-          />
       </div>
 
       {/* Collapsible Provenance Drawer */}
@@ -482,7 +462,7 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
         {isExpanded && (
           <div className="p-4 bg-stone-50 text-[11px] text-stone-600 space-y-2 border-t border-stone-200">
             <div>
-              <strong className="text-stone-800">Area rent reference:</strong> historical CMHC zone estimate ({n.provenance.rentDate}), varies by neighbourhood and unit size; it is not a current listing or guaranteed market rent. Verify locally before making a housing decision.
+              <strong className="text-stone-800">Area rent reference:</strong> historical CMHC survey-zone average mapped approximately to this neighbourhood ({n.provenance.rentDate}) and bedroom count; it is not a current listing or neighbourhood-level observation. Verify locally before making a housing decision.
             </div>
             <div>
               <strong className="text-stone-800">Transit:</strong> {n.provenance.transitSource} &bull; Route: {commuteDetail.transitRouteDescription}.
@@ -495,9 +475,6 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
               {n.heatRisk.canopyCoverPercent === null && (
                 <span className="text-amber-800 ml-1">Sensor canopy is &quot;no data&quot; for this zone.</span>
               )}
-            </div>
-            <div>
-              <strong className="text-stone-800">Displacement Gap:</strong> {n.displacementFlag.source}. Turnover spread: +{n.displacementFlag.turnoverGapPercent}%.
             </div>
           </div>
         )}

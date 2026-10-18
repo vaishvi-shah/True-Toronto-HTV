@@ -120,9 +120,6 @@ export interface UnifiedFallback {
   cheapestTrueRent: number | null;
   monthlyDifference: number;
   timeDifferenceHours: number;
-  breakEvenNarrative: string;
-  monteCarloInsight: string;
-  tenantRightsNotice: string;
   isAiGenerated: boolean;
 }
 
@@ -133,8 +130,6 @@ export interface UnifiedFallback {
 export function buildUnifiedFallback(
   preferences: UserPreferences,
   results: CalculatedCost[],
-  sensitivityNarrative = '',
-  monteCarloInsight = ''
 ): UnifiedFallback {
   const cheapestTrue = results[0];
   const cheapestRent = [...results].sort((a, b) => a.stickerRent - b.stickerRent)[0];
@@ -159,13 +154,13 @@ export function buildUnifiedFallback(
     body = `With housing expenses excluded, your total overhead consists of transportation ($${cheapestTrue.commuteBreakdown.totalMonthlyCommuteCost}/mo) and utilities ($${cheapestTrue.utilitiesCost}/mo), with ${cheapestTrue.monthlyCommuteHours} monthly hours spent commuting.`;
   } else if (isRentUnspecified) {
     headline = `${cheapestTrue.neighbourhood.name} has the lowest transport + utility overhead at $${cheapestTrue.trueMonthlyCost}/mo (rent unspecified).`;
-    body = `Because rent was not specified, costs include travel ($${cheapestTrue.commuteBreakdown.totalMonthlyCommuteCost}/mo) and home utilities ($${cheapestTrue.utilitiesCost}/mo). You can enter your specific rent or select CMHC survey medians in the parameters to include housing expenses.`;
+    body = `Because rent was not specified, costs include travel ($${cheapestTrue.commuteBreakdown.totalMonthlyCommuteCost}/mo) and utilities ($${cheapestTrue.utilitiesCost}/mo). Enter a rent or use the historical area reference to include housing expenses.`;
   } else if (hasRankDiscrepancy && hasRentAmount) {
-    headline = `${cheapestTrue.neighbourhood.name} is $${netSavings}/mo cheaper overall than ${cheapestRent.neighbourhood.name}, despite having higher asking rent.`;
-    body = `While ${cheapestRent.neighbourhood.name} has the lowest advertised rent ($${cheapestRent.effectiveRent}/mo), its commute costs ($${cheapestRent.commuteBreakdown.totalMonthlyCommuteCost}/mo) and ${cheapestRent.monthlyCommuteHours} hours of travel push its true monthly cost to $${cheapestRent.trueMonthlyCost}/mo. In comparison, living closer in ${cheapestTrue.neighbourhood.name} costs $${rentGap} more in rent ($${cheapestTrue.effectiveRent}/mo), but lower travel expenses ($${cheapestTrue.commuteBreakdown.totalMonthlyCommuteCost}/mo) bring your total out-of-pocket cost down to $${cheapestTrue.trueMonthlyCost}/mo.`;
+    headline = `${cheapestTrue.neighbourhood.name} is $${netSavings}/mo lower in estimated monthly costs than ${cheapestRent.neighbourhood.name}, with a higher rent figure.`;
+    body = `While ${cheapestRent.neighbourhood.name} has the lowest rent figure ($${cheapestRent.effectiveRent}/mo), its commute costs ($${cheapestRent.commuteBreakdown.totalMonthlyCommuteCost}/mo) and ${cheapestRent.monthlyCommuteHours} hours of travel bring its estimated monthly cost to $${cheapestRent.trueMonthlyCost}/mo. ${cheapestTrue.neighbourhood.name} costs $${rentGap} more in rent ($${cheapestTrue.effectiveRent}/mo), but lower travel expenses ($${cheapestTrue.commuteBreakdown.totalMonthlyCommuteCost}/mo) bring its estimated out-of-pocket cost to $${cheapestTrue.trueMonthlyCost}/mo.`;
   } else {
-    headline = `${cheapestTrue.neighbourhood.name} offers both the lowest housing cost ($${cheapestTrue.effectiveRent}) and lowest true monthly cost ($${cheapestTrue.trueMonthlyCost}).`;
-    body = `Because your workplace is located conveniently close to ${cheapestTrue.neighbourhood.name}, commute penalties do not overwhelm the housing advantage. However, be sure to weigh climate risks (${cheapestTrue.neighbourhood.floodRisk.level}, ${cheapestTrue.neighbourhood.heatRisk.level}) and tenant displacement vulnerability (${cheapestTrue.neighbourhood.displacementFlag.label}).`;
+    headline = `${cheapestTrue.neighbourhood.name} has the lowest estimated monthly total at $${cheapestTrue.trueMonthlyCost}.`;
+    body = `For the inputs provided, this area has the lowest combined housing, commute, and utilities figure. Check the rent date and commute assumptions before using the estimate to make a housing decision.`;
   }
 
   return {
@@ -177,10 +172,6 @@ export function buildUnifiedFallback(
     cheapestTrueRent: cheapestTrue.effectiveRent,
     monthlyDifference: Math.abs(netSavings),
     timeDifferenceHours: Math.abs(hoursGap),
-    breakEvenNarrative: sensitivityNarrative || '',
-    monteCarloInsight: monteCarloInsight || '',
-    tenantRightsNotice:
-      "Tenant reminder: Market rents shown represent new vacancies (turnover rates from CMHC). Existing Ontario tenants under rent control are protected by the provincial annual guideline cap (2.5% in 2024/2025). Units first occupied after Nov 15, 2018 have no statutory rent cap upon renewal. For legal advice, consult the Federation of Metro Tenants' Associations (FMTA) or the Landlord and Tenant Board (LTB).",
     isAiGenerated: false,
   };
 }
@@ -192,8 +183,7 @@ export function buildUnifiedFallback(
 export function buildUnifiedExplainPrompt(
   preferences: UserPreferences,
   results: CalculatedCost[],
-  sensitivityNarrative = '',
-  monteCarloInsight = ''
+  ..._legacyInsights: string[]
 ): string {
   const cheapestTrue = results[0];
   const cheapestRent = [...results].sort((a, b) => a.stickerRent - b.stickerRent)[0];
@@ -213,12 +203,6 @@ export function buildUnifiedExplainPrompt(
     rankShift: c.rankShift,
   }));
 
-  const monthlyDifference = Math.abs(
-    cheapestRent.trueMonthlyCost - cheapestTrue.trueMonthlyCost
-  );
-  const timeDifferenceHours = Math.abs(
-    Number((cheapestRent.monthlyCommuteHours - cheapestTrue.monthlyCommuteHours).toFixed(1))
-  );
 
   return `Explain the cost of home tradeoffs for this renter profile:
 - Annual Income: $${(preferences.annualIncome ?? 0).toLocaleString()} CAD
@@ -227,26 +211,22 @@ export function buildUnifiedExplainPrompt(
 - Time valuation: ${Math.round(preferences.timeValuationRate * 100)}% of wage
 
 DETERMINISTIC RESULTS (computed by the single shared calculator):
-Cheapest Sticker Rent Option: ${cheapestRent.neighbourhood.name} (Rent: $${cheapestRent.effectiveRent}/mo, True Cost: $${cheapestRent.trueMonthlyCost}/mo, Travel: ${cheapestRent.monthlyCommuteHours}h)
-Cheapest True Monthly Cost Option: ${cheapestTrue.neighbourhood.name} (Rent: $${cheapestTrue.effectiveRent}/mo, True Cost: $${cheapestTrue.trueMonthlyCost}/mo, Travel: ${cheapestTrue.monthlyCommuteHours}h)
+Lowest rent figure: ${cheapestRent.neighbourhood.name} ($${cheapestRent.effectiveRent}/mo)
+Lowest calculated monthly cost: ${cheapestTrue.neighbourhood.name} ($${cheapestTrue.trueMonthlyCost}/mo including the shown inputs)
 
-${sensitivityNarrative ? `DETERMINISTIC SENSITIVITY & BREAK-EVEN FLIP POINTS:\n- ${sensitivityNarrative}\n` : ''}${monteCarloInsight ? `MONTE CARLO UNCERTAINTY SIMULATION:\n- ${monteCarloInsight}\n` : ''}
 TOP NEIGHBOURHOODS SUMMARY:
 ${JSON.stringify(top, null, 2)}
 
 Respond with JSON matching this structure:
 {
-  "headline": "A concise 1-sentence finding about rent vs true monthly cost and ranking fragility",
-  "body": "2 short paragraphs explaining the trade-offs, commute math, and break-even flip points in plain, empathetic Canadian English. Never invent numbers.",
-  "cheapestRentNeighbourhood": "${cheapestRent.neighbourhood.name}",
+  "headline": "A concise 1-sentence finding about the calculated monthly costs",
+  "body": "A short explanation of the calculated costs and commute trade-offs in plain Canadian English. Never invent numbers or claim probabilities.",
   "cheapestTrueNeighbourhood": "${cheapestTrue.neighbourhood.name}",
-  "monthlyDifference": ${monthlyDifference},
-  "timeDifferenceHours": ${timeDifferenceHours},
   "cheapestTrueMonthlyCost": ${cheapestTrue.trueMonthlyCost},
   "cheapestTrueRent": ${cheapestTrue.effectiveRent},
-  "breakEvenNarrative": "${(sensitivityNarrative || '').replace(/"/g, "'")}",
-  "monteCarloInsight": "${(monteCarloInsight || '').replace(/"/g, "'")}",
-  "tenantRightsNotice": "Standard reminder directing renters to FMTA or LTB"
+  "cheapestRentNeighbourhood": "${cheapestRent.neighbourhood.name}",
+  "monthlyDifference": ${Math.abs(cheapestRent.trueMonthlyCost - cheapestTrue.trueMonthlyCost)},
+  "timeDifferenceHours": ${Math.abs(Number((cheapestRent.monthlyCommuteHours - cheapestTrue.monthlyCommuteHours).toFixed(1)))}
 }`;
 }
 

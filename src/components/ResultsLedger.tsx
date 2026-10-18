@@ -11,8 +11,6 @@ interface ResultsLedgerProps {
   onToggleCompare: (id: string) => void;
   onUpdateNeighbourhoodRent: (id: string, rent: number | null) => void;
   onOpenPostingsModal: (id?: string) => void;
-  onOpenMlEstimator: (id: string) => void;
-  getMonteCarloRange: (id: string) => [number, number] | undefined;
 }
 
 /**
@@ -27,8 +25,6 @@ export const ResultsLedger: React.FC<ResultsLedgerProps> = ({
   onToggleCompare,
   onUpdateNeighbourhoodRent,
   onOpenPostingsModal,
-  onOpenMlEstimator,
-  getMonteCarloRange,
 }) => {
   const [openId, setOpenId] = useState<string | null>(results[0]?.neighbourhood.id ?? null);
 
@@ -132,8 +128,6 @@ export const ResultsLedger: React.FC<ResultsLedgerProps> = ({
                     onSelectForDetails={() => {}}
                     onUpdateNeighbourhoodRent={onUpdateNeighbourhoodRent}
                     onOpenPostingsModal={onOpenPostingsModal}
-                    onOpenMlEstimator={onOpenMlEstimator}
-                    monteCarloRange={getMonteCarloRange(cost.neighbourhood.id)}
                   />
                 </div>
               )}

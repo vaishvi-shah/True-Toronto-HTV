@@ -92,7 +92,7 @@ export function calculateNeighbourhoodCosts(
       effectiveRent = originalMarketRent;
       stickerRent = originalMarketRent;
       rentStatus = 'cmhc_benchmark';
-      rentLabel = 'Area-Specific CMHC Benchmark';
+      rentLabel = 'Historical CMHC Zone Average';
     }
 
     // Utilities determination
@@ -115,11 +115,14 @@ export function calculateNeighbourhoodCosts(
     const baseCommuteInfo = neighbourhood.commutes[workplace.id] || {
       transitMinutes: 40,
       transitTransfers: 1,
-      transitRouteDescription: 'Standard TTC transit route',
+      transitRouteDescription: 'Generic commute baseline (route data unavailable)',
       carMinutes: 30,
       carDistanceKm: 15,
     };
     const routeEstimate = preferences.routeEstimates?.[neighbourhood.id];
+    if (!neighbourhood.commutes[workplace.id]) {
+      missingInformation.push('No destination-specific transit estimate is available; a generic baseline is used');
+    }
     const commuteInfo = {
       ...baseCommuteInfo,
       carMinutes: routeEstimate && Number.isFinite(routeEstimate.carMinutes) && routeEstimate.carMinutes > 0 && routeEstimate.carMinutes <= MAX_REASONABLE_COMMUTE_MINUTES
@@ -143,7 +146,7 @@ export function calculateNeighbourhoodCosts(
       const payPerTrip =
         monthlyOneWayTrips * CALCULATION_ASSUMPTIONS.prestoAdultSingleFare;
       const transitFares = Math.min(
-        CALCULATION_ASSUMPTIONS.ttcAdultMonthlyPass,
+        CALCULATION_ASSUMPTIONS.ttcAdultFareCapTrips * CALCULATION_ASSUMPTIONS.prestoAdultSingleFare,
         payPerTrip
       );
       const monthlyCommuteHours = (oneWayMinutes * monthlyOneWayTrips) / 60;
@@ -194,7 +197,7 @@ export function calculateNeighbourhoodCosts(
 
       const transitTrips = Math.floor(monthlyOneWayTrips * 0.5);
       const transitFares = Math.min(
-        CALCULATION_ASSUMPTIONS.ttcAdultMonthlyPass * 0.7,
+        CALCULATION_ASSUMPTIONS.ttcAdultFareCapTrips * CALCULATION_ASSUMPTIONS.prestoAdultSingleFare,
         transitTrips * CALCULATION_ASSUMPTIONS.prestoAdultSingleFare
       );
       const drivingKm = commuteDistanceKmTotal * 0.5;
@@ -222,15 +225,15 @@ export function calculateNeighbourhoodCosts(
       };
     } else {
       // Walk / Bike
-      oneWayMinutes = Math.min(commuteInfo.transitMinutes, 25);
+        oneWayMinutes = Math.min(commuteInfo.transitMinutes, 25);
       const monthlyCommuteHours = (oneWayMinutes * monthlyOneWayTrips) / 60;
       commuteDistanceKmTotal = 0;
       commuteBreakdown = {
         transitFares: 0,
         fuel: 0,
-        vehicleOperating: 15,
+          vehicleOperating: 0,
         workplaceParking: 0,
-        totalMonthlyCommuteCost: 15,
+          totalMonthlyCommuteCost: 0,
         monthlyOneWayTrips,
         monthlyCommuteHours: Number(monthlyCommuteHours.toFixed(1)),
         roundtripDistanceKm: commuteInfo.carDistanceKm * 2,
@@ -270,7 +273,11 @@ export function calculateNeighbourhoodCosts(
     // Total Economic Impact
     const totalImpactMonthly = trueMonthlyCost + timeCostMonthly;
 
-    // Carbon emissions calculation
+    // Monthly transportation operational emissions estimate. Driving uses the
+    // route distance and assumed fuel consumption; transit uses a published
+    // Toronto network-average passenger factor against the available distance
+    // proxy. Active modes exclude lifecycle emissions. Home energy is not
+    // included because this app has no validated household energy dataset.
     let commuteCarbonKg = 0;
     if (preferences.commuteMode === 'car') {
       commuteCarbonKg =
@@ -288,14 +295,11 @@ export function calculateNeighbourhoodCosts(
           0.5 *
           CALCULATION_ASSUMPTIONS.transitEmissionsKgCo2ePerKm;
     } else {
-      commuteCarbonKg = 2;
+      commuteCarbonKg = 0;
     }
 
-    const homeCarbonKg =
-      CALCULATION_ASSUMPTIONS.homeEnergyEmissionsMonthlyKg[
-        preferences.bedrooms
-      ] || 150;
-    const totalCarbonKg = Math.round(commuteCarbonKg + homeCarbonKg);
+    const homeCarbonKg = 0;
+    const totalCarbonKg = Math.round(commuteCarbonKg);
 
     let incomeSharePercent: number | null = null;
     let isRentBurdened: boolean | null = null;

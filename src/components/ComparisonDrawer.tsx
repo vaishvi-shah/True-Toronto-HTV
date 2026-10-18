@@ -145,7 +145,7 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
                   <div className="flex justify-between items-center text-stone-600 text-[11px]">
                     <span className="flex items-center gap-1">
                       <Leaf className="w-3 h-3 text-emerald-600" />
-                      Carbon Footprint:
+                    Estimated commute emissions:
                     </span>
                     <span className="font-mono text-stone-800">
                       {item.carbonFootprintKg.total} kg CO₂e
@@ -159,17 +159,6 @@ export const ComparisonDrawer: React.FC<ComparisonDrawerProps> = ({
                     </span>
                     <span className="px-1.5 py-0.5 rounded-sm bg-amber-50 text-amber-800 border border-amber-200">
                       Heat: {item.neighbourhood.heatRisk.level.replace(' exposure', '')}
-                    </span>
-                    <span
-                      className={`px-1.5 py-0.5 rounded-sm font-medium ${
-                        item.neighbourhood.displacementFlag.level === 'green'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : item.neighbourhood.displacementFlag.level === 'yellow'
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-rose-100 text-rose-800'
-                      }`}
-                    >
-                      {item.neighbourhood.displacementFlag.label}
                     </span>
                   </div>
 
