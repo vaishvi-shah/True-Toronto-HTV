@@ -2,8 +2,8 @@ import {
   CALCULATION_ASSUMPTIONS,
   NEIGHBOURHOODS,
   WORKPLACES,
-} from '../data/neighbourhoods';
-import {
+} from '../data/neighbourhoods.js';
+import type {
   CalculatedCost,
   CommuteBreakdown,
   NeighbourhoodData,

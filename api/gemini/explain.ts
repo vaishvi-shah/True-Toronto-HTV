@@ -5,11 +5,11 @@ import { GoogleGenAI } from '@google/genai';
 import {
   buildUnifiedExplainPrompt,
   normalizeToUserPreferences,
-} from '../src/services/unifiedEngine';
-import { calculateNeighbourhoodCosts } from '../src/services/calculator';
-import { analyzeSensitivity } from '../src/services/sensitivityAnalysis';
-import { runMonteCarloSimulation } from '../src/services/monteCarloSimulation';
-import { SYSTEM_DIRECTIVE } from '../lib/llm/prompts';
+} from '../../src/services/unifiedEngine.js';
+import { calculateNeighbourhoodCosts } from '../../src/services/calculator.js';
+import { analyzeSensitivity } from '../../src/services/sensitivityAnalysis.js';
+import { runMonteCarloSimulation } from '../../src/services/monteCarloSimulation.js';
+import { SYSTEM_DIRECTIVE } from '../../lib/llm/prompts.js';
 
 // Share one SDK client across the project's function invocations so the
 // (serverless) Gemini calls do not pay connection-setup cost every request.
@@ -19,15 +19,23 @@ const ai = new GoogleGenAI({
   httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
 });
 
+console.info('[api/gemini/explain] module initialized', {
+  geminiKeyConfigured: apiKey.trim().length > 0,
+});
+
 export const config = { runtime: 'nodejs' };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  let stage = 'request_validation';
+  console.info('[api/gemini/explain] request received', { method: req.method });
+
   // Reject non-post calls and mirror the legacy routes only where they used GET.
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed. POST required.' });
   }
 
   if (apiKey == null || apiKey.trim() === '') {
+    console.warn('[api/gemini/explain] GEMINI_API_KEY is not configured for this deployment');
     return res.status(503).json({
       error: {
         status: 503,
@@ -51,6 +59,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const preferences = normalizeToUserPreferences(raw);
+    stage = 'local_calculation';
+    console.info('[api/gemini/explain] preferences normalized');
     const results = calculateNeighbourhoodCosts(preferences);
 
     let sensitivityResult: { primaryBreakEvenNarrative?: string } | null = null;
@@ -65,6 +75,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const sensitivityNarrative = sensitivityResult?.primaryBreakEvenNarrative || '';
     const monteCarloInsight = monteCarloResult?.primaryInsight || '';
+    console.info('[api/gemini/explain] local analysis complete', {
+      resultCount: results.length,
+      sensitivityReady: Boolean(sensitivityResult),
+      monteCarloReady: Boolean(monteCarloResult),
+    });
     const prompt = buildUnifiedExplainPrompt(
       preferences as any,
       results as any,
@@ -78,8 +93,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       setTimeout(() => reject(new Error('Gemini API timeout')), 10_000),
     );
 
+    const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+    stage = 'gemini_request';
+    console.info('[api/gemini/explain] Gemini request started', { model });
     const geminiPromise = ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemini-3.8-flash', // runtime pick; hardcoded if unset
+      model, // runtime pick; hardcoded if unset
       contents: prompt,
       config: { systemInstruction: SYSTEM_DIRECTIVE, responseMimeType: 'application/json' },
     });
@@ -89,6 +107,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       typeof response.text === 'string' && response.text.trim().length > 0
         ? JSON.parse(response.text.trim())
         : {};
+
+    console.info('[api/gemini/explain] Gemini response received');
 
     return res.json({
       ...parsed,
@@ -106,6 +126,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       typeof e.code === 'string' || typeof e.code === 'number' ? String(e.code) : `GEMINI_HTTP_${status}`;
     const nonceMessage = typeof e.message === 'string' && e.message ? e.message : 'Gemini narration request failed';
     const message = status === 503 ? 'Set GEMINI_API_KEY in Vercel Environment Variables and redeploy.' : nonceMessage;
+
+    console.error('[api/gemini/explain] request failed', {
+      stage,
+      status,
+      code,
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+    });
 
     return res.status(502).json({
       error: { status, code, message },

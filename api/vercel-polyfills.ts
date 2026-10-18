@@ -5,7 +5,7 @@
 // If a frontend compiler sees this file, add it to vite.config exclusions or keep it api-only.
 
 export const _apiPolyfill = 'api-polyfill';
-: these functions only need the Node stdlib bits they
+// These functions only need the Node stdlib bits they
 // import (path, etc.) plus a fetch implementation that Vercel provides on newer
 // runtimes. We bail out early so nothing here runs on the static frontend build.
 

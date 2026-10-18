@@ -1,5 +1,5 @@
-import { CalculatedCost, UserPreferences } from '../types';
-import { calculateNeighbourhoodCosts } from './calculator';
+import type { CalculatedCost, UserPreferences } from '../types';
+import { calculateNeighbourhoodCosts } from './calculator.js';
 
 export interface MonteCarloNeighbourhoodStats {
   id: string;

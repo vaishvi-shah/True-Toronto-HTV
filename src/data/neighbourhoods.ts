@@ -1,4 +1,4 @@
-import { NeighbourhoodData, WorkplaceLocation, PersonaPreset, WhatIfScenario } from '../types';
+import type { NeighbourhoodData, WorkplaceLocation, PersonaPreset, WhatIfScenario } from '../types';
 
 export const WORKPLACES: WorkplaceLocation[] = [
   {
