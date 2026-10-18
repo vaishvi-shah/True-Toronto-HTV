@@ -28,6 +28,7 @@ interface NeighbourhoodTableProps {
 }
 
 type SortField =
+  | 'totalImpact'
   | 'trueCost'
   | 'stickerRent'
   | 'commuteCost'
@@ -46,7 +47,7 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
 }) => {
   const [editingRentId, setEditingRentId] = useState<string | null>(null);
   const [editRentValue, setEditRentValue] = useState<number>(0);
-  const [sortField, setSortField] = useState<SortField>('trueCost');
+  const [sortField, setSortField] = useState<SortField>('totalImpact');
   const [sortAsc, setSortAsc] = useState<boolean>(true);
 
   const handleSort = (field: SortField) => {
@@ -62,6 +63,10 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
     let valA = 0;
     let valB = 0;
     switch (sortField) {
+      case 'totalImpact':
+        valA = a.totalImpactMonthly;
+        valB = b.totalImpactMonthly;
+        break;
       case 'trueCost':
         valA = a.trueMonthlyCost;
         valB = b.trueMonthlyCost;
@@ -100,8 +105,17 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
         <table className="w-full text-left border-collapse text-xs">
           <thead>
             <tr className="bg-stone-100/80 border-b border-stone-200 text-stone-600 font-semibold uppercase tracking-wider text-[11px]">
-              <th className="py-3.5 px-3 sm:px-4 text-center w-14">Rank</th>
+              <th className="py-3.5 px-3 sm:px-4 text-center w-14">Total Impact Rank</th>
               <th className="py-3.5 px-3 sm:px-4">Neighbourhood</th>
+              <th
+                className="py-3.5 px-3 cursor-pointer hover:bg-stone-200 transition-colors"
+                onClick={() => handleSort('totalImpact')}
+              >
+                <div className="flex items-center gap-1 text-stone-900 font-bold">
+                  <span>Personalized Total</span>
+                  <ArrowUpDown className="w-3.5 h-3.5 text-stone-400" />
+                </div>
+              </th>
               <th
                 className="py-3.5 px-3 cursor-pointer hover:bg-stone-200 transition-colors"
                 onClick={() => handleSort('trueCost')}
@@ -162,7 +176,7 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-stone-100">
-            {sortedResults.map((cost) => {
+            {sortedResults.map((cost, index) => {
               const n = cost.neighbourhood;
               const isCompared = comparedIds.includes(n.id);
 
@@ -176,7 +190,7 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
                   {/* Rank */}
                   <td className="py-3.5 px-3 sm:px-4 text-center font-mono font-bold text-stone-700">
                     <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-stone-100 text-stone-800 text-xs">
-                      #{cost.trueCostRank}
+                      #{index + 1}
                     </span>
                   </td>
 
@@ -186,7 +200,12 @@ export const NeighbourhoodTable: React.FC<NeighbourhoodTableProps> = ({
                     <div className="text-[11px] text-stone-500">{n.borough}</div>
                   </td>
 
-                  {/* True Cost */}
+                  {/* Personalized Total */}
+                  <td className="py-3.5 px-3 font-mono">
+                    <div className="text-sm font-bold text-stone-900">${cost.totalImpactMonthly.toLocaleString()}/mo</div>
+                  </td>
+
+                  {/* Out-of-pocket Cost */}
                   <td className="py-3.5 px-3 font-mono">
                     <div className="text-sm font-bold text-stone-900">
                       ${cost.trueMonthlyCost.toLocaleString()}/mo

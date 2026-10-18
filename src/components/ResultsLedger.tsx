@@ -38,8 +38,8 @@ export const ResultsLedger: React.FC<ResultsLedgerProps> = ({
   return (
     <div data-reveal-group>
       <div className="mb-1 flex items-baseline justify-between gap-2">
-        <p className="dateline text-stone-500">The ranking &middot; true monthly cost</p>
-        <p className="text-[11px] text-stone-500">Select a row to open the full detail sheet</p>
+        <p className="dateline text-stone-500">Personalized ranking &middot; monthly costs plus commute-time value</p>
+        <p className="text-[11px] text-stone-500">Select a row to open the full detail sheet; cash costs and time value are shown separately</p>
       </div>
       <ol>
         {results.map((cost, index) => {
@@ -64,7 +64,7 @@ export const ResultsLedger: React.FC<ResultsLedgerProps> = ({
                   }`}
                   aria-hidden="true"
                 >
-                  {index + 1}
+                  {cost.impactRank}
                 </span>
                 <button
                   type="button"

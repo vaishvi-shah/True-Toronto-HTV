@@ -26,7 +26,7 @@ interface AreaAmenities {
   recreation: NearbyPlaceSummary;
 }
 
-type AreaPriority = 'cost' | 'rent' | 'commute' | 'transit' | 'groceries' | 'walkability' | 'recreation';
+type AreaPriority = 'impact' | 'cost' | 'rent' | 'commute' | 'transit' | 'groceries' | 'walkability' | 'recreation';
 
 const currency = (amount: number | null) => amount === null ? 'Not entered' : `$${Math.round(amount).toLocaleString()}`;
 
@@ -65,7 +65,7 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
   const [amenitiesAsOf, setAmenitiesAsOf] = useState<string | null>(null);
   const [amenitiesLoading, setAmenitiesLoading] = useState(true);
   const [amenitiesError, setAmenitiesError] = useState(false);
-  const [priority, setPriority] = useState<AreaPriority>('cost');
+  const [priority, setPriority] = useState<AreaPriority>('impact');
   const [comparedAreaIds, setComparedAreaIds] = useState<string[]>([]);
   const listingSection = useRef<HTMLElement>(null);
 
@@ -96,6 +96,7 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
     ? Math.round(selected.monthlyCommuteHours * 60 / selected.commuteBreakdown.monthlyOneWayTrips)
     : 0;
   const orderedResults = useMemo(() => [...results].sort((a, b) => {
+    if (priority === 'impact') return a.totalImpactMonthly - b.totalImpactMonthly;
     if (priority === 'rent') return (a.effectiveRent ?? Number.MAX_SAFE_INTEGER) - (b.effectiveRent ?? Number.MAX_SAFE_INTEGER);
     if (priority === 'commute') return a.monthlyCommuteHours - b.monthlyCommuteHours;
     if (priority === 'transit') return (amenitiesByArea[b.neighbourhood.id]?.transitAccess.countWithin1_5Km || 0) - (amenitiesByArea[a.neighbourhood.id]?.transitAccess.countWithin1_5Km || 0);
@@ -130,7 +131,7 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
           </div>
           <label className="flex items-center gap-2 text-[10px] font-semibold text-stone-500">PRIORITIZE
             <select value={priority} onChange={(event) => setPriority(event.target.value as AreaPriority)} className="rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-2 text-xs font-semibold text-stone-800">
-              <option value="cost">Lowest total monthly cost</option><option value="rent">Lowest average rent</option><option value="commute">Shortest commute</option><option value="transit" disabled={amenitiesLoading || amenitiesError}>Mapped transit-stop count</option><option value="groceries" disabled={amenitiesLoading || amenitiesError}>Mapped grocery count</option><option value="walkability" disabled={amenitiesLoading || amenitiesError}>Nearby essentials proxy</option><option value="recreation" disabled={amenitiesLoading || amenitiesError}>Mapped recreation-place count</option>
+              <option value="impact">Lowest personalized total</option><option value="cost">Lowest out-of-pocket cost</option><option value="rent">Lowest average rent</option><option value="commute">Shortest commute</option><option value="transit" disabled={amenitiesLoading || amenitiesError}>Mapped transit-stop count</option><option value="groceries" disabled={amenitiesLoading || amenitiesError}>Mapped grocery count</option><option value="walkability" disabled={amenitiesLoading || amenitiesError}>Nearby essentials proxy</option><option value="recreation" disabled={amenitiesLoading || amenitiesError}>Mapped recreation-place count</option>
             </select>
           </label>
         </div>
@@ -179,7 +180,7 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
         <div className="pointer-events-none absolute bottom-4 left-4 flex flex-wrap gap-x-3 gap-y-1 bg-[#1b1712] px-3 py-2 text-[10px] font-semibold text-[#f4f1e8]"><span className="font-bold">10 neighbourhoods</span><span className="inline-flex items-center gap-1"><Briefcase className="h-3 w-3 text-red-400" aria-hidden="true" /> Work</span>{currentHome && <span className="inline-flex items-center gap-1"><Home className="h-3 w-3 text-blue-300" aria-hidden="true" /> Current home</span>}<span className="border-l border-white/30 pl-2">Select a pin to explore</span></div>
       </div>
       <div className="border-t border-[#1b1712]/15 px-4 py-4 sm:px-6">
-        <div className="mb-1 flex items-baseline justify-between gap-2"><span className="dateline text-stone-500">Areas ranked by {priority === 'cost' ? 'monthly cost' : priority === 'rent' ? 'rent' : priority === 'commute' ? 'commute time' : priority}</span><span className="text-[11px] text-stone-500">Select a rank to open the area</span></div>
+        <div className="mb-1 flex items-baseline justify-between gap-2"><span className="dateline text-stone-500">Areas ranked by {priority === 'impact' ? 'personalized total including commute time' : priority === 'cost' ? 'out-of-pocket cost' : priority === 'rent' ? 'rent' : priority === 'commute' ? 'commute time' : priority}</span><span className="text-[11px] text-stone-500">Select a rank to open the area</span></div>
         <ol className="grid gap-x-10 sm:grid-cols-2" data-reveal-group>{orderedResults.map((item, index) => <li key={item.neighbourhood.id} className={`flex min-w-0 items-center gap-1.5 border-b border-[#1b1712]/10 ${selectedId === item.neighbourhood.id ? 'bg-emerald-900/[0.06]' : ''}`} data-reveal-item>
           <button type="button" onClick={() => setSelectedId(item.neighbourhood.id)} title={`${item.neighbourhood.name} — open area details`} aria-label={`Rank ${index + 1}: ${item.neighbourhood.name}, ${currency(item.trueMonthlyCost)} per month`} className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-2 py-2 text-left">
             <span className="figures w-5 shrink-0 text-xs font-bold text-[#1b1712]">{index + 1}</span>

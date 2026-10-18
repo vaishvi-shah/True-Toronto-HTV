@@ -3,6 +3,8 @@ import {
   Clock,
   Car,
   Bus,
+  Bike,
+  Footprints,
   ArrowUpRight,
   ArrowDownRight,
   Minus,
@@ -18,6 +20,10 @@ import {
 } from 'lucide-react';
 import { CalculatedCost, UserPreferences } from '../types';
 import { RiskBadge } from './RiskBadge';
+
+function commuteBreakdownMinutes(monthlyHours: number, oneWayTrips: number) {
+  return oneWayTrips > 0 ? Math.round((monthlyHours * 60) / oneWayTrips) : 0;
+}
 
 interface NeighbourhoodCardProps {
   cost: CalculatedCost;
@@ -88,13 +94,7 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
     }),
     ...(preferences.routeEstimates?.[n.id] || {}),
   };
-  const oneWayCommuteMinutes = preferences.commuteMode === 'car'
-    ? commuteDetail.carMinutes
-    : preferences.commuteMode === 'hybrid'
-    ? Math.round((commuteDetail.transitMinutes + commuteDetail.carMinutes) / 2)
-    : preferences.commuteMode === 'walk_bike'
-      ? Math.min(commuteDetail.transitMinutes, 25)
-      : commuteDetail.transitMinutes;
+  const oneWayCommuteMinutes = commuteBreakdownMinutes(b.monthlyCommuteHours, b.commuteBreakdown.monthlyOneWayTrips);
 
   const isRentUnspecified = b.rentStatus === 'unspecified';
   const isRentFree = b.rentStatus === 'no_rent';
@@ -113,9 +113,9 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
           <div className="flex items-center gap-2.5">
             <span
               className="flex items-center justify-center w-7 h-7 rounded-xl bg-stone-900 text-white font-mono text-xs font-bold shadow-xs shrink-0"
-              title={`True Cost Rank #${b.trueCostRank}`}
+              title={`Personalized total rank #${b.impactRank}`}
             >
-              #{b.trueCostRank}
+              #{b.impactRank}
             </span>
             <div>
               <h3 className="text-base font-bold text-stone-900 leading-tight">
@@ -379,6 +379,10 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
           <span className="font-semibold text-stone-700 flex items-center gap-1.5">
             {preferences.commuteMode === 'car' ? (
               <Car className="w-3.5 h-3.5 text-emerald-600" />
+            ) : preferences.commuteMode === 'cycling' ? (
+              <Bike className="w-3.5 h-3.5 text-emerald-600" />
+            ) : preferences.commuteMode === 'walking' || preferences.commuteMode === 'walk_bike' ? (
+              <Footprints className="w-3.5 h-3.5 text-emerald-600" />
             ) : (
               <Bus className="w-3.5 h-3.5 text-emerald-600" />
             )}
@@ -386,10 +390,14 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
           </span>
           <span className="font-medium text-stone-800">
             {preferences.commuteMode === 'car'
-              ? `${commuteDetail.carMinutes} mins (${commuteDetail.carDistanceKm} km each way)`
-            : preferences.commuteMode === 'walk_bike'
-              ? `~${Math.min(commuteDetail.transitMinutes, 25)} min baseline`
-              : `${commuteDetail.transitMinutes} mins (${commuteDetail.transitTransfers} transfer)`}
+              ? `${oneWayCommuteMinutes} mins (${commuteDetail.carDistanceKm} km each way)`
+            : preferences.commuteMode === 'walking' || preferences.commuteMode === 'walk_bike'
+              ? `${oneWayCommuteMinutes} min walking estimate`
+            : preferences.commuteMode === 'cycling'
+              ? `${oneWayCommuteMinutes} min cycling estimate`
+              : preferences.commuteMode === 'hybrid'
+                ? `${oneWayCommuteMinutes} min mixed estimate`
+                : `${oneWayCommuteMinutes} mins (${commuteDetail.transitTransfers} transfer${commuteDetail.transitTransfers === 1 ? '' : 's'})`}
           </span>
         </div>
         <p className="text-[10px] text-stone-500">
@@ -399,11 +407,11 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
               : hasDestinationEstimate
                 ? 'Saved area-to-workplace road estimate; no live traffic.'
                 : 'No destination-specific route is available; a generic baseline is shown.'
-            : preferences.commuteMode === 'walk_bike'
-              ? 'Walking and cycling routes are unavailable; travel time is a capped baseline, not a route estimate.'
+            : preferences.commuteMode === 'walking' || preferences.commuteMode === 'cycling' || preferences.commuteMode === 'walk_bike'
+              ? 'Estimated from representative area-to-work distance and typical walking or cycling speed; not turn-by-turn routing.'
               : hasDestinationEstimate
                 ? 'Stored transit-time estimate; not a live trip planner.'
-                : 'No destination-specific transit estimate is available; a generic baseline is shown.'}
+                : 'Transit time is estimated from area-to-work distance; this is not a live itinerary.'}
         </p>
 
         {/* Carbon Footprint */}

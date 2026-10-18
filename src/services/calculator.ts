@@ -3,6 +3,7 @@ import {
   NEIGHBOURHOODS,
   WORKPLACES,
 } from '../data/neighbourhoods.js';
+import { AREA_ROUTING_COORDINATES, WORKPLACE_ROUTING_COORDINATES } from '../data/routingCoordinates.js';
 import type {
   CalculatedCost,
   CommuteBreakdown,
@@ -12,6 +13,17 @@ import type {
 } from '../types';
 
 const MAX_REASONABLE_COMMUTE_MINUTES = 300;
+
+function distanceKm(from: [number, number], to: [number, number]) {
+  const radians = (degrees: number) => (degrees * Math.PI) / 180;
+  const [fromLon, fromLat] = from;
+  const [toLon, toLat] = to;
+  const latDelta = radians(toLat - fromLat);
+  const lonDelta = radians(toLon - fromLon);
+  const a = Math.sin(latDelta / 2) ** 2
+    + Math.cos(radians(fromLat)) * Math.cos(radians(toLat)) * Math.sin(lonDelta / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export function calculateNeighbourhoodCosts(
   preferences: UserPreferences
@@ -106,14 +118,22 @@ export function calculateNeighbourhoodCosts(
       utilitiesCost = preferences.customUtilitiesMonthly;
       isCustomUtilities = true;
     } else {
-      utilitiesCost =
+      const baseUtilities =
         neighbourhood.utilitiesEstimate[preferences.bedrooms] ||
         neighbourhood.utilitiesEstimate['1bed'];
+      utilitiesCost = Math.round(
+        baseUtilities * (1 + Math.max(0, preferences.householdMembers - 1) * 0.12)
+      );
     }
 
     // Commute Calculation
+    const areaPoint = AREA_ROUTING_COORDINATES[neighbourhood.id];
+    const workplacePoint = WORKPLACE_ROUTING_COORDINATES[workplace.id];
+    const straightLineKm = areaPoint && workplacePoint ? distanceKm(areaPoint, workplacePoint) : 15;
     const baseCommuteInfo = neighbourhood.commutes[workplace.id] || {
-      transitMinutes: 40,
+      // When no stored transit itinerary exists, derive a clearly disclosed
+      // area-to-work estimate from distance instead of giving every area 40m.
+      transitMinutes: Math.max(15, Math.round((straightLineKm * 1.35 / 20) * 60 + 15)),
       transitTransfers: 1,
       transitRouteDescription: 'Generic commute baseline (route data unavailable)',
       carMinutes: 30,
@@ -121,7 +141,7 @@ export function calculateNeighbourhoodCosts(
     };
     const routeEstimate = preferences.routeEstimates?.[neighbourhood.id];
     if (!neighbourhood.commutes[workplace.id]) {
-      missingInformation.push('No destination-specific transit estimate is available; a generic baseline is used');
+      missingInformation.push('Transit time is an area-to-work distance estimate, not a live itinerary');
     }
     const commuteInfo = {
       ...baseCommuteInfo,
@@ -224,10 +244,15 @@ export function calculateNeighbourhoodCosts(
         roundtripDistanceKm: roundtripKm,
       };
     } else {
-      // Walk / Bike
-        oneWayMinutes = Math.min(commuteInfo.transitMinutes, 25);
+      // Walking/cycling use each area's distance to the selected workplace.
+      // Coordinates are representative points, so include a modest street
+      // network detour and disclose this as an estimate in the UI.
+      const isCycling = preferences.commuteMode === 'cycling';
+      const modeDistanceKm = straightLineKm * 1.25;
+      const speedKmh = isCycling ? 15 : 4.8;
+      oneWayMinutes = Math.max(1, Math.round((modeDistanceKm / speedKmh) * 60));
       const monthlyCommuteHours = (oneWayMinutes * monthlyOneWayTrips) / 60;
-      commuteDistanceKmTotal = 0;
+      commuteDistanceKmTotal = modeDistanceKm * 2 * onSiteWorkdays;
       commuteBreakdown = {
         transitFares: 0,
         fuel: 0,
@@ -236,7 +261,7 @@ export function calculateNeighbourhoodCosts(
           totalMonthlyCommuteCost: 0,
         monthlyOneWayTrips,
         monthlyCommuteHours: Number(monthlyCommuteHours.toFixed(1)),
-        roundtripDistanceKm: commuteInfo.carDistanceKm * 2,
+        roundtripDistanceKm: modeDistanceKm * 2,
       };
     }
 
@@ -336,6 +361,7 @@ export function calculateNeighbourhoodCosts(
       },
       rentRank: 0,
       trueCostRank: 0,
+      impactRank: 0,
       rankShift: 0,
       incomeSharePercent,
       isRentBurdened,
@@ -358,7 +384,14 @@ export function calculateNeighbourhoodCosts(
     item.rankShift = item.rentRank - item.trueCostRank;
   });
 
-  return byTrueCost;
+  const byImpact = [...rawResults].sort((a, b) => a.totalImpactMonthly - b.totalImpactMonthly);
+  byImpact.forEach((item, index) => {
+    item.impactRank = index + 1;
+  });
+
+  // Recommend the area with the lowest personalized total, which includes
+  // user-valued commute time; cash expenses remain a separate displayed figure.
+  return byImpact;
 }
 
 export function findWorkplace(id: string): WorkplaceLocation {

@@ -60,7 +60,7 @@ export const CostBarChart: React.FC<CostBarChartProps> = ({
 
       {/* Stacked Bars */}
       <div className="space-y-4">
-        {displayItems.map((b) => {
+        {displayItems.map((b, index) => {
           const rentAmount = b.effectiveRent ?? 0;
           const rentWidth = (rentAmount / maxTotal) * 100;
           const transitWidth =
@@ -73,7 +73,7 @@ export const CostBarChart: React.FC<CostBarChartProps> = ({
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
                   <span className="font-mono font-bold text-stone-500 w-5">
-                    #{b.trueCostRank}
+                    #{b.impactRank || index + 1}
                   </span>
                   <span className="font-bold text-stone-900">
                     {b.neighbourhood.name}

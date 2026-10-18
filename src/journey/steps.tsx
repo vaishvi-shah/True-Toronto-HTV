@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   ArrowDown,
   BedDouble,
+  Bike,
   Briefcase,
   Bus,
   Car,
@@ -93,7 +94,8 @@ const MODES: Array<{ id: CommuteMode; label: string; Icon: typeof Bus }> = [
   { id: 'transit', label: 'Transit', Icon: Bus },
   { id: 'car', label: 'Car', Icon: Car },
   { id: 'hybrid', label: 'Mixed', Icon: SlidersHorizontal },
-  { id: 'walk_bike', label: 'Active', Icon: Footprints },
+  { id: 'walking', label: 'Walking', Icon: Footprints },
+  { id: 'cycling', label: 'Cycling', Icon: Bike },
 ];
 
 export const WorkStep: React.FC<StepProps> = ({ prefs, onChange }) => {
@@ -129,7 +131,7 @@ export const WorkStep: React.FC<StepProps> = ({ prefs, onChange }) => {
               ? `$${workplace.parkingCostMonthly}/mo parking`
               : 'Free parking'}
           {workplace.transitEstimateAvailable === false && (
-            <> &middot; Transit uses a baseline estimate; driving uses OpenRouteService</>
+          <> &middot; Travel times are estimates; driving uses OpenRouteService where available</>
           )}
         </p>
       </div>

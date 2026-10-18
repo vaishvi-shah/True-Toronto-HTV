@@ -45,7 +45,7 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
 }) => {
   if (!results.length) return null;
 
-  const cheapestTrueItem = results[0]; // First in true monthly cost order
+  const cheapestTrueItem = results[0]; // Personalized total includes cash costs and valued commute time.
   const cheapestRentItem = [...results].sort((a, b) => a.stickerRent - b.stickerRent)[0];
 
   const rentMode = preferences.rentMode || (preferences.rentInputMode === 'custom_fixed' ? 'user_entered' : 'user_entered');
@@ -57,11 +57,6 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
     hasRentAmount && cheapestRentItem.neighbourhood.id !== cheapestTrueItem.neighbourhood.id;
   const netMonthlySavings =
     cheapestRentItem.trueMonthlyCost - cheapestTrueItem.trueMonthlyCost;
-  const rentDelta =
-    cheapestTrueItem.stickerRent - cheapestRentItem.stickerRent;
-  const commuteDelta =
-    cheapestRentItem.commuteBreakdown.totalMonthlyCommuteCost -
-    cheapestTrueItem.commuteBreakdown.totalMonthlyCommuteCost;
   const hoursSaved = Number(
     (
       cheapestRentItem.commuteBreakdown.monthlyCommuteHours -
@@ -92,8 +87,8 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
     : isRentUnspecified
     ? 'Rent not provided'
     : isDivergent
-    ? 'Lowest rent differs from lowest total cost'
-    : 'Rent and total cost align';
+    ? 'Lowest rent differs from lowest personalized total'
+    : 'Rent and personalized total align';
 
   return (
     <section aria-label="Cost verdict" className="atlas-verdict mb-10" data-reveal="fade-up">
@@ -101,10 +96,10 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="dateline flex items-center gap-2 text-stone-500">
             <Lightbulb className="h-3.5 w-3.5 text-emerald-800" />
-            The result &middot; your lowest estimated monthly cost
+            The result &middot; lowest personalized monthly total
           </p>
           <p className="figures text-[11px] font-semibold uppercase tracking-wider text-stone-500">
-            {verdictState}
+          {verdictState}
           </p>
         </div>
 
@@ -114,39 +109,29 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
         >
           {explanation?.headline ||
             (isRentExcluded
-              ? `${cheapestTrueItem.neighbourhood.name} offers the lowest transit & utility overhead for your trips.`
+              ? `${cheapestTrueItem.neighbourhood.name} has the lowest personalized total at $${cheapestTrueItem.totalImpactMonthly}/mo, including valued commute time.`
               : isRentUnspecified
-              ? `${cheapestTrueItem.neighbourhood.name} provides the lowest transit + utilities overhead at $${cheapestTrueItem.trueMonthlyCost}/mo.`
-              : isDivergent
-              ? `${cheapestTrueItem.neighbourhood.name} is $${netMonthlySavings}/mo lower in estimated monthly costs than ${cheapestRentItem.neighbourhood.name}, with a higher rent figure.`
-              : `${cheapestTrueItem.neighbourhood.name} has the lowest estimated monthly total at $${cheapestTrueItem.trueMonthlyCost}/mo.`)}
+              ? `${cheapestTrueItem.neighbourhood.name} has the lowest personalized total at $${cheapestTrueItem.totalImpactMonthly}/mo, with rent excluded from the calculation.`
+              : `${cheapestTrueItem.neighbourhood.name} has the lowest personalized monthly total at $${cheapestTrueItem.totalImpactMonthly}/mo, including $${cheapestTrueItem.timeCostMonthly}/mo for commute time.`)}
         </h2>
 
-        {/* Main result: the lowest-cost area and its monthly expenses. */}
+        {/* Cash expenses and time valuation stay visible as separate amounts. */}
         <div className="atlas-cost-ledger mt-5 flex flex-col gap-5 border-y border-[#1b1712]/20 py-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex items-end gap-4">
             <p className="atlas-cost-total figures text-5xl font-bold leading-none tracking-tight text-[#1b1712] sm:text-6xl">
-              ${cheapestTrueItem.trueMonthlyCost.toLocaleString()}
-              <span className="ml-1 align-baseline text-base font-semibold text-stone-500">/mo</span>
+              ${cheapestTrueItem.totalImpactMonthly.toLocaleString()}
+              <span className="ml-1 align-baseline text-base font-semibold text-stone-500">/mo total</span>
             </p>
             <div className="pb-1 text-xs leading-relaxed text-stone-600">
               <p className="font-bold text-[#1b1712]">{cheapestTrueItem.neighbourhood.name}</p>
               <p>
-                {cheapestTrueItem.effectiveRent !== null
-                  ? `Rent $${cheapestTrueItem.effectiveRent.toLocaleString()} · `
-                  : ''}
-                Travel ${cheapestTrueItem.commuteBreakdown.totalMonthlyCommuteCost} ·{' '}
-                {cheapestTrueItem.commuteBreakdown.monthlyCommuteHours} hrs/mo
+                Cash costs $${cheapestTrueItem.trueMonthlyCost.toLocaleString()} · time value ${cheapestTrueItem.timeCostMonthly.toLocaleString()} ·{' '}
+                {cheapestTrueItem.commuteBreakdown.monthlyCommuteHours} commute hrs/mo
               </p>
             </div>
           </div>
           <div className="figures flex flex-wrap gap-x-6 gap-y-1 pb-1 text-xs font-semibold text-stone-600">
-            {isDivergent && (
-              <span>
-                saves <strong className="text-emerald-800">${netMonthlySavings}/mo</strong> vs{' '}
-                {cheapestRentItem.neighbourhood.name}
-              </span>
-            )}
+            <span>Based on your selected travel mode, home size, household, income, and commute-time value</span>
             <span>{cheapestTrueItem.monthlyCommuteHours} commute hrs</span>
             <span>
               {cheapestTrueItem.effectiveRent !== null
@@ -177,13 +162,7 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
               )}
             <p>
               {explanation?.body ||
-                (isRentExcluded
-                  ? `With housing expenses excluded, your primary costs are travel ($${cheapestTrueItem.commuteBreakdown.totalMonthlyCommuteCost}/mo) and utilities ($${cheapestTrueItem.utilitiesCost}/mo). Living in ${cheapestTrueItem.neighbourhood.name} gives you a ${cheapestTrueItem.commuteBreakdown.monthlyCommuteHours} hour monthly commute to your destination.`
-                  : isRentUnspecified
-              ? `Because no rent was entered, this comparison includes transportation ($${cheapestTrueItem.commuteBreakdown.totalMonthlyCommuteCost}/mo) and utilities ($${cheapestTrueItem.utilitiesCost}/mo). Enter a rent or use the historical area reference to include housing.`
-                  : isDivergent
-                  ? `${cheapestRentItem.neighbourhood.name} has the lowest rent figure ($${cheapestRentItem.stickerRent}/mo), but its commute costs ($${cheapestRentItem.commuteBreakdown.totalMonthlyCommuteCost}/mo) bring its estimated monthly total to $${cheapestRentItem.trueMonthlyCost}. ${cheapestTrueItem.neighbourhood.name} costs $${rentDelta}/mo more in rent but saves $${commuteDelta}/mo on travel, for an estimated net difference of $${netMonthlySavings}/mo.`
-                  : `${cheapestTrueItem.neighbourhood.name} minimizes your monthly costs ($${cheapestTrueItem.trueMonthlyCost}/mo total) with commute travel of ${cheapestTrueItem.commuteBreakdown.monthlyCommuteHours} hours per month.`)}
+                `${cheapestTrueItem.neighbourhood.name} has estimated cash expenses of $${cheapestTrueItem.trueMonthlyCost}/mo plus $${cheapestTrueItem.timeCostMonthly}/mo in commute-time value. The personalized total is $${cheapestTrueItem.totalImpactMonthly}/mo for a ${cheapestTrueItem.monthlyCommuteHours}-hour monthly commute. Choose another sort to compare out-of-pocket expenses alone.`}
               </p>
             </>
           )}
@@ -194,22 +173,22 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
           <div className="figures mt-4 flex flex-wrap items-baseline gap-x-8 gap-y-1 border-t border-[#1b1712]/15 pt-3 text-xs">
             <span className="dateline text-stone-500">Your current home</span>
             <span>
-              Recommended <strong>${cheapestTrueItem.trueMonthlyCost.toLocaleString()}/mo</strong>
+              Recommended <strong>${cheapestTrueItem.totalImpactMonthly.toLocaleString()}/mo total</strong>
             </span>
             <span>
-              Current <strong>${currentLivingCost.trueMonthlyCost.toLocaleString()}/mo</strong>
+              Current <strong>${currentLivingCost.totalImpactMonthly.toLocaleString()}/mo total</strong>
             </span>
             {cheapestTrueItem.effectiveRent !== null && (
               <span
                 className={
-                  currentLivingCost.trueMonthlyCost >= cheapestTrueItem.trueMonthlyCost
+                  currentLivingCost.totalImpactMonthly >= cheapestTrueItem.totalImpactMonthly
                     ? 'font-bold text-emerald-800'
                     : 'font-bold text-amber-800'
                 }
               >
                 {currentLivingCost.trueMonthlyCost >= cheapestTrueItem.trueMonthlyCost
-                  ? `−$${(currentLivingCost.trueMonthlyCost - cheapestTrueItem.trueMonthlyCost).toLocaleString()}/mo by moving`
-                  : `+$${(cheapestTrueItem.trueMonthlyCost - currentLivingCost.trueMonthlyCost).toLocaleString()}/mo by moving`}
+                  ? `−$${(currentLivingCost.totalImpactMonthly - cheapestTrueItem.totalImpactMonthly).toLocaleString()}/mo by moving`
+                  : `+$${(cheapestTrueItem.totalImpactMonthly - currentLivingCost.totalImpactMonthly).toLocaleString()}/mo by moving`}
               </span>
             )}
             <span className="text-stone-500">

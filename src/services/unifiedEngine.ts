@@ -135,7 +135,6 @@ export function buildUnifiedFallback(
   const cheapestRent = [...results].sort((a, b) => a.stickerRent - b.stickerRent)[0];
 
   const netSavings = cheapestRent.trueMonthlyCost - cheapestTrue.trueMonthlyCost;
-  const rentGap = (cheapestTrue.effectiveRent ?? 0) - (cheapestRent.effectiveRent ?? 0);
   const hoursGap = Number(
     (cheapestRent.monthlyCommuteHours - cheapestTrue.monthlyCommuteHours).toFixed(1)
   );
@@ -150,17 +149,17 @@ export function buildUnifiedFallback(
   let body = '';
 
   if (isRentFree) {
-    headline = `${cheapestTrue.neighbourhood.name} offers the lowest overall expenses with rent excluded ($${cheapestTrue.trueMonthlyCost}/mo).`;
-    body = `With housing expenses excluded, your total overhead consists of transportation ($${cheapestTrue.commuteBreakdown.totalMonthlyCommuteCost}/mo) and utilities ($${cheapestTrue.utilitiesCost}/mo), with ${cheapestTrue.monthlyCommuteHours} monthly hours spent commuting.`;
+    headline = `${cheapestTrue.neighbourhood.name} has the lowest personalized total at $${cheapestTrue.totalImpactMonthly}/mo, with rent excluded.`;
+    body = `Cash expenses are $${cheapestTrue.trueMonthlyCost}/mo, plus $${cheapestTrue.timeCostMonthly}/mo in commute-time value across ${cheapestTrue.monthlyCommuteHours} travel hours.`;
   } else if (isRentUnspecified) {
-    headline = `${cheapestTrue.neighbourhood.name} has the lowest transport + utility overhead at $${cheapestTrue.trueMonthlyCost}/mo (rent unspecified).`;
-    body = `Because rent was not specified, costs include travel ($${cheapestTrue.commuteBreakdown.totalMonthlyCommuteCost}/mo) and utilities ($${cheapestTrue.utilitiesCost}/mo). Enter a rent or use the historical area reference to include housing expenses.`;
+    headline = `${cheapestTrue.neighbourhood.name} has the lowest personalized total at $${cheapestTrue.totalImpactMonthly}/mo, with rent unspecified.`;
+    body = `The total includes $${cheapestTrue.trueMonthlyCost}/mo in recorded cash expenses and $${cheapestTrue.timeCostMonthly}/mo in commute-time value. Rent is not included.`;
   } else if (hasRankDiscrepancy && hasRentAmount) {
-    headline = `${cheapestTrue.neighbourhood.name} is $${netSavings}/mo lower in estimated monthly costs than ${cheapestRent.neighbourhood.name}, with a higher rent figure.`;
-    body = `While ${cheapestRent.neighbourhood.name} has the lowest rent figure ($${cheapestRent.effectiveRent}/mo), its commute costs ($${cheapestRent.commuteBreakdown.totalMonthlyCommuteCost}/mo) and ${cheapestRent.monthlyCommuteHours} hours of travel bring its estimated monthly cost to $${cheapestRent.trueMonthlyCost}/mo. ${cheapestTrue.neighbourhood.name} costs $${rentGap} more in rent ($${cheapestTrue.effectiveRent}/mo), but lower travel expenses ($${cheapestTrue.commuteBreakdown.totalMonthlyCommuteCost}/mo) bring its estimated out-of-pocket cost to $${cheapestTrue.trueMonthlyCost}/mo.`;
+    headline = `${cheapestTrue.neighbourhood.name} has the lowest personalized total at $${cheapestTrue.totalImpactMonthly}/mo.`;
+    body = `The personalized total combines $${cheapestTrue.trueMonthlyCost}/mo in cash expenses with $${cheapestTrue.timeCostMonthly}/mo in commute-time value. ${cheapestRent.neighbourhood.name} has the lowest rent at $${cheapestRent.effectiveRent}/mo; the ranking reflects your selected travel mode, home size, household size, income, and time valuation.`;
   } else {
-    headline = `${cheapestTrue.neighbourhood.name} has the lowest estimated monthly total at $${cheapestTrue.trueMonthlyCost}.`;
-    body = `For the inputs provided, this area has the lowest combined housing, commute, and utilities figure. Check the rent date and commute assumptions before using the estimate to make a housing decision.`;
+    headline = `${cheapestTrue.neighbourhood.name} has the lowest personalized total at $${cheapestTrue.totalImpactMonthly}/mo.`;
+    body = `The total combines $${cheapestTrue.trueMonthlyCost}/mo in estimated cash expenses with $${cheapestTrue.timeCostMonthly}/mo for commute time. The selected home size, household size, commute, income, and time valuation are reflected in the calculation.`;
   }
 
   return {
@@ -212,15 +211,15 @@ export function buildUnifiedExplainPrompt(
 
 DETERMINISTIC RESULTS (computed by the single shared calculator):
 Lowest rent figure: ${cheapestRent.neighbourhood.name} ($${cheapestRent.effectiveRent}/mo)
-Lowest calculated monthly cost: ${cheapestTrue.neighbourhood.name} ($${cheapestTrue.trueMonthlyCost}/mo including the shown inputs)
+Lowest personalized monthly total: ${cheapestTrue.neighbourhood.name} ($${cheapestTrue.totalImpactMonthly}/mo; cash expenses $${cheapestTrue.trueMonthlyCost}/mo plus commute-time value $${cheapestTrue.timeCostMonthly}/mo)
 
 TOP NEIGHBOURHOODS SUMMARY:
 ${JSON.stringify(top, null, 2)}
 
 Respond with JSON matching this structure:
 {
-  "headline": "A concise 1-sentence finding about the calculated monthly costs",
-  "body": "A short explanation of the calculated costs and commute trade-offs in plain Canadian English. Never invent numbers or claim probabilities.",
+  "headline": "A concise 1-sentence finding about the lowest personalized total including commute-time value",
+  "body": "A short explanation distinguishing cash expenses from commute-time value in plain Canadian English. Never invent numbers or claim probabilities.",
   "cheapestTrueNeighbourhood": "${cheapestTrue.neighbourhood.name}",
   "cheapestTrueMonthlyCost": ${cheapestTrue.trueMonthlyCost},
   "cheapestTrueRent": ${cheapestTrue.effectiveRent},

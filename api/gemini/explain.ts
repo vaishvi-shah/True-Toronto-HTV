@@ -36,7 +36,7 @@ function buildCalculatedFallback(results: ReturnType<typeof calculateNeighbourho
   return {
     headline: 'Your cost comparison is ready',
     body: recommended
-      ? `Based on your inputs, ${recommended.neighbourhood.name} has the lowest estimated monthly cost at $${recommended.trueMonthlyCost.toLocaleString()}. Your calculated comparison is ready below.`
+      ? `Based on your inputs, ${recommended.neighbourhood.name} has the lowest personalized monthly total at $${recommended.totalImpactMonthly.toLocaleString()}. This includes $${recommended.trueMonthlyCost.toLocaleString()} in estimated cash expenses and $${recommended.timeCostMonthly.toLocaleString()} in commute-time value.`
       : 'Your calculated comparison is ready below.',
     cheapestRentNeighbourhood: cheapestRent?.neighbourhood.name,
     cheapestTrueNeighbourhood: recommended?.neighbourhood.name,

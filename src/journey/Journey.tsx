@@ -93,7 +93,7 @@ export const Journey: React.FC = () => {
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [phaseIdx, setPhaseIdx] = useState(0);
   const [viewMode, setViewMode] = useState<'grid' | 'table' | 'chart'>('grid');
-  const [sortBy, setSortBy] = useState<'trueCost' | 'rent' | 'transport' | 'utilities' | 'commuteTime' | 'carbon'>('trueCost');
+  const [sortBy, setSortBy] = useState<'totalImpact' | 'trueCost' | 'rent' | 'transport' | 'utilities' | 'commuteTime' | 'carbon'>('totalImpact');
   const [comparedIds, setComparedIds] = useState<string[]>([]);
   const [isMethodologyOpen, setIsMethodologyOpen] = useState(false);
   const [isTenantOpen, setIsTenantOpen] = useState(false);
@@ -195,7 +195,8 @@ export const Journey: React.FC = () => {
     const out = list;
     const key = sortBy;
     out.sort((a, b) =>
-      key === 'rent' ? (a.effectiveRent ?? 0) - (b.effectiveRent ?? 0)
+      key === 'totalImpact' ? a.totalImpactMonthly - b.totalImpactMonthly
+      : key === 'rent' ? (a.effectiveRent ?? 0) - (b.effectiveRent ?? 0)
       : key === 'transport' ? a.commuteBreakdown.totalMonthlyCommuteCost - b.commuteBreakdown.totalMonthlyCommuteCost
       : key === 'utilities' ? a.utilitiesCost - b.utilitiesCost
       : key === 'commuteTime' ? a.monthlyCommuteHours - b.monthlyCommuteHours
@@ -214,12 +215,15 @@ export const Journey: React.FC = () => {
     });
   }, []);
   const updateRent = useCallback((id: string, rent: number | null) => {
-    setPrefs((prev) => {
+    const applyRent = (prev: UserPreferences | null) => {
+      if (!prev) return prev;
       const next = { ...(prev.customNeighbourhoodRents || {}) };
       if (rent === null || rent <= 0) delete next[id];
       else next[id] = rent;
       return { ...prev, customNeighbourhoodRents: next };
-    });
+    };
+    setPrefs((prev) => applyRent(prev)!);
+    setAnalyzed((prev) => applyRent(prev));
   }, []);
   const openPostings = useCallback(
     (id?: string) => {
@@ -530,8 +534,8 @@ interface ResultsSceneProps {
   isLoadingAi: boolean;
   viewMode: 'grid' | 'table' | 'chart';
   setViewMode: (v: 'grid' | 'table' | 'chart') => void;
-  sortBy: 'trueCost' | 'rent' | 'transport' | 'utilities' | 'commuteTime' | 'carbon';
-  setSortBy: (s: 'trueCost' | 'rent' | 'transport' | 'utilities' | 'commuteTime' | 'carbon') => void;
+  sortBy: 'totalImpact' | 'trueCost' | 'rent' | 'transport' | 'utilities' | 'commuteTime' | 'carbon';
+  setSortBy: (s: 'totalImpact' | 'trueCost' | 'rent' | 'transport' | 'utilities' | 'commuteTime' | 'carbon') => void;
   comparedIds: string[];
   onToggleCompare: (id: string) => void;
   onUpdateRent: (id: string, rent: number | null) => void;
@@ -573,7 +577,8 @@ const ResultsScene: React.FC<ResultsSceneProps> = (props) => {
           <label className="j-sort">
             <ArrowUpDown aria-hidden="true" /> Sort
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
-              <option value="trueCost">Total monthly cost</option>
+              <option value="totalImpact">Personalized total incl. time</option>
+              <option value="trueCost">Out-of-pocket cost</option>
               <option value="rent">Rent</option>
               <option value="transport">Travel</option>
               <option value="utilities">Utilities</option>

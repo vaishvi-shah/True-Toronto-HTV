@@ -1,6 +1,6 @@
 export type BedroomType = 'bachelor' | '1bed' | '2bed' | '3bed';
 
-export type CommuteMode = 'transit' | 'car' | 'hybrid' | 'walk_bike';
+export type CommuteMode = 'transit' | 'car' | 'hybrid' | 'walking' | 'cycling' | 'walk_bike';
 
 export type RentMode = 'user_entered' | 'cmhc_benchmark' | 'no_rent';
 
@@ -159,6 +159,7 @@ export interface CalculatedCost {
   };
   rentRank: number;
   trueCostRank: number;
+  impactRank: number;
   rankShift: number; // positive = better rank under true cost, negative = worse
   incomeSharePercent: number | null; // null if income unspecified
   isRentBurdened: boolean | null; // > 30%
