@@ -10,7 +10,7 @@ const POI_ENDPOINT = 'https://api.heigit.org/openpoiservice/v0/pois';
 const POI_CATEGORY_IDS = [
   518, 451, 474, 475, // supermarkets and grocery shops
   208, 370, 192, 191, 396, 393, 456, 502, // everyday services
-  588, 587, 604, 610, 597, 605, 607, 608, 609, 595, // transit
+  588, 587, 604, 597, 605, 607, 608, 595, // transit
   280, 283, 282, 288, 271, 292, 272, 279, // parks, play and sports
   133, 363, 131, 299, 134, 132, // libraries and culture
 ];
