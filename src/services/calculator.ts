@@ -247,10 +247,16 @@ export function calculateNeighbourhoodCosts(
       // Walking/cycling use each area's distance to the selected workplace.
       // Coordinates are representative points, so include a modest street
       // network detour and disclose this as an estimate in the UI.
-      const isCycling = preferences.commuteMode === 'cycling';
       const modeDistanceKm = straightLineKm * 1.25;
-      const speedKmh = isCycling ? 15 : 4.8;
-      oneWayMinutes = Math.max(1, Math.round((modeDistanceKm / speedKmh) * 60));
+      const walkingMinutes = (modeDistanceKm / 4.8) * 60;
+      const cyclingMinutes = (modeDistanceKm / 15) * 60;
+      oneWayMinutes = Math.max(1, Math.round(
+        preferences.commuteMode === 'walking'
+          ? walkingMinutes
+          : preferences.commuteMode === 'cycling'
+            ? cyclingMinutes
+            : (walkingMinutes + cyclingMinutes) / 2
+      ));
       const monthlyCommuteHours = (oneWayMinutes * monthlyOneWayTrips) / 60;
       commuteDistanceKmTotal = modeDistanceKm * 2 * onSiteWorkdays;
       commuteBreakdown = {

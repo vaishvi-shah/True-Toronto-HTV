@@ -49,7 +49,7 @@ export const NeighbourhoodExplorer: React.FC<NeighbourhoodExplorerProps> = ({ re
           <p className="mt-1 text-sm text-stone-600">Each dot marks one of the 10 neighbourhoods. Click a dot to see its cost breakdown, then compare the places that fit you best.</p>
         </div>
         <div className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs text-stone-600 shadow-sm">
-          <span className="font-semibold text-stone-800">Your analysis:</span> {workplaceName} · {preferences.commuteMode.replace('_', ' ')} · {preferences.bedrooms.replace('bed', ' bed')}
+          <span className="font-semibold text-stone-800">Your analysis:</span> {workplaceName} · {preferences.commuteMode === 'walk_bike' ? 'walk / cycle' : preferences.commuteMode.replace('_', ' ')} · {preferences.bedrooms.replace('bed', ' bed')}
         </div>
       </div>
 

@@ -221,7 +221,7 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
           <section className="rounded-xl border border-stone-200 bg-white p-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">B. Transportation &amp; workplace commute</h4>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <LifestyleMetric icon={<Bus className="h-3.5 w-3.5" />} label="Selected mode" value={preferences.commuteMode.replace('_', ' ')} />
+              <LifestyleMetric icon={<Bus className="h-3.5 w-3.5" />} label="Selected mode" value={preferences.commuteMode === 'walk_bike' ? 'walk / cycle' : preferences.commuteMode.replace('_', ' ')} />
               <LifestyleMetric icon={<Activity className="h-3.5 w-3.5" />} label="Estimated one-way time" value={`~${selectedCommuteMinutes} min`} />
               <LifestyleMetric icon={<MapPin className="h-3.5 w-3.5" />} label="Road distance to work" value={preferences.routeEstimates?.[selected.neighbourhood.id] ? `~${preferences.routeEstimates[selected.neighbourhood.id].carDistanceKm} km` : 'Unavailable'} />
               <LifestyleMetric icon={<Bus className="h-3.5 w-3.5" />} label="Mapped transit stops nearby" value={amenitiesByArea[selected.neighbourhood.id] ? `${amenitiesByArea[selected.neighbourhood.id].transitAccess.countWithin1_5Km} within 1.5 km` : amenitiesLoading ? 'Loading…' : 'Unavailable'} />

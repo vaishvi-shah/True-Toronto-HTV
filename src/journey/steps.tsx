@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   ArrowDown,
   BedDouble,
-  Bike,
   Briefcase,
   Bus,
   Car,
@@ -94,8 +93,7 @@ const MODES: Array<{ id: CommuteMode; label: string; Icon: typeof Bus }> = [
   { id: 'transit', label: 'Transit', Icon: Bus },
   { id: 'car', label: 'Car', Icon: Car },
   { id: 'hybrid', label: 'Mixed', Icon: SlidersHorizontal },
-  { id: 'walking', label: 'Walking', Icon: Footprints },
-  { id: 'cycling', label: 'Cycling', Icon: Bike },
+  { id: 'walk_bike', label: 'Walk / cycle', Icon: Footprints },
 ];
 
 export const WorkStep: React.FC<StepProps> = ({ prefs, onChange }) => {
@@ -460,7 +458,7 @@ export const ReviewStep: React.FC<
       : 'Historical CMHC area rent reference · Oct 2024';
   const rows: Array<[string, string, 'work' | 'housing' | 'income']> = [
     ['Destination', `${workplace.shortName} · ${5 - prefs.hybridRemoteDaysPerWeek}d/wk on-site`, 'work'],
-    ['Travel', `${prefs.commuteMode.replace('_', ' / ')} · ${prefs.hybridRemoteDaysPerWeek} remote day(s)`, 'work'],
+    ['Travel', `${prefs.commuteMode === 'walk_bike' ? 'walk / cycle' : prefs.commuteMode.replace('_', ' / ')} · ${prefs.hybridRemoteDaysPerWeek} remote day(s)`, 'work'],
     ['Housing', `${rentSummary} · ${prefs.bedrooms.replace('bed', '-bed')} · ${prefs.householdMembers} person(s)`, 'housing'],
     [
       'Time & income',

@@ -391,7 +391,9 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
           <span className="font-medium text-stone-800">
             {preferences.commuteMode === 'car'
               ? `${oneWayCommuteMinutes} mins (${commuteDetail.carDistanceKm} km each way)`
-            : preferences.commuteMode === 'walking' || preferences.commuteMode === 'walk_bike'
+            : preferences.commuteMode === 'walk_bike'
+              ? `${oneWayCommuteMinutes} min walk / cycle average`
+            : preferences.commuteMode === 'walking'
               ? `${oneWayCommuteMinutes} min walking estimate`
             : preferences.commuteMode === 'cycling'
               ? `${oneWayCommuteMinutes} min cycling estimate`

@@ -63,6 +63,12 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
       cheapestTrueItem.commuteBreakdown.monthlyCommuteHours
     ).toFixed(1)
   );
+  const lowRentHasLongerCommute =
+    cheapestRentItem.monthlyCommuteHours > cheapestTrueItem.monthlyCommuteHours;
+  const extraCommuteHours = Number(
+    (cheapestRentItem.monthlyCommuteHours - cheapestTrueItem.monthlyCommuteHours).toFixed(1)
+  );
+  const extraTimeValue = cheapestRentItem.timeCostMonthly - cheapestTrueItem.timeCostMonthly;
 
   // Single source of truth: the banner may only reuse server explanation copy
   // when its structured anchors agree with the client-computed winner. The
@@ -125,7 +131,7 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
             <div className="pb-1 text-xs leading-relaxed text-stone-600">
               <p className="font-bold text-[#1b1712]">{cheapestTrueItem.neighbourhood.name}</p>
               <p>
-                Cash costs $${cheapestTrueItem.trueMonthlyCost.toLocaleString()} · time value ${cheapestTrueItem.timeCostMonthly.toLocaleString()} ·{' '}
+                Cash costs ${cheapestTrueItem.trueMonthlyCost.toLocaleString()} · time value ${cheapestTrueItem.timeCostMonthly.toLocaleString()} ·{' '}
                 {cheapestTrueItem.commuteBreakdown.monthlyCommuteHours} commute hrs/mo
               </p>
             </div>
@@ -140,6 +146,17 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
             </span>
           </div>
         </div>
+
+        {isDivergent && lowRentHasLongerCommute && (
+          <aside className="mt-3 border-l-2 border-amber-500 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-stone-700" role="note">
+            <strong>Why {cheapestRentItem.neighbourhood.name} isn’t ranked first:</strong>{' '}
+            it has the lowest rent, but its estimated commute takes {extraCommuteHours} more hours per month than {cheapestTrueItem.neighbourhood.name}.
+            {extraTimeValue > 0
+              ? ` That difference adds about $${extraTimeValue.toLocaleString()}/mo in commute-time value using your settings.`
+              : ' Your current time-value setting does not add a dollar cost for that extra travel time.'}
+            {' '}The recommendation considers commute time along with rent, utilities, and travel expenses.
+          </aside>
+        )}
 
         <div className="mt-4 max-w-3xl text-sm leading-relaxed text-stone-700">
           {isLoadingAi ? (
