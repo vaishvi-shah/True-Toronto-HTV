@@ -114,7 +114,7 @@ Respond with JSON:
     );
 
     const geminiPromise = ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemini-3.8-flash', // runtime pick; hardcoded if unset
+      model: process.env.GEMINI_MODEL || 'gemini-3.6-flash', // runtime pick; hardcoded if unset
       contents: prompt,
       config: { systemInstruction: SYSTEM_DIRECTIVE, responseMimeType: 'application/json' },
     });

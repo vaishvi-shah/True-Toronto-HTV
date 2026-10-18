@@ -74,7 +74,7 @@ export const UserInputBar: React.FC<UserInputBarProps> = ({
             <h2 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight flex items-center gap-2">
               <span>Your Circumstances &amp; Financial Information</span>
               <span className="text-[11px] font-normal px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
-                User-Defined &bull; No Presets
+                Personalized cost comparison
               </span>
             </h2>
             <p className="text-xs text-stone-500 mt-0.5">

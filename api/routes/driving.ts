@@ -1,8 +1,8 @@
 /// <reference types="@vercel/node" />
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-import { AREA_ROUTING_COORDINATES, WORKPLACE_ROUTING_COORDINATES } from '../../src/data/routingCoordinates';
-import { NEIGHBOURHOODS as APP_NEIGHBOURHOODS } from '../../src/data/neighbourhoods';
+import { AREA_ROUTING_COORDINATES, WORKPLACE_ROUTING_COORDINATES } from '../../src/data/routingCoordinates.js';
+import { NEIGHBOURHOODS as APP_NEIGHBOURHOODS } from '../../src/data/neighbourhoods.js';
 
 export const config = { runtime: 'nodejs' };
 

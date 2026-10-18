@@ -369,8 +369,8 @@ export const Journey: React.FC = () => {
           </div>
         )}
         <nav className="j-top-actions" aria-label="Resources">
-          <button type="button" onClick={() => setIsMethodologyOpen(true)}>Method</button>
-          <button type="button" onClick={() => setIsTenantOpen(true)}>Tenants</button>
+          <button type="button" onClick={() => setIsMethodologyOpen(true)}>Methodology</button>
+          <button type="button" onClick={() => setIsTenantOpen(true)}>Tenant resources</button>
         </nav>
       </header>
 
@@ -504,11 +504,11 @@ export const Journey: React.FC = () => {
 /* ------------------------------------------------------------------ */
 
 const PHASES = [
-  { id: 'receive', label: 'Your information is in', sub: 'Profile sealed — nothing leaves your browser except the AI summary request.' },
-  { id: 'routes', label: 'Routing your commute', sub: 'Live road distances via OpenRouteService — published TTC timetables stand by.' },
-  { id: 'engine', label: 'Calculating true costs', sub: 'Rent + travel + utilities across all 10 neighbourhoods.' },
-  { id: 'narrate', label: 'Writing your summary', sub: 'Live Gemini narration — the verdict shows the Gemini error code if it fails.' },
-  { id: 'ready', label: 'Ledger complete', sub: 'Opening your personal ranking.' },
+  { id: 'receive', label: 'Preparing your comparison', sub: 'Using the work, housing, and income details you provided.' },
+  { id: 'routes', label: 'Estimating your commute', sub: 'Comparing travel routes and available transit information.' },
+  { id: 'engine', label: 'Calculating monthly costs', sub: 'Comparing rent, travel, and utilities across 10 neighbourhoods.' },
+  { id: 'narrate', label: 'Preparing your summary', sub: 'Summarizing the key costs and trade-offs.' },
+  { id: 'ready', label: 'Comparison ready', sub: 'Opening your neighbourhood results.' },
 ];
 
 const ProcessingScene: React.FC<{ phaseIdx: number; reduceMotion: boolean }> = ({ phaseIdx, reduceMotion }) => {
@@ -587,7 +587,7 @@ const ResultsScene: React.FC<ResultsSceneProps> = (props) => {
   } = props;
   return (
     <div className="j-results">
-      <p className="j-stage-kicker" data-scene-item>Stage 06 — Your ledger</p>
+      <p className="j-stage-kicker" data-scene-item>Stage 06 — Results</p>
       <div data-scene-item>
         <KeyFindingBanner
           results={results}
@@ -632,23 +632,23 @@ const ResultsScene: React.FC<ResultsSceneProps> = (props) => {
           <label className="j-sort">
             <ArrowUpDown aria-hidden="true" /> Sort
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
-              <option value="trueCost">True cost</option>
+              <option value="trueCost">Total monthly cost</option>
               <option value="rent">Rent</option>
               <option value="transport">Travel</option>
               <option value="utilities">Utilities</option>
               <option value="commuteTime">Travel time</option>
-              <option value="carbon">Carbon</option>
+              <option value="carbon">Emissions</option>
             </select>
           </label>
           <div className="j-views" role="tablist" aria-label="Result views">
             {(
               [
-                ['grid', 'Ledger', LayoutGrid],
-                ['table', 'Matrix', TableIcon],
+                ['grid', 'Cost comparison', LayoutGrid],
+                ['table', 'Table', TableIcon],
                 ['chart', 'Chart', BarChart3],
                 ['sensitivity', 'Break-even', Zap],
-                ['uncertainty', 'Bands', Dices],
-                ['atlas', 'Atlas', MapIcon],
+                ['uncertainty', 'Estimate range', Dices],
+                ['atlas', 'Map', MapIcon],
               ] as const
             ).map(([v, label, Icon]) => (
               <button
@@ -707,12 +707,12 @@ const ResultsScene: React.FC<ResultsSceneProps> = (props) => {
         )}
       </div>
       <div className="j-result-actions" data-scene-item>
-        <button type="button" className="j-btn-primary" onClick={props.onOpenWhatIf}>Test a what-if</button>
+        <button type="button" className="j-btn-primary" onClick={props.onOpenWhatIf}>Explore a scenario</button>
         <button type="button" className="j-btn-ghost" onClick={() => onOpenPostings()}>
-          <Building2 aria-hidden="true" /> Live rentals
+          <Building2 aria-hidden="true" /> Rental listings
         </button>
         <button type="button" className="j-btn-ghost" onClick={props.onOpenMlGlobal}>
-          <BrainCircuit aria-hidden="true" /> ML estimator
+          <BrainCircuit aria-hidden="true" /> Rent estimate tool
         </button>
         <button type="button" className="j-btn-ghost" onClick={props.onAdjust}>Adjust answers</button>
         <button type="button" className="j-btn-ghost" onClick={props.onRestart}>Start over</button>
@@ -720,12 +720,12 @@ const ResultsScene: React.FC<ResultsSceneProps> = (props) => {
       <section className="j-civic" data-scene-item>
         <ShieldCheck aria-hidden="true" />
         <p>
-          Rents: Statistics Canada quarterly estimates. Live availability via portal search —
-          no bundled listings. Travel: TTC GTFS + OpenRouteService. Climate: City Open Data &amp; TRCA.
+          Rent estimates use Statistics Canada data. Commute estimates use TTC schedules and road routes.
+          Climate information comes from Toronto and conservation authority data.
         </p>
         <div>
           <button type="button" onClick={props.onOpenMethodology}>Formulas &amp; sources</button>
-          <button type="button" onClick={props.onOpenTenants}>Tenant rights &amp; FMTA</button>
+          <button type="button" onClick={props.onOpenTenants}>Tenant resources</button>
         </div>
       </section>
     </div>

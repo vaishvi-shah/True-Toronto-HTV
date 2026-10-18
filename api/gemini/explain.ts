@@ -16,7 +16,19 @@ import { SYSTEM_DIRECTIVE } from '../../lib/llm/prompts.js';
 const apiKey = process.env.GEMINI_API_KEY || '';
 const ai = new GoogleGenAI({
   apiKey,
-  httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
+  httpOptions: {
+    headers: { 'User-Agent': 'aistudio-build' },
+    // Gemini may return transient 503s under load. Retry a few times with
+    // backoff while staying within the function's existing 10s time guard.
+    retryOptions: {
+      attempts: 3,
+      initialDelay: 0.5,
+      maxDelay: 2,
+      expBase: 2,
+      jitter: 0.2,
+      httpStatusCodes: [408, 429, 500, 502, 503, 504],
+    },
+  },
 });
 
 console.info('[api/gemini/explain] module initialized', {
@@ -93,7 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       setTimeout(() => reject(new Error('Gemini API timeout')), 10_000),
     );
 
-    const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+    const model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
     stage = 'gemini_request';
     console.info('[api/gemini/explain] Gemini request started', { model });
     const geminiPromise = ai.models.generateContent({
@@ -125,7 +137,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const code =
       typeof e.code === 'string' || typeof e.code === 'number' ? String(e.code) : `GEMINI_HTTP_${status}`;
     const nonceMessage = typeof e.message === 'string' && e.message ? e.message : 'Gemini narration request failed';
-    const message = status === 503 ? 'Set GEMINI_API_KEY in Vercel Environment Variables and redeploy.' : nonceMessage;
+    const message =
+      code === 'GEMINI_KEY_MISSING'
+        ? 'GEMINI_API_KEY is not set for this deployment. Add it in Vercel project Environment Variables and redeploy.'
+        : status === 503
+          ? 'Gemini returned HTTP 503. The request reached Gemini, but the service did not fulfill it. Try Re-analyze again shortly.'
+          : nonceMessage;
 
     console.error('[api/gemini/explain] request failed', {
       stage,

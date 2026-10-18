@@ -198,10 +198,10 @@ export const NeighbourhoodCard: React.FC<NeighbourhoodCardProps> = ({
                       type="button"
                       onClick={() => onOpenMlEstimator(b.neighbourhood.id)}
                       className="text-[10px] text-stone-700 hover:text-stone-900 font-semibold flex items-center gap-0.5 cursor-pointer bg-stone-100 px-1.5 py-0.5 rounded-md border border-stone-300"
-                      title="Estimate rent for unit gaps using Multivariable Linear Regression"
+                      title="Estimate rent when survey data is unavailable"
                     >
                       <BrainCircuit className="w-2.5 h-2.5" />
-                      <span>ML Gap</span>
+                      <span>Estimate rent</span>
                     </button>
                   )}
 

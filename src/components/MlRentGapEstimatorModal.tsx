@@ -55,7 +55,7 @@ export function MlRentGapEstimatorModal({
   const handleApply = () => {
     onApplyNeighbourhoodRent(selectedNeighbourhoodId, prediction.predictedRent);
     setAppliedNotice(
-      `Applied ML estimated rent ($${prediction.predictedRent.toLocaleString()}/mo) to ${prediction.neighbourhoodName}!`
+      `Applied estimated rent ($${prediction.predictedRent.toLocaleString()}/mo) to ${prediction.neighbourhoodName}.`
     );
     setTimeout(() => {
       setAppliedNotice(null);
@@ -78,13 +78,13 @@ export function MlRentGapEstimatorModal({
             </div>
             <div>
               <h2 id="ml-modal-title" className="text-base font-bold flex items-center gap-2">
-                ML Rent Estimation Model for Gaps
+                Rent Estimate for Missing Unit Types
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-stone-200 border border-white/20">
-                  R² = {coefficients.rSquared}
+                  Model fit: {coefficients.rSquared}
                 </span>
               </h2>
               <p className="text-xs text-stone-400 mt-0.5">
-                Multivariable Ridge Regression trained on N={coefficients.trainingSamplesCount} Toronto data points
+                Based on {coefficients.trainingSamplesCount} Toronto rent data points
               </p>
             </div>
           </div>
@@ -98,14 +98,14 @@ export function MlRentGapEstimatorModal({
         </div>
 
         <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto text-stone-900">
-          {/* Honest ML & Methodology Transparency Disclosure */}
+          {/* Estimate explanation */}
           <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-950 flex items-start gap-3">
             <Info className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
             <div className="leading-relaxed">
               <strong className="font-bold text-amber-900 block mb-0.5">
-                Civic Transparency &amp; Honest Modeling Policy
+                How this estimate works
               </strong>
-              With 10 distinct neighbourhoods in this civic benchmark, regression acts as <em>empirical interpolation</em> rather than speculative black-box machine learning. We use this linear model to fill unobserved gaps (such as 4-bedroom family suites or missing bedroom-neighbourhood pairs) with explicit 95% prediction intervals.
+              Published rent data does not include every unit type in every neighbourhood. This statistical model estimates missing figures, such as four-bedroom rents, using observed Toronto rents and includes a 95% prediction range.
             </div>
           </div>
 
@@ -113,20 +113,20 @@ export function MlRentGapEstimatorModal({
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-3 flex items-center gap-1.5">
               <Database className="w-3.5 h-3.5" />
-              Trained Model Parameters (Ordinary Least Squares with Ridge Penalty)
+              What Affects the Estimate
             </h3>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3 rounded-xl bg-stone-50 border border-stone-200">
-                <span className="text-[10px] font-bold text-stone-500 uppercase">Base Intercept</span>
+                <span className="text-[10px] font-bold text-stone-500 uppercase">Starting estimate</span>
                 <p className="text-base font-bold text-stone-900 mt-0.5">
                   ${coefficients.intercept.toLocaleString()}
                 </p>
-                <span className="text-[10px] text-stone-500">Baseline studio</span>
+                <span className="text-[10px] text-stone-500">Studio apartment</span>
               </div>
 
               <div className="p-3 rounded-xl bg-stone-50 border border-stone-200">
-                <span className="text-[10px] font-bold text-stone-500 uppercase">Per Bedroom</span>
+                <span className="text-[10px] font-bold text-stone-500 uppercase">Per bedroom</span>
                 <p className="text-base font-bold text-stone-900 mt-0.5">
                   +${coefficients.bedroomWeight.toLocaleString()}
                 </p>
@@ -134,11 +134,11 @@ export function MlRentGapEstimatorModal({
               </div>
 
               <div className="p-3 rounded-xl bg-stone-50 border border-stone-200">
-                <span className="text-[10px] font-bold text-stone-500 uppercase">Transit to Core</span>
+                <span className="text-[10px] font-bold text-stone-500 uppercase">Travel distance</span>
                 <p className="text-base font-bold text-stone-900 mt-0.5">
                   {coefficients.transitMinutesWeight}$/min
                 </p>
-                <span className="text-[10px] text-stone-500">Distance discount</span>
+                <span className="text-[10px] text-stone-500">Adjustment per minute</span>
               </div>
 
               <div className="p-3 rounded-xl bg-stone-50 border border-stone-200">
@@ -259,7 +259,7 @@ export function MlRentGapEstimatorModal({
         {/* Footer */}
         <div className="px-6 py-4 bg-stone-100 border-t border-stone-200 flex items-center justify-between">
           <span className="text-xs text-stone-500">
-            CMHC Rental Survey 2024 &bull; MLS® Verified GTA Postings &bull; Ridge λ = 0.05
+              CMHC Rental Survey 2024 &bull; Verified GTA rental listings
           </span>
           <button
             onClick={onClose}

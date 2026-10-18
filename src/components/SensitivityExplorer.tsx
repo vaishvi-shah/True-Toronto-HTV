@@ -95,17 +95,17 @@ export function SensitivityExplorer({
               <Zap className="w-5 h-5" />
             </span>
             <h3 className="text-lg font-bold text-stone-900">
-              Sensitivity &amp; Break-Even Analysis
+              How Changes Affect the Results
             </h3>
             {sensitivity.isRankingFragile && (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-200">
                 <AlertTriangle className="w-3 h-3" />
-                Fragile Ranking
+                Ranking may change
               </span>
             )}
           </div>
           <p className="text-xs text-stone-600 mt-1 max-w-2xl leading-relaxed">
-            Deterministic parameter sweeps detect the exact tipping points where rankings flip. Discover how many commute days or what wage rate reverses the outcome between cheaper rent and shorter travel.
+            See how changing your on-site schedule or the value assigned to commute time can change which neighbourhood has the lowest estimated monthly cost.
           </p>
         </div>
 
@@ -119,7 +119,7 @@ export function SensitivityExplorer({
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            Commute Days Sweep
+            On-site Days
           </button>
           <button
             onClick={() => setActiveSweep('wageFactor')}
@@ -129,7 +129,7 @@ export function SensitivityExplorer({
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            Wage Valuation Sweep
+            Commute Time Value
           </button>
         </div>
       </div>
@@ -142,7 +142,7 @@ export function SensitivityExplorer({
           </div>
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
-              Primary Break-Even Tipping Point
+              Break-Even Point
             </span>
             <p className="text-sm font-semibold text-stone-900 mt-0.5">
               &ldquo;{sensitivity.primaryBreakEvenNarrative}&rdquo;
@@ -163,7 +163,7 @@ export function SensitivityExplorer({
         <div className="mt-6">
           <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-3 flex items-center gap-1.5">
             <Zap className="w-3.5 h-3.5 text-amber-600" />
-            Detected Ranking Crossovers &amp; Flip Points
+            Where the Lowest-Cost Area Changes
           </h4>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -243,7 +243,7 @@ export function SensitivityExplorer({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
           <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700 flex items-center gap-1.5">
             <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-            Parameter Sweep Curve (Top 4 Contenders)
+            Cost Comparison as Assumptions Change
           </h4>
           {/* Legend */}
           <div className="flex flex-wrap items-center gap-3 text-xs">

@@ -42,15 +42,14 @@ export const Overture: React.FC<{ onBegin: () => void }> = ({ onBegin }) => (
     <div className="j-overture-inner">
       <p className="j-stage-kicker" data-scene-item>
         <span className="j-live-dot" aria-hidden="true" />
-        Toronto &middot; Civic open data &middot; No preset personas
+        Toronto &middot; Public data &middot; Personalized cost comparisons
       </p>
       <h1 id="overture-title" className="j-overture-title" data-scene-item>
-        Find the place that gives more of your life back.
+        Compare the true cost of living across Toronto.
       </h1>
       <p className="j-overture-sub" data-scene-item>
-        Rent, commute, utilities, and the hours your trip takes back — weighed across
-        10 Toronto neighbourhoods, from your circumstances alone. Six short stages,
-        one honest ledger.
+        Compare estimated rent, commuting, utilities, and travel time across 10 Toronto
+        neighbourhoods using your work, housing, and income details.
       </p>
       <div data-scene-item>
         <button type="button" onClick={onBegin} className="j-btn-primary j-btn-big" data-magnetic>
@@ -104,7 +103,7 @@ export const WorkStep: React.FC<StepProps> = ({ prefs, onChange }) => {
     <Question
       index="01 — Work & travel"
       title="Where do you go, and how do you get there?"
-      lede="Your destination sets every commute in the ledger. Nothing else is assumed."
+      lede="Your destination and travel choices shape the commute estimates in your comparison."
     >
       <div data-scene-item>
         <label className="j-label" htmlFor="j-workplace">
@@ -197,12 +196,12 @@ export const HousingStep: React.FC<StepProps> = ({ prefs, onChange }) => {
     <Question
       index="02 — Housing & rent"
       title="How should housing be counted?"
-      lede="Your rent is never assumed. Use the public reference, enter your own figure, or leave housing out entirely."
+      lede="Use a neighbourhood rent estimate, enter your rent, or exclude housing costs from the comparison."
     >
       <div data-scene-item role="radiogroup" aria-label="Rent handling">
         {(
           [
-            ['cmhc_benchmark', 'Area CMHC reference', 'Varies by neighbourhood & unit size · Oct 2024'],
+            ['cmhc_benchmark', 'Neighbourhood rent estimate', 'Based on CMHC data and unit size · Oct 2024'],
             ['user_entered', 'My actual rent', 'One figure applied across all 10 areas'],
             ['no_rent', 'Exclude rent', 'Commute + utilities only'],
           ] as Array<[RentMode, string, string]>
@@ -308,7 +307,7 @@ export const IncomeStep: React.FC<StepProps> = ({ prefs, onChange }) => {
     <Question
       index="03 — Income & time"
       title="What is an hour of commuting worth?"
-      lede="Income is optional. When given, it prices your travel time and weighs the rent burden — nothing more."
+      lede="Income is optional. If provided, it helps estimate the value of your commute time and your rent-to-income ratio."
     >
       <div data-scene-item>
         <label className="j-label" htmlFor="j-income">
@@ -448,27 +447,27 @@ export const ReviewStep: React.FC<
     (prefs.rentMode || 'cmhc_benchmark') === 'user_entered'
       ? prefs.customFixedRent
         ? `$${prefs.customFixedRent.toLocaleString()}/mo — your figure`
-        : 'Your figure — unspecified'
+        : 'Rent not entered'
       : (prefs.rentMode || 'cmhc_benchmark') === 'no_rent'
-      ? 'Excluded — commute + utilities only'
-      : 'Area CMHC reference · Oct 2024';
+      ? 'Rent excluded · commute and utilities only'
+      : 'Neighbourhood rent estimate · CMHC, Oct 2024';
   const rows: Array<[string, string, 'work' | 'housing' | 'income']> = [
     ['Destination', `${workplace.shortName} · ${5 - prefs.hybridRemoteDaysPerWeek}d/wk on-site`, 'work'],
     ['Travel', `${prefs.commuteMode.replace('_', ' / ')} · ${prefs.hybridRemoteDaysPerWeek} remote day(s)`, 'work'],
     ['Housing', `${rentSummary} · ${prefs.bedrooms.replace('bed', '-bed')} · ${prefs.householdMembers} person(s)`, 'housing'],
     [
       'Time & income',
-      `${prefs.annualIncome ? `$${prefs.annualIncome.toLocaleString()}/yr` : 'Income unspecified'} · ${
-        prefs.timeValuationType === 'zero' ? 'hours only' : 'time valued'
-      }${prefs.currentNeighbourhoodId ? ' · current home set' : ''}`,
+      `${prefs.annualIncome ? `$${prefs.annualIncome.toLocaleString()}/yr` : 'Income not provided'} · ${
+        prefs.timeValuationType === 'zero' ? 'hours only' : 'commute time valued'
+      }${prefs.currentNeighbourhoodId ? ' · current home included' : ''}`,
       'income',
     ],
   ];
   return (
     <Question
       index="04 — Review"
-      title="Is this your story, told right?"
-      lede="Check the ledger's premise before it runs. Anything wrong can be fixed in one tap."
+      title="Review your information"
+      lede="Confirm your details before comparing neighbourhood costs. Select Edit to make changes."
     >
       <ol className="j-review" data-scene-item>
         {rows.map(([label, value, stage]) => (

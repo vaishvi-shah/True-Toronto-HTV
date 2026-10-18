@@ -82,10 +82,9 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
   // server engine is a separate implementation and can disagree on absolutes
   // (e.g. headline $2,010 vs panel $2,039). Any mismatch falls back to the
   // deterministic client copy below, which renders from results[0].
-  // A Gemini failure is never papered over: the verdict shows the error code.
-  const explanation = aiError
-    ? null
-    : isExplanationConsistent(aiExplanation, {
+  // Use the personalized summary only when its figures match the local results;
+  // otherwise keep the calculation-based summary visible.
+  const explanation = isExplanationConsistent(aiExplanation, {
     cheapestTrueName: cheapestTrueItem.neighbourhood.name,
     cheapestRentName: cheapestRentItem.neighbourhood.name,
     cheapestTrueMonthlyCost: cheapestTrueItem.trueMonthlyCost,
@@ -97,12 +96,12 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
     : null;
 
   const verdictState = isRentExcluded
-    ? 'Commute & utilities focus'
+    ? 'Rent excluded'
     : isRentUnspecified
-    ? 'Rent unspecified — transport + utilities'
+    ? 'Rent not provided'
     : isDivergent
-    ? 'Sticker rent masks real commute expense'
-    : 'Rent & transit align';
+    ? 'Lowest rent differs from lowest total cost'
+    : 'Rent and total cost align';
 
   return (
     <section aria-label="Cost verdict" className="atlas-verdict mb-10" data-reveal="fade-up">
@@ -121,20 +120,17 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
           className="atlas-verdict-title font-display mt-3 max-w-4xl text-3xl font-semibold leading-[1.08] tracking-tight text-[#1b1712] sm:text-[2.75rem]"
           data-motion-text="words"
         >
-          {aiError
-            ? `AI summary unavailable — Gemini error ${aiError.code}`
-            : explanation?.headline ||
+          {explanation?.headline ||
             (isRentExcluded
               ? `${cheapestTrueItem.neighbourhood.name} offers the lowest transit & utility overhead for your trips.`
               : isRentUnspecified
               ? `${cheapestTrueItem.neighbourhood.name} provides the lowest transit + utilities overhead at $${cheapestTrueItem.trueMonthlyCost}/mo.`
               : isDivergent
               ? `${cheapestTrueItem.neighbourhood.name} is $${netMonthlySavings}/mo cheaper overall than ${cheapestRentItem.neighbourhood.name}, despite higher asking rent.`
-              : `${cheapestTrueItem.neighbourhood.name} delivers the most economical overall true monthly cost at $${cheapestTrueItem.trueMonthlyCost}/mo.`)}
+              : `${cheapestTrueItem.neighbourhood.name} has the lowest estimated monthly total at $${cheapestTrueItem.trueMonthlyCost}/mo.`)}
         </h2>
 
-        {/* Verdict ledger: the winning figure + its composition. Full per-area
-            numbers live in the ranked ledger below — this states the finding. */}
+        {/* Main result: the lowest-cost area and its monthly expenses. */}
         <div className="atlas-cost-ledger mt-5 flex flex-col gap-5 border-y border-[#1b1712]/20 py-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex items-end gap-4">
             <p className="atlas-cost-total figures text-5xl font-bold leading-none tracking-tight text-[#1b1712] sm:text-6xl">
@@ -173,34 +169,20 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
             <div className="py-1" role="status" aria-busy="true" aria-label="Loading analysis">
               <div className="flex items-center gap-2 text-stone-500">
                 <RotateCw className="h-4 w-4 animate-spin" />
-                <span>Formulating personalized analysis...</span>
+                <span>Preparing your personalized summary...</span>
               </div>
               <div className="mt-3 space-y-2">
                 <div className="skeleton-block h-3 w-3/4" />
                 <div className="skeleton-block h-3 w-1/2" />
               </div>
             </div>
-          ) : aiError ? (
-            <div
-              role="alert"
-              className="flex items-start gap-2 border border-rose-800/40 bg-rose-50 p-3 text-rose-950"
-            >
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-800" />
-              <span>
-                <strong>
-                  Gemini error {String(aiError.status)} ({aiError.code})
-                </strong>
-                : {aiError.message}{' '}
-                <span className="block mt-1 text-rose-900/80">
-                  The engine numbers above are computed locally and still stand — only the AI
-                  narration is missing.{' '}
-                  {aiError.code === 'GEMINI_KEY_MISSING'
-                    ? 'Add GEMINI_API_KEY to the Vercel project environment variables, redeploy, then hit Re-analyze.'
-                    : 'Check the Vercel function logs for /api/gemini/explain, then hit Re-analyze.'}
-                </span>
-              </span>
-            </div>
           ) : (
+            <>
+              {aiError && (
+                <p role="status" className="mb-2 text-xs text-stone-500">
+                  A personalized summary is temporarily unavailable. This comparison uses your calculated results.
+                </p>
+              )}
             <p>
               {explanation?.body ||
                 (isRentExcluded
@@ -209,12 +191,13 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
                   ? `Because no rent was entered, true costs currently tally transit ($${cheapestTrueItem.commuteBreakdown.totalMonthlyCommuteCost}/mo) and utilities ($${cheapestTrueItem.utilitiesCost}/mo). You can enter your specific rent or choose CMHC survey medians in the inputs above to include housing.`
                   : isDivergent
                   ? `${cheapestRentItem.neighbourhood.name} has the lowest advertised rent ($${cheapestRentItem.stickerRent}/mo), but its commute costs ($${cheapestRentItem.commuteBreakdown.totalMonthlyCommuteCost}/mo) push total out-of-pocket expenses to $${cheapestRentItem.trueMonthlyCost}. By contrast, ${cheapestTrueItem.neighbourhood.name} costs $${rentDelta}/mo more in rent but saves $${commuteDelta}/mo on travel, saving you $${netMonthlySavings} net each month.`
-                  : `${cheapestTrueItem.neighbourhood.name} minimizes your out-of-pocket overhead ($${cheapestTrueItem.trueMonthlyCost}/mo total) with commute travel of ${cheapestTrueItem.commuteBreakdown.monthlyCommuteHours} hours per month.`)}
-            </p>
+                  : `${cheapestTrueItem.neighbourhood.name} minimizes your monthly costs ($${cheapestTrueItem.trueMonthlyCost}/mo total) with commute travel of ${cheapestTrueItem.commuteBreakdown.monthlyCommuteHours} hours per month.`)}
+              </p>
+            </>
           )}
         </div>
 
-        {/* Break-even tipping point & Monte Carlo uncertainty */}
+        {/* Break-even point and estimated cost variation */}
         {(explanation?.breakEvenNarrative || explanation?.monteCarloInsight) && (
           <div className="mt-4 grid gap-2.5 lg:grid-cols-2">
             {explanation.breakEvenNarrative && (
@@ -222,7 +205,7 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
                 <p className="flex items-start gap-2 text-amber-950">
                   <Zap className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
                   <span>
-                    <strong>Break-even flip point:</strong> &ldquo;{explanation.breakEvenNarrative}&rdquo;
+                    <strong>Break-even point:</strong> &ldquo;{explanation.breakEvenNarrative}&rdquo;
                   </span>
                 </p>
                 {onOpenSensitivity && (
@@ -242,7 +225,7 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
                 <p className="flex items-start gap-2 text-stone-700">
                   <Dices className="mt-0.5 h-4 w-4 shrink-0 text-stone-500" />
                   <span>
-                    <strong className="text-[#1b1712]">Monte Carlo uncertainty:</strong>{' '}
+                    <strong className="text-[#1b1712]">Estimated cost variation:</strong>{' '}
                     {explanation.monteCarloInsight}
                   </span>
                 </p>
@@ -252,7 +235,7 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
                     onClick={onOpenMonteCarlo}
                     className="pressable flex shrink-0 cursor-pointer items-center gap-1 text-[11px] font-bold text-[#1b1712] hover:underline"
                   >
-                    View uncertainty bands <ArrowRight className="h-3 w-3" />
+                    View estimate range <ArrowRight className="h-3 w-3" />
                   </button>
                 )}
               </div>
@@ -260,7 +243,7 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
           </div>
         )}
 
-        {/* Current-home comparison — compact ledger strip, not a second panel */}
+        {/* Current-home comparison */}
         {currentLivingCost && (
           <div className="figures mt-4 flex flex-wrap items-baseline gap-x-8 gap-y-1 border-t border-[#1b1712]/15 pt-3 text-xs">
             <span className="dateline text-stone-500">Your current home</span>
@@ -303,11 +286,7 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
         <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-stone-500">
           <span className="flex items-center gap-1.5">
             <Info className="h-3.5 w-3.5" />
-            {aiError
-              ? `Gemini error ${String(aiError.status)} · ${aiError.code}`
-              : explanation?.isAiGenerated
-              ? 'Narrated by Gemini 3.8 Flash'
-              : 'Deterministic civic engine · instant calculation'}
+            {explanation?.isAiGenerated ? 'Personalized AI summary' : 'Calculation-based summary'}
           </span>
           <button
             onClick={onRefreshAi}
@@ -315,13 +294,13 @@ export const KeyFindingBanner: React.FC<KeyFindingBannerProps> = ({
             className="flex cursor-pointer items-center gap-1 font-semibold text-[#1b1712] underline decoration-stone-300 underline-offset-4 hover:decoration-[#1b1712]"
           >
             <RotateCw className={`h-3 w-3 ${isLoadingAi ? 'animate-spin' : ''}`} />
-            Re-analyze
+            Refresh summary
           </button>
           <button
             onClick={onOpenWhatIf}
             className="pressable ml-auto flex cursor-pointer items-center gap-1.5 bg-[#1b1712] px-4 py-2 text-xs font-bold text-[#f4f1e8] transition-colors hover:bg-emerald-900"
           >
-            Test a what-if scenario <ArrowRight className="h-3.5 w-3.5" />
+            Explore a scenario <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>

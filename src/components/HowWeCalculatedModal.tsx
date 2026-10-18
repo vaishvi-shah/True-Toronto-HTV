@@ -140,7 +140,7 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
                   </tr>
                   <tr>
                     <td className="py-1.5 pr-2 font-medium text-emerald-300">Live Rental Search</td>
-                    <td className="py-1.5 pr-2">Direct portal searches (HouseSigma, Realtor.ca, Zillow, Rentals.ca); no bundled listings</td>
+                    <td className="py-1.5 pr-2">Search links to HouseSigma, Realtor.ca, Zillow, and Rentals.ca; listings are not stored in the app</td>
                     <td className="py-1.5 pr-2">Linked portals; verify every ad</td>
                     <td className="py-1.5 font-mono text-stone-400">Oct 2024</td>
                   </tr>
@@ -149,7 +149,7 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
             </div>
 
             <div className="mt-3 p-2.5 rounded-lg bg-stone-800 text-[11px] text-emerald-200 border border-emerald-500/20">
-              <strong>Rent data note:</strong> Area-specific references are historical October 2024 CMHC zone figures, not current asking rents. For current availability use the live portal searches.
+              <strong>Rent data note:</strong> Neighbourhood rent estimates use October 2024 CMHC figures and may differ from current asking rents. Use the rental search links for current availability.
             </div>
           </div>
 
@@ -262,40 +262,40 @@ export const HowWeCalculatedModal: React.FC<HowWeCalculatedModalProps> = ({
           {/* Section 6: Missing Data Principle */}
           <div className="p-4 rounded-xl bg-stone-50 border border-stone-300">
             <h4 className="font-bold text-stone-900 text-sm mb-1">
-              6. The &ldquo;No Data&rdquo; Honesty Guarantee
+              6. How Missing Data Is Handled
             </h4>
             <p className="text-[11px] text-stone-600">
-              When public open data is missing for a specific micro-neighbourhood or sensor quadrant (such as satellite tree canopy sensor gaps in Malvern North-East), it is marked as <strong>&ldquo;no data&rdquo;</strong> rather than filled with fictional placeholders.
+              When source data is unavailable for a neighbourhood or sensor area, we mark it as <strong>&ldquo;no data&rdquo;</strong>. We do not fill these gaps with invented values.
             </p>
           </div>
 
           {/* Section 7: Sensitivity & Break-Even Analysis */}
           <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200">
             <h4 className="font-bold text-stone-900 text-sm mb-1 text-amber-900 flex items-center gap-1.5">
-              <span>7. Deterministic Sensitivity &amp; Break-Even Analysis</span>
+              <span>7. How Changes Affect the Results</span>
             </h4>
             <p className="text-[11px] text-stone-700 leading-relaxed">
-              Rankings can be fragile. Instead of giving a static single-point answer, our engine sweeps parameter domains (commute days from 0 to 22 days/month and wage valuation factors from 0% to 120%) to locate exact crossover tipping points (e.g. &ldquo;Parkdale beats Scarborough Centre unless your commute days drop below 11/month&rdquo;). This ensures users can see precisely what changes would flip the top-recommended neighbourhood.
+              Neighbourhood rankings can change when assumptions change. We recalculate costs for different on-site schedules (0 to 22 days per month) and commute-time values (0% to 120% of hourly income) to identify when another neighbourhood becomes the lowest-cost option.
             </p>
           </div>
 
-          {/* Section 8: Monte Carlo Uncertainty Bands */}
+          {/* Section 8: Estimated cost ranges */}
           <div className="p-4 rounded-xl bg-stone-100 border border-stone-200">
             <h4 className="font-bold text-stone-900 text-sm mb-1 flex items-center gap-1.5">
-              <span>8. Monte Carlo Uncertainty Bands (2,000 Iterations)</span>
+              <span>8. Estimated Cost Ranges (2,000 Comparisons)</span>
             </h4>
             <p className="text-[11px] text-stone-700 leading-relaxed">
-              Real world rental listings and transit commutes fluctuate. We perturb asking rents (&plusmn;12%), TTC travel times (&plusmn;20%), and utilities (&plusmn;15%) across 2,000 simulated market trials. This produces honest 80% confidence intervals (P10 to P90) and calculates pairwise win probabilities (e.g. &ldquo;78% probability Parkdale is cheaper overall than Scarborough Centre under transit delay and rent spreads&rdquo;).
+              Rent, transit times, and utility costs can vary. We repeat the comparison 2,000 times while varying rent (&plusmn;12%), TTC travel times (&plusmn;20%), and utilities (&plusmn;15%). The resulting middle 80% range shows how these changes may affect estimated costs; pairwise comparisons show how often one area costs less than another.
             </p>
           </div>
 
-          {/* Section 9: ML Rent Gap Estimation */}
+          {/* Section 9: Rent estimates where survey data is missing */}
           <div className="p-4 rounded-xl bg-stone-100 border border-stone-200">
             <h4 className="font-bold text-stone-900 text-sm mb-1 flex items-center gap-1.5">
-              <span>9. ML Rent Gap Estimation (Multivariable Ridge Regression)</span>
+              <span>9. Rent Estimates for Missing Unit Types</span>
             </h4>
             <p className="text-[11px] text-stone-700 leading-relaxed">
-              When specific bedroom sizes have data gaps in public survey tables (such as 4-bedroom family suites), an empirical Multivariable Linear Regression model with Ridge penalty (R&sup2; = 0.89, N = 68 observations) interpolates the asking rent with explicit 95% prediction intervals. Transparent coefficients quantify the marginal room cost, transit distance discount, and rapid transit walking bonus.
+              When public survey data is unavailable for a unit type, such as a four-bedroom suite, a statistical model estimates rent using 68 Toronto data points. The model fit score is R&sup2; = 0.89, and each estimate includes a 95% prediction range. The estimate accounts for unit size, travel distance, and access to rapid transit.
             </p>
           </div>
         </div>

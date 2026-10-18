@@ -35,10 +35,10 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              Civic Open Data
+              Toronto Public Data
             </span>
             <span className="text-stone-300 text-xs hidden sm:inline">
-              100% Public Open Data &bull; Zero Preset Personas &bull; User-Defined Financials
+              Public Toronto data &bull; Costs tailored to your household
             </span>
           </div>
 
@@ -101,17 +101,17 @@ export const Header: React.FC<HeaderProps> = ({
             title="Explore what-if scenarios (e.g. changing commute mode or hybrid schedule)"
           >
             <Sparkles className="w-4 h-4 text-emerald-600" />
-            <span>AI Scenario Explorer</span>
+            <span>Scenario Explorer</span>
           </button>
 
           {onOpenMlEstimator && (
             <button
               onClick={onOpenMlEstimator}
               className="px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 cursor-pointer shadow-2xs hover:shadow-xs"
-              title="Estimate rents for unobserved unit gaps (including 4-bed suites) using Linear Regression"
+              title="Estimate rent when survey data is unavailable"
             >
               <BrainCircuit className="w-3.5 h-3.5 text-purple-600" />
-              <span>ML Rent Estimator</span>
+              <span>Rent Estimate Tool</span>
             </button>
           )}
 
