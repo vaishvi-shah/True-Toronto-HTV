@@ -6,9 +6,11 @@ import { NEIGHBOURHOODS } from '../src/data/neighbourhoods.js';
 export const config = { runtime: 'nodejs' };
 
 const RADIUS_METRES = 1500;
+// The private.coffee instance is maintained for public use and currently
+// offers more capacity than the frequently rate-limited main instance.
 const ENDPOINTS = [
+  'https://overpass.private.coffee/api/interpreter',
   'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
 ];
 
 type OSMElement = {
@@ -48,15 +50,9 @@ function overpassQuery() {
     if (!point) return [];
     const [lon, lat] = point;
     const around = `(around:${RADIUS_METRES},${lat},${lon})`;
-    return [
-      `nwr${around}[shop];`,
-      `nwr${around}[amenity~"^(pharmacy|post_office|bank|atm|parcel_locker|bus_station|ferry_terminal|library|community_centre|arts_centre|theatre|cinema)$"];`,
-      `nwr${around}[public_transport];`,
-      `nwr${around}[highway="bus_stop"];`,
-      `nwr${around}[railway~"^(station|halt|tram_stop|subway_entrance)$"];`,
-      `nwr${around}[leisure~"^(park|playground|pitch|sports_centre|fitness_centre|swimming_pool|garden|nature_reserve)$"];`,
-      `nwr${around}[tourism~"^(museum|gallery)$"];`,
-    ];
+    // A single key-regex selector per area avoids issuing seven overlapping
+    // Overpass scans for each neighbourhood. Category filtering happens here.
+    return [`nwr${around}[~"^(shop|amenity|public_transport|highway|railway|leisure|tourism)$"~"."];`];
   });
   return `[out:json][timeout:20];(${selectors.join('')});out center tags;`;
 }
