@@ -85,11 +85,18 @@ async function loadElements() {
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          Accept: 'application/json',
+          'User-Agent': 'TrueRentToronto/1.0 (OpenStreetMap nearby-place lookup)',
+        },
         body,
         signal: AbortSignal.timeout(4200),
       });
-      if (!response.ok) throw new Error(`Overpass returned HTTP ${response.status}`);
+      if (!response.ok) {
+        const detail = (await response.text()).slice(0, 240);
+        throw new Error(`Overpass ${new URL(endpoint).host} returned HTTP ${response.status}: ${detail}`);
+      }
       const payload = await response.json() as { elements?: OSMElement[] };
       if (!Array.isArray(payload.elements)) throw new Error('Overpass response did not include elements');
       return payload.elements;
