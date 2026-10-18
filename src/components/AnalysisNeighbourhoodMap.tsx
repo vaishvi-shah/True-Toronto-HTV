@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { divIcon } from 'leaflet';
-import { Activity, Briefcase, Bus, ExternalLink, Footprints, Home, MapPin, Plus, Search, ShoppingBasket, Trees } from 'lucide-react';
+import { Activity, Briefcase, Bus, ExternalLink, Home, MapPin, Plus, Search } from 'lucide-react';
 import { MapContainer, Marker, Popup, TileLayer, Tooltip } from 'react-leaflet';
 import { CalculatedCost, UserPreferences, BedroomType } from '../types';
 import { AREA_ROUTING_COORDINATES, WORKPLACE_ROUTING_COORDINATES } from '../data/routingCoordinates';
@@ -14,19 +14,7 @@ interface AnalysisNeighbourhoodMapProps {
   preferences: UserPreferences;
 }
 
-interface NearbyPlaceSummary {
-  countWithin1_5Km: number;
-  nearest: { name: string; distanceKm: number } | null;
-}
-
-interface AreaAmenities {
-  groceries: NearbyPlaceSummary;
-  everydayEssentials: NearbyPlaceSummary;
-  transitAccess: NearbyPlaceSummary;
-  recreation: NearbyPlaceSummary;
-}
-
-type AreaPriority = 'impact' | 'cost' | 'rent' | 'commute' | 'transit' | 'groceries' | 'walkability' | 'recreation';
+type AreaPriority = 'impact' | 'cost' | 'rent' | 'commute';
 
 const currency = (amount: number | null) => amount === null ? 'Not entered' : `$${Math.round(amount).toLocaleString()}`;
 
@@ -61,31 +49,9 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [bedroomFilter, setBedroomFilter] = useState<'all' | BedroomType>('all');
   const [maxPrice, setMaxPrice] = useState('');
-  const [amenitiesByArea, setAmenitiesByArea] = useState<Record<string, AreaAmenities>>({});
-  const [amenitiesAsOf, setAmenitiesAsOf] = useState<string | null>(null);
-  const [amenitiesLoading, setAmenitiesLoading] = useState(true);
-  const [amenitiesError, setAmenitiesError] = useState(false);
   const [priority, setPriority] = useState<AreaPriority>('impact');
   const [comparedAreaIds, setComparedAreaIds] = useState<string[]>([]);
   const listingSection = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    let active = true;
-    fetch('/api/neighbourhood-amenities')
-      .then(async (response) => {
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || 'Nearby place data is unavailable');
-        return payload;
-      })
-      .then((payload) => {
-        if (!active) return;
-        setAmenitiesByArea(payload.byNeighbourhood || {});
-        setAmenitiesAsOf(payload.dataAsOf || null);
-      })
-      .catch(() => { if (active) setAmenitiesError(true); })
-      .finally(() => { if (active) setAmenitiesLoading(false); });
-    return () => { active = false; };
-  }, []);
 
   const selected = results.find((item) => item.neighbourhood.id === selectedId) || null;
   const workplace = WORKPLACES.find((item) => item.id === preferences.workplaceId);
@@ -99,16 +65,8 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
     if (priority === 'impact') return a.totalImpactMonthly - b.totalImpactMonthly;
     if (priority === 'rent') return (a.effectiveRent ?? Number.MAX_SAFE_INTEGER) - (b.effectiveRent ?? Number.MAX_SAFE_INTEGER);
     if (priority === 'commute') return a.monthlyCommuteHours - b.monthlyCommuteHours;
-    if (priority === 'transit') return (amenitiesByArea[b.neighbourhood.id]?.transitAccess.countWithin1_5Km || 0) - (amenitiesByArea[a.neighbourhood.id]?.transitAccess.countWithin1_5Km || 0);
-    if (priority === 'groceries') return (amenitiesByArea[b.neighbourhood.id]?.groceries.countWithin1_5Km || 0) - (amenitiesByArea[a.neighbourhood.id]?.groceries.countWithin1_5Km || 0);
-    if (priority === 'walkability') {
-      const bScore = (amenitiesByArea[b.neighbourhood.id]?.groceries.countWithin1_5Km || 0) + (amenitiesByArea[b.neighbourhood.id]?.everydayEssentials.countWithin1_5Km || 0);
-      const aScore = (amenitiesByArea[a.neighbourhood.id]?.groceries.countWithin1_5Km || 0) + (amenitiesByArea[a.neighbourhood.id]?.everydayEssentials.countWithin1_5Km || 0);
-      return bScore - aScore;
-    }
-    if (priority === 'recreation') return (amenitiesByArea[b.neighbourhood.id]?.recreation.countWithin1_5Km || 0) - (amenitiesByArea[a.neighbourhood.id]?.recreation.countWithin1_5Km || 0);
     return a.trueMonthlyCost - b.trueMonthlyCost;
-  }), [results, priority, amenitiesByArea]);
+  }), [results, priority]);
   useEffect(() => {
     if (selectedId) listingSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [selectedId]);
@@ -131,7 +89,7 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
           </div>
           <label className="flex items-center gap-2 text-[10px] font-semibold text-stone-500">PRIORITIZE
             <select value={priority} onChange={(event) => setPriority(event.target.value as AreaPriority)} className="rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-2 text-xs font-semibold text-stone-800">
-              <option value="impact">Lowest personalized total</option><option value="cost">Lowest out-of-pocket cost</option><option value="rent">Lowest average rent</option><option value="commute">Shortest commute</option><option value="transit" disabled={amenitiesLoading || amenitiesError}>Mapped transit-stop count</option><option value="groceries" disabled={amenitiesLoading || amenitiesError}>Mapped grocery count</option><option value="walkability" disabled={amenitiesLoading || amenitiesError}>Nearby essentials proxy</option><option value="recreation" disabled={amenitiesLoading || amenitiesError}>Mapped recreation-place count</option>
+              <option value="impact">Lowest personalized total</option><option value="cost">Lowest out-of-pocket cost</option><option value="rent">Lowest average rent</option><option value="commute">Shortest commute</option>
             </select>
           </label>
         </div>
@@ -150,7 +108,6 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
           </Marker>}
           {results.map((item, index) => {
             const point = AREA_ROUTING_COORDINATES[item.neighbourhood.id];
-            const nearby = amenitiesByArea[item.neighbourhood.id];
             const route = preferences.routeEstimates?.[item.neighbourhood.id];
             const oneWayMinutes = item.commuteBreakdown.monthlyOneWayTrips ? Math.round(item.monthlyCommuteHours * 60 / item.commuteBreakdown.monthlyOneWayTrips) : 0;
             if (!point) return null;
@@ -165,11 +122,6 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
                     <div className="flex justify-between gap-4 border-t border-stone-200 pt-1"><span>Estimated total</span><b>{currency(item.trueMonthlyCost)}/mo</b></div>
                     <div className="flex justify-between gap-4 pt-0.5"><span>Commute</span><b>~{oneWayMinutes} min one way</b></div>
                     <div className="flex justify-between gap-4"><span>Road distance</span><b>{route ? `~${route.carDistanceKm} km` : 'Not available'}</b></div>
-                    {nearby ? <>
-                      <div className="flex justify-between gap-4 border-t border-stone-200 pt-1"><span>Groceries nearby</span><b>{nearby.groceries.countWithin1_5Km} mapped</b></div>
-                      <div className="flex justify-between gap-4"><span>Everyday access</span><b>{nearby.everydayEssentials.countWithin1_5Km + nearby.groceries.countWithin1_5Km} places</b></div>
-                      <div className="flex justify-between gap-4"><span>Transit / recreation</span><b>{nearby.transitAccess.countWithin1_5Km} / {nearby.recreation.countWithin1_5Km}</b></div>
-                    </> : <div className="pt-1 text-stone-500">{amenitiesLoading ? 'Loading nearby places…' : 'Nearby-place data unavailable'}</div>}
                   </div>
                   <div className="mt-1.5 text-[9px] font-semibold text-emerald-800">Click marker for area details</div>
                 </div>
@@ -191,9 +143,9 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
         </li>)}</ol>
       </div>
       {comparedAreas.length > 1 && <div className="border-t border-stone-100 bg-stone-50 px-4 py-4 sm:px-6"><div className="mb-2 flex items-center justify-between"><h3 className="text-xs font-bold text-stone-800">Neighbourhood comparison ({comparedAreas.length}/3)</h3><button type="button" onClick={() => setComparedAreaIds([])} className="text-[10px] font-semibold text-stone-500 underline">Clear comparison</button></div><div className="overflow-x-auto rounded-xl border border-stone-200 bg-white"><table className="w-full min-w-[620px] text-left text-[10px]"><thead><tr className="bg-stone-50"><th className="p-2.5 text-stone-500">Monthly indicator</th>{comparedAreas.map((item) => <th key={item.neighbourhood.id} className="min-w-32 p-2.5 font-bold text-stone-800">{item.neighbourhood.name}</th>)}</tr></thead><tbody>{[
-        ['True monthly cost', (item: CalculatedCost) => `${currency(item.trueMonthlyCost)}/mo`],['Rent', (item: CalculatedCost) => `${currency(item.effectiveRent)}/mo`],['Transportation', (item: CalculatedCost) => `${currency(item.commuteBreakdown.totalMonthlyCommuteCost)}/mo`],['Utilities', (item: CalculatedCost) => `${currency(item.utilitiesCost)}/mo`],['Commute time', (item: CalculatedCost) => `${item.monthlyCommuteHours} hrs/mo`],['Grocers within 1.5 km', (item: CalculatedCost) => amenitiesByArea[item.neighbourhood.id] ? String(amenitiesByArea[item.neighbourhood.id].groceries.countWithin1_5Km) : 'Unavailable'],['Recreation places within 1.5 km', (item: CalculatedCost) => amenitiesByArea[item.neighbourhood.id] ? String(amenitiesByArea[item.neighbourhood.id].recreation.countWithin1_5Km) : 'Unavailable'],
+        ['True monthly cost', (item: CalculatedCost) => `${currency(item.trueMonthlyCost)}/mo`],['Rent', (item: CalculatedCost) => `${currency(item.effectiveRent)}/mo`],['Transportation', (item: CalculatedCost) => `${currency(item.commuteBreakdown.totalMonthlyCommuteCost)}/mo`],['Utilities', (item: CalculatedCost) => `${currency(item.utilitiesCost)}/mo`],['Commute time', (item: CalculatedCost) => `${item.monthlyCommuteHours} hrs/mo`],
       ].map(([label, getValue]) => <tr key={label as string} className="border-t border-stone-100"><th className="whitespace-nowrap p-2.5 font-semibold text-stone-500">{label as string}</th>{comparedAreas.map((item) => <td key={item.neighbourhood.id} className="p-2.5 font-mono font-semibold text-stone-800">{(getValue as (cost: CalculatedCost) => string)(item)}</td>)}</tr>)}</tbody></table></div></div>}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 bg-stone-50 px-4 py-2.5 text-[10px] text-stone-500 sm:px-6"><span>Points show representative locations, not official neighbourhood boundaries. Costs are estimates for your analyzed inputs.</span><span>Map and nearby-place data © OpenStreetMap contributors{amenitiesAsOf ? ` · OSM snapshot ${amenitiesAsOf}` : ''}</span></div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 bg-stone-50 px-4 py-2.5 text-[10px] text-stone-500 sm:px-6"><span>Points show representative locations, not official neighbourhood boundaries. Costs are estimates for your analyzed inputs.</span><span>Map © OpenStreetMap contributors</span></div>
 
       {selected && <section ref={listingSection} className="scroll-mt-4 border-t border-stone-200" aria-live="polite">
         <div className="flex flex-col gap-3 bg-stone-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
@@ -224,20 +176,8 @@ export const AnalysisNeighbourhoodMap: React.FC<AnalysisNeighbourhoodMapProps> =
               <LifestyleMetric icon={<Bus className="h-3.5 w-3.5" />} label="Selected mode" value={preferences.commuteMode === 'walk_bike' ? 'walk / cycle' : preferences.commuteMode.replace('_', ' ')} />
               <LifestyleMetric icon={<Activity className="h-3.5 w-3.5" />} label="Estimated one-way time" value={`~${selectedCommuteMinutes} min`} />
               <LifestyleMetric icon={<MapPin className="h-3.5 w-3.5" />} label="Road distance to work" value={preferences.routeEstimates?.[selected.neighbourhood.id] ? `~${preferences.routeEstimates[selected.neighbourhood.id].carDistanceKm} km` : 'Unavailable'} />
-              <LifestyleMetric icon={<Bus className="h-3.5 w-3.5" />} label="Mapped transit stops nearby" value={amenitiesByArea[selected.neighbourhood.id] ? `${amenitiesByArea[selected.neighbourhood.id].transitAccess.countWithin1_5Km} within 1.5 km` : amenitiesLoading ? 'Loading…' : 'Unavailable'} />
             </div>
-            <p className="mt-3 text-[10px] leading-relaxed text-stone-500">Commute time is the app’s area-level estimate for your selected mode, not a live departure itinerary. Road distance is route distance from a representative area point when available. Nearby stop counts do not measure frequency or service quality.</p>
-          </section>
-
-          <section className="rounded-xl border border-stone-200 bg-white p-4 lg:col-span-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">C–F. Grocery access, everyday convenience &amp; recreation</h4>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              <PlaceMetric icon={<ShoppingBasket className="h-4 w-4" />} title="Grocery access" summary={amenitiesByArea[selected.neighbourhood.id]?.groceries} loading={amenitiesLoading} error={amenitiesError} />
-              <PlaceMetric icon={<Footprints className="h-4 w-4" />} title="Everyday convenience" summary={amenitiesByArea[selected.neighbourhood.id]?.everydayEssentials} loading={amenitiesLoading} error={amenitiesError} />
-              <PlaceMetric icon={<Bus className="h-4 w-4" />} title="Transit access" summary={amenitiesByArea[selected.neighbourhood.id]?.transitAccess} loading={amenitiesLoading} error={amenitiesError} />
-              <PlaceMetric icon={<Trees className="h-4 w-4" />} title="Recreation &amp; lifestyle" summary={amenitiesByArea[selected.neighbourhood.id]?.recreation} loading={amenitiesLoading} error={amenitiesError} />
-            </div>
-            <p className="mt-3 text-[10px] leading-relaxed text-stone-500">Counts summarize mapped places within 1.5 km straight-line distance of an approximate neighbourhood center. Everyday convenience is a proximity proxy, not an official walkability score; missing OpenStreetMap entries may undercount. Recreation includes mapped parks, playgrounds, sports/fitness facilities, libraries, community centers, and cultural venues. Source: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="font-semibold text-emerald-800 underline">OpenStreetMap contributors</a>{amenitiesAsOf ? `, data snapshot ${amenitiesAsOf}` : ''}. {amenitiesError && 'Nearby-place data could not be loaded.'}</p>
+            <p className="mt-3 text-[10px] leading-relaxed text-stone-500">Commute time is the app’s area-level estimate for your selected mode, not a live departure itinerary. Road distance is route distance from a representative area point when available.</p>
           </section>
         </div>
 
@@ -265,11 +205,4 @@ const CostLine = ({ label, value, muted = false, strong = false }: { label: stri
 
 const LifestyleMetric = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
   <div className="rounded-lg border border-stone-100 bg-stone-50 p-2.5"><div className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-wide text-stone-500">{icon}{label}</div><div className="mt-1 text-xs font-bold capitalize text-stone-800">{value}</div></div>
-);
-
-const PlaceMetric = ({ icon, title, summary, loading, error }: { icon: React.ReactNode; title: string; summary?: NearbyPlaceSummary; loading: boolean; error: boolean }) => (
-  <article className="rounded-lg border border-stone-100 bg-stone-50 p-3">
-    <div className="flex items-center gap-1.5 text-[10px] font-bold text-stone-700">{icon}{title}</div>
-    {summary ? <><p className="mt-2 text-lg font-extrabold text-emerald-800">{summary.countWithin1_5Km}<span className="ml-1 text-[9px] font-semibold text-stone-500">mapped nearby</span></p><p className="mt-1 text-[10px] leading-relaxed text-stone-500">{summary.nearest ? `Nearest: ${summary.nearest.name} · ~${summary.nearest.distanceKm} km straight-line` : 'No matching mapped places found in this radius.'}</p></> : <p className="mt-2 text-[10px] text-stone-500">{loading ? 'Loading nearby place data…' : error ? 'Nearby place data unavailable.' : 'No nearby place data available.'}</p>}
-  </article>
 );
