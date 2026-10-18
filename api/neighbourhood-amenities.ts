@@ -91,6 +91,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       area,
       features: await loadAreaPlaces(area.id),
     })));
+    console.info('[api/neighbourhood-amenities] POI response sample', {
+      areaId: areaResults[0]?.area.id,
+      featureCount: areaResults[0]?.features.length,
+      feature: areaResults[0]?.features[0],
+    });
     for (const { area, features } of areaResults) {
       const areaPoint = AREA_ROUTING_COORDINATES[area.id];
       if (!areaPoint) continue;
